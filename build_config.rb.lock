@@ -1,0 +1,51 @@
+---
+mruby_version:
+  version: 2.1.0
+  release_no: 20100
+builds:
+  host:
+    https://github.com/appPlant/mruby-process.git:
+      url: https://github.com/appPlant/mruby-process.git
+      branch: master
+      commit: d9e4913005958950ced5505238ba71c28d10f3a4
+      version: 0.0.0
+    https://github.com/Asmod4n/mruby-linenoise.git:
+      url: https://github.com/Asmod4n/mruby-linenoise.git
+      branch: master
+      commit: 464d0b503e3c268524de089c885d5741f0bb99ff
+      version: 0.0.0
+    https://github.com/pyama86/mruby-signal-thread.git:
+      url: https://github.com/pyama86/mruby-signal-thread.git
+      branch: master
+      commit: d6cf468b2f5aeb2a0ab8a51b6f810f9cff18b079
+      version: 0.0.0
+    https://github.com/iij/mruby-mtest.git:
+      url: https://github.com/iij/mruby-mtest.git
+      branch: master
+      commit: 34a477d249b0d21671058be33aa75d04c3e981ba
+      version: 0.0.0
+    https://github.com/iij/mruby-errno.git:
+      url: https://github.com/iij/mruby-errno.git
+      branch: master
+      commit: b4415207ff6ea62360619c89a1cff83259dc4db0
+      version: 0.0.0
+    https://github.com/mattn/mruby-thread.git:
+      url: https://github.com/mattn/mruby-thread.git
+      branch: master
+      commit: fcb7498155933448de914e7bb291cd293c835bc4
+      version: 0.0.0
+    https://github.com/iij/mruby-env.git:
+      url: https://github.com/iij/mruby-env.git
+      branch: master
+      commit: 056ae324451ef16a50c7887e117f0ea30921b71b
+      version: 0.0.0
+    https://github.com/iij/mruby-regexp-pcre.git:
+      url: https://github.com/iij/mruby-regexp-pcre.git
+      branch: master
+      commit: a961225c0953dd2bd987111f0836821573616de2
+      version: 0.0.0
+    https://github.com/buty4649/mruby-process:
+      url: https://github.com/buty4649/mruby-process
+      branch: improve-process-exec
+      commit: 8f6da98a984706468c63dc525edbcfeb7156833c
+      version: 0.0.0
