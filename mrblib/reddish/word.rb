@@ -15,6 +15,10 @@ module Reddish
         return self[:content]
       end
 
+      if self[:type] == WordType::SPLIT
+        return ''
+      end
+
       s = self[:content].gsub(/\${(\w+)}/) { ENV[$1] || "" }
       s = s.gsub(/\$(\w+)/) { ENV[$1] || "" }
     end

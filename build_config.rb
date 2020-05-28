@@ -10,6 +10,8 @@ def gem_config(conf)
   conf.gem mgem: 'mruby-env'
   conf.gem mgem: 'mruby-regexp-pcre'
   conf.gem git: 'https://github.com/buty4649/mruby-exec', branch: 'add-execve_override_procname'
+  conf.gem 'mrbgems/mruby-io-fcntl'
+  conf.gem 'mrbgems/mruby-io-dup2'
 end
 
 MRuby::Build.new do |conf|
