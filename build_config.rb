@@ -9,6 +9,7 @@ def gem_config(conf)
   conf.gem mgem: 'mruby-signal-thread'
   conf.gem mgem: 'mruby-env'
   conf.gem mgem: 'mruby-regexp-pcre'
+  conf.gem git: 'https://github.com/buty4649/mruby-exec', branch: 'add-execve_override_procname'
 end
 
 MRuby::Build.new do |conf|
