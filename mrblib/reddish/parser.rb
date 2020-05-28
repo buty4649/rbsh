@@ -11,10 +11,21 @@ module Reddish
     def get_token
       case
       when c.nil?
-        next!; Token.new(nil, TokenType::EOF)
+        next!; Token.new(nil, TokenType::YYEOF)
       when blank?
         next! while blank?
         Token.new(Word.new(nil, WordType::SPLIT), TokenType::WORD)
+      when c == '<'
+        next!
+        Token.new(nil, '<'.ord)
+      when c == '>'
+        next!
+        if c == '>'
+          next!
+          Token.new(nil, TokenType::GREATER_GREATER)
+        else
+          Token.new(nil, '>'.ord)
+        end
       when c == '&'
         next!
         if c == '&'
@@ -58,6 +69,11 @@ module Reddish
 
     def normal_word
       i = index(/[ \t'"]/) || length
+
+      # check redirection word
+      r = index(/[<>]/)
+      i = r if r && r < i
+
       Word.new(slice!(0...i), WordType::NORMAL)
     end
 

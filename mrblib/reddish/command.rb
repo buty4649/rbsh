@@ -4,12 +4,21 @@ module Reddish
     def initialize(wordlist)
       @cmd = wordlist.shift
       @args = wordlist
+      @redirect = []
+    end
+
+    def redirect_add(redirect)
+      @redirect <<= redirect
+      self
     end
 
     def exec
       pid = Process.fork {
         command = assume_command
         args = @args.to_a.map(&:to_s)
+
+        @redirect.each(&:apply)
+
         Exec.execve_override_procname(ENV.to_hash, @cmd.to_s, command, *args)
       }
       _, st = Process.wait2(pid)

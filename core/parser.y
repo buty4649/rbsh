@@ -11,14 +11,11 @@
 #define MRB_MODULE_GET(s, c)  mrb_module_get_under(s, MRB_REDDISH_MODULE(s), c)
 #define MRB_CLASS_GET2(s, c1, c2)  mrb_class_get_under(s, MRB_MODULE_GET(s, c1), c2)
 
-#define MRB_CONST_SET(s, c, l, v) mrb_const_set( s, \
-                                     mrb_obj_value(c), \
-                                     mrb_intern_lit(s, l), \
-                                     mrb_fixnum_value((mrb_int)v) \
-                                  )
-
-#define MRB_COMMAND_CONNECTOR_AND_CLASS(s) MRB_CLASS_GET2(s, "CommandConnector", "And")
-#define MRB_COMMAND_CONNECTOR_OR_CLASS(s)  MRB_CLASS_GET2(s, "CommandConnector", "Or")
+#define MRB_CONST_SET(s, c, v) mrb_const_set( s, \
+                                mrb_obj_value(c), \
+                                mrb_intern_lit(s, #v), \
+                                mrb_fixnum_value((mrb_int)v) \
+                               )
 
 #define MRB_COMMAND_CLASS(s)   MRB_CLASS_GET(s, "Command")
 #define MRB_PARSER_CLASS(s)    MRB_CLASS_GET(s, "Parser")
@@ -42,7 +39,8 @@ static int yyparse(cmdline_parse_state*);
 #define mrb_word_list_new(p, v)    mrb_obj_new(p->state, MRB_WORD_LIST_CLASS(p->state), 1, &v)
 #define mrb_word_list_add(p, d, v) mrb_funcall(p->state, d, "add", 1, v)
 
-static mrb_value mrb_command_connector_new(cmdline_parse_state*, mrb_value, mrb_value, int);
+static mrb_value mrb_command_connector_new(cmdline_parse_state*, mrb_value, mrb_value, const char*);
+static mrb_value mrb_command_add_redirect(cmdline_parse_state*, mrb_value, mrb_value, const char*);
 
 %}
 
@@ -57,7 +55,7 @@ static mrb_value mrb_command_connector_new(cmdline_parse_state*, mrb_value, mrb_
 }
 
 %token <word> WORD
-%token AND_AND OR_OR
+%token AND_AND OR_OR GREATER_GREATER
 %type <wordlist> wordlist
 %type <command> simple_command simple_list
 %start inputunit
@@ -69,9 +67,12 @@ static mrb_value mrb_command_connector_new(cmdline_parse_state*, mrb_value, mrb_
 inputunit : %empty
           | simple_list { p->result = $1; }
 simple_list : simple_command { $$ = $1; }
-            | simple_list AND_AND simple_command { $$ = mrb_command_connector_new(p, $1, $3, AND_AND); }
-            | simple_list OR_OR simple_command { $$ = mrb_command_connector_new(p, $1, $3, OR_OR); }
+            | simple_list AND_AND simple_command { $$ = mrb_command_connector_new(p, $1, $3, "And"); }
+            | simple_list OR_OR simple_command { $$ = mrb_command_connector_new(p, $1, $3, "Or"); }
 simple_command : wordlist { $$ = mrb_command_new(p, $1); }
+               | simple_command '<' wordlist { $$ = mrb_command_add_redirect(p, $1, $3, "Read"); }
+               | simple_command '>' wordlist { $$ = mrb_command_add_redirect(p, $1, $3, "Write"); }
+               | simple_command GREATER_GREATER wordlist { $$ = mrb_command_add_redirect(p, $1, $3, "Append"); }
 wordlist : WORD { $$ = mrb_word_list_new(p, $1); }
          | wordlist WORD { $$ = mrb_word_list_add(p, $1, $2); }
 
@@ -120,13 +121,23 @@ mrb_value parser_f_debug(mrb_state *mrb, mrb_value self) {
     return mrb_fixnum_value(flag);
 }
 
-static mrb_value mrb_command_connector_new(cmdline_parse_state* p, mrb_value cmd1, mrb_value cmd2, int type) {
+static mrb_value mrb_command_connector_new(cmdline_parse_state* p, mrb_value cmd1, mrb_value cmd2, const char* type) {
     struct RClass* c;
     mrb_value ary[] = {cmd1, cmd2};
 
-    c = type == AND_AND ? MRB_COMMAND_CONNECTOR_AND_CLASS(p->state)
-                        : MRB_COMMAND_CONNECTOR_OR_CLASS(p->state) ;
+    c = MRB_CLASS_GET2(p->state, "CommandConnector", type);
     return mrb_obj_new(p->state, c, 2, ary);
+}
+
+static mrb_value mrb_command_add_redirect(cmdline_parse_state* p, mrb_value cmd, mrb_value word, const char* type) {
+    struct RClass* c;
+    mrb_value ary[] = {word};
+    mrb_value redirect;
+
+    c = MRB_CLASS_GET2(p->state, "Redirect", type);
+    redirect = mrb_obj_new(p->state, c, 1, ary);
+
+    return mrb_funcall(p->state, cmd, "redirect_add", 1, redirect);
 }
 
 void mrb_reddish_gem_init(mrb_state* mrb) {
@@ -143,10 +154,11 @@ void mrb_reddish_gem_init(mrb_state* mrb) {
     mrb_define_class_method(mrb, parser, "debug=", parser_f_debug, MRB_ARGS_REQ(1));
 
     tt = mrb_define_class_under(mrb, reddish, "TokenType", mrb->object_class);
-    MRB_CONST_SET(mrb, tt, "EOF",  YYEOF);
-    MRB_CONST_SET(mrb, tt, "WORD", WORD);
-    MRB_CONST_SET(mrb, tt, "AND_AND", AND_AND);
-    MRB_CONST_SET(mrb, tt, "OR_OR",   OR_OR);
+    MRB_CONST_SET(mrb, tt, YYEOF);
+    MRB_CONST_SET(mrb, tt, WORD);
+    MRB_CONST_SET(mrb, tt, AND_AND);
+    MRB_CONST_SET(mrb, tt, OR_OR);
+    MRB_CONST_SET(mrb, tt, GREATER_GREATER);
 }
 
 void mrb_reddish_gem_final(mrb_state* mrb) {
