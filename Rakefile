@@ -66,6 +66,12 @@ Rake::Task['test'].clear
 task :test => ["test:mtest", "test:bintest"]
 
 desc "cleanup"
+Rake::Task['clean'].clear
 task :clean do
-  sh "rake deep_clean"
+  MRuby.each_target do |t|
+    build_dir = File.join(t.build_dir, "mrbgems")
+    gem_build_dirs = t.gem_dir_to_repo_url.values.map{|g| File.join(build_dir, File.basename(g))}
+    gem_build_dirs << File.join(build_dir, APP_NAME)
+    FileUtils.rm_rf(gem_build_dirs, **{verbose: true, secure: true})
+  end
 end
