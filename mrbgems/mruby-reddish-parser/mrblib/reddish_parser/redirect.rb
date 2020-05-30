@@ -1,4 +1,4 @@
-module Reddish
+module ReddishParser
   module Redirect
   end
 end

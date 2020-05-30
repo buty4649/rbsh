@@ -1,15 +1,11 @@
-module Reddish
+module ReddishParser
   class Command
+    attr_accessor :redirect
 
     def initialize(wordlist)
       @cmd = wordlist.shift
       @args = wordlist
       @redirect = []
-    end
-
-    def redirect_add(redirect)
-      @redirect <<= redirect
-      self
     end
 
     def exec

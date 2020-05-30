@@ -1,4 +1,4 @@
-module Reddish
+module ReddishParser
   class WordList
 
     def initialize(word)
@@ -7,7 +7,6 @@ module Reddish
 
     def add(word)
       @list.push(word)
-      self
     end
 
     def shift

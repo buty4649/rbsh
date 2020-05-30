@@ -1,4 +1,4 @@
-module Reddish
+module ReddishParser
   module CommandConnector
     class And
       def initialize(cmd1, cmd2)

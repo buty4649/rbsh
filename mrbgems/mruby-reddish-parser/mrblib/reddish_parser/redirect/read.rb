@@ -1,4 +1,4 @@
-module Reddish
+module ReddishParser
   module Redirect
     class Read < Struct.new(:filename)
 

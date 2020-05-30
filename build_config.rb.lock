@@ -49,3 +49,13 @@ builds:
       branch: master
       commit: fcb7498155933448de914e7bb291cd293c835bc4
       version: 0.0.0
+    https://github.com/buty4649/mruby-process.git:
+      url: https://github.com/buty4649/mruby-process.git
+      branch: improve-process-exec
+      commit: 8f6da98a984706468c63dc525edbcfeb7156833c
+      version: 0.0.0
+    https://github.com/buty4649/mruby-exec.git:
+      url: https://github.com/buty4649/mruby-exec.git
+      branch: add-execve_override_procname
+      commit: eac1f3d970cfa66109dcb17cec962cc7ff51853e
+      version: 0.0.0
