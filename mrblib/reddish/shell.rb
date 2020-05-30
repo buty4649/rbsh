@@ -13,7 +13,16 @@ module Reddish
         ReddishParser.debug = true
       end
 
-      while(line = linenoise("reddish> "))
+      while
+        begin
+          line = linenoise("reddish> ")
+        rescue Errno::ENOTTY => e
+          # bugs:
+          # Errono::NOTTY occurs unintentionally.
+          # (e.g. `echo hoge | reddish` )
+        end
+        break if line.nil?
+
         unless line.empty?
           cmdline = ReddishParser.parse(line)
 

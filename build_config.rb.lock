@@ -49,3 +49,8 @@ builds:
       branch: master
       commit: fcb7498155933448de914e7bb291cd293c835bc4
       version: 0.0.0
+    https://github.com/appPlant/mruby-os.git:
+      url: https://github.com/appPlant/mruby-os.git
+      branch: master
+      commit: 15e3f32c06c1cf8fe14dfd29fa5364d1847c3da5
+      version: 0.0.0
