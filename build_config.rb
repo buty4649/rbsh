@@ -12,7 +12,7 @@ def gem_config(conf)
   conf.gem mgem: 'mruby-env'
   conf.gem mgem: 'mruby-regexp-pcre'
   conf.gem github: 'buty4649/mruby-process', branch: 'improve-process-exec'
-  conf.gem github: 'buty4649/mruby-exec',    branch: 'add-execve_override_procname'
+  conf.gem github: 'haconiwa/mruby-exec'
 end
 
 MRuby::Build.new do |conf|
