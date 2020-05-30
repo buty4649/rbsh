@@ -1,9 +1,5 @@
-module Reddish
-  class ParserError < Exception; end
-  class Token < Struct.new(:word, :type); end
-
+module ReddishParser
   class Parser
-
     def initialize(line)
       @line = line
     end
@@ -17,30 +13,26 @@ module Reddish
         Token.new(Word.new(nil, WordType::SPLIT), TokenType::WORD)
       when c == '<'
         next!
-        Token.new(nil, '<'.ord)
+        Token.new(nil, TokenType::LT)
       when c == '>'
         next!
         if c == '>'
           next!
-          Token.new(nil, TokenType::GREATER_GREATER)
+          Token.new(nil, TokenType::GT_GT)
         else
-          Token.new(nil, '>'.ord)
+          Token.new(nil, TokenType::GT)
         end
       when c == '&'
         next!
         if c == '&'
           next!
           Token.new(nil, TokenType::AND_AND)
-        else
-          Token.new(nil, '&'.ord)
         end
       when c == '|'
         next!
         if c == '|'
           next!
           Token.new(nil, TokenType::OR_OR)
-        else
-          Token.new(nil, '|'.ord)
         end
       else
         word = get_word

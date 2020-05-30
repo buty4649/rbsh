@@ -4,14 +4,15 @@ def gem_config(conf)
   # be sure to include this gem (the cli app)
   conf.gem File.expand_path(File.dirname(__FILE__))
 
-  conf.gem :git => 'https://github.com/buty4649/mruby-process', :branch => 'improve-process-exec'
+  conf.gem 'mrbgems/mruby-io-fcntl'
+  conf.gem 'mrbgems/mruby-io-dup2'
+  conf.gem 'mrbgems/mruby-reddish-parser'
   conf.gem mgem: 'mruby-linenoise'
   conf.gem mgem: 'mruby-signal-thread'
   conf.gem mgem: 'mruby-env'
   conf.gem mgem: 'mruby-regexp-pcre'
-  conf.gem git: 'https://github.com/buty4649/mruby-exec', branch: 'add-execve_override_procname'
-  conf.gem 'mrbgems/mruby-io-fcntl'
-  conf.gem 'mrbgems/mruby-io-dup2'
+  conf.gem github: 'buty4649/mruby-process', branch: 'improve-process-exec'
+  conf.gem github: 'buty4649/mruby-exec',    branch: 'add-execve_override_procname'
 end
 
 MRuby::Build.new do |conf|
