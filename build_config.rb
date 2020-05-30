@@ -18,7 +18,7 @@ end
 MRuby::Build.new do |conf|
   toolchain :gcc
 
-  #conf.enable_bintest
+  conf.enable_bintest
   #conf.enable_debug
   #conf.enable_test
 
