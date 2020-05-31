@@ -1,4 +1,5 @@
 require 'fileutils'
+require 'shellwords'
 
 MRUBY_VERSION="2.1.0"
 
@@ -9,7 +10,8 @@ file :mruby do
 end
 
 APP_NAME=ENV["APP_NAME"] || "reddish"
-APP_ROOT=ENV["APP_ROOT"] || Dir.pwd
+APP_ROOT=ENV["APP_ROOT"] || File.expand_path(__dir__)
+require File.join(APP_ROOT, "mrblib", "reddish", "version.rb")
 # avoid redefining constants in mruby Rakefile
 mruby_root=File.expand_path(ENV["MRUBY_ROOT"] || "#{APP_ROOT}/mruby")
 mruby_config=File.expand_path(ENV["MRUBY_CONFIG"] || "build_config.rb")
@@ -19,15 +21,27 @@ Rake::Task[:mruby].invoke unless Dir.exist?(mruby_root)
 Dir.chdir(mruby_root)
 load "#{mruby_root}/Rakefile"
 
-desc "compile binary"
-task :compile => [:all] do
+namespace :docker do
+  task :build => [:objclean] do
+    if `docker images -q reddish-build`.empty?
+      dockerdir = File.join(APP_ROOT, "docker")
+      `docker build -t reddish-build #{dockerdir}`
+    end
+    sh [
+      "docker", "run", "--rm", "-v", "#{APP_ROOT}:/reddish",
+      "reddish-build", "rake", "release"
+    ].shelljoin
+  end
+end
+
+task :release => [:all] do
   bindir = File.join(APP_ROOT, "bin")
-  FileUtils.mkdir_p(bindir)
   %W(#{mruby_root}/bin/#{APP_NAME}).each do |bin|
     next unless File.exist?(bin)
-    #sh "strip --strip-unneeded #{bin}"
+    sh "strip --strip-unneeded #{bin}"
     FileUtils.cp(bin, File.join(bindir, "#{APP_NAME}"))
   end
+  sh "cd #{bindir}; tar zcf #{APP_NAME}-#{Reddish::VERSION}.tar.gz #{APP_NAME}"
 end
 
 namespace :test do
@@ -79,5 +93,12 @@ task :clean do
     gem_build_dirs << File.join(build_dir, "mruby-reddish-parser")
     gem_build_dirs << File.join(build_dir, "mruby-bin-fdtest")
     FileUtils.rm_rf(gem_build_dirs, **{verbose: true, secure: true})
+  end
+end
+
+task :objclean do
+  objdirs =Dir.glob("#{MRUBY_ROOT}/build/*").select{|path| path !~ %r{/repos$}}
+  until objdirs.empty?
+    FileUtils.rm_rf(objdirs, **{verbose: true, secure: true})
   end
 end
