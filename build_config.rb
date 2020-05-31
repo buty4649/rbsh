@@ -4,9 +4,11 @@ def gem_config(conf)
   # be sure to include this gem (the cli app)
   conf.gem File.expand_path(File.dirname(__FILE__))
 
-  conf.gem 'mrbgems/mruby-io-fcntl'
   conf.gem 'mrbgems/mruby-io-dup2'
+  conf.gem 'mrbgems/mruby-io-fcntl'
+  conf.gem 'mrbgems/mruby-io-stat'
   conf.gem 'mrbgems/mruby-reddish-parser'
+  conf.gem core: 'mruby-struct'
   conf.gem mgem: 'mruby-linenoise'
   conf.gem mgem: 'mruby-signal-thread'
   conf.gem mgem: 'mruby-env'
@@ -24,4 +26,12 @@ MRuby::Build.new do |conf|
 
   cc.flags += %w[-static]
   gem_config(conf)
+end
+
+MRuby::Build.new('fdtest') do |conf|
+  toolchain :gcc
+
+  conf.gem 'mrbgems/mruby-bin-fdtest'
+  conf.gem mgem: 'mruby-dir-glob'
+  conf.gem mgem: 'mruby-regexp-pcre'
 end

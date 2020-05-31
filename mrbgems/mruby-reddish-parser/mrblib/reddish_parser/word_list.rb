@@ -12,12 +12,12 @@ module ReddishParser
     def shift
       loop do
         return nil if @list.first.nil?
-        break if @list.first.type != WordType::SPLIT
+        break if @list.first.type != WordType::SEPARATOR
         @list.shift
       end
 
       result = WordList.new(@list.shift)
-      while @list.first && @list.first.type != WordType::SPLIT
+      while @list.first && @list.first.type != WordType::SEPARATOR
         result.add(@list.shift)
       end
 

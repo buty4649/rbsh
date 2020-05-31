@@ -54,3 +54,70 @@ builds:
       branch: master
       commit: 15e3f32c06c1cf8fe14dfd29fa5364d1847c3da5
       version: 0.0.0
+    https://github.com/gromnitsky/mruby-dir-glob.git:
+      url: https://github.com/gromnitsky/mruby-dir-glob.git
+      branch: master
+      commit: 334c040a2e2c4c2689f8c3440168011f64d57ada
+      version: 0.0.1
+    https://github.com/iij/mruby-dir.git:
+      url: https://github.com/iij/mruby-dir.git
+      branch: master
+      commit: 89dceefa1250fb1ae868d4cb52498e9e24293cd1
+      version: 0.0.0
+    https://github.com/ksss/mruby-file-stat.git:
+      url: https://github.com/ksss/mruby-file-stat.git
+      branch: master
+      commit: e9760c0d44bb8576b05f03aa5d23340e2312ffc8
+      version: 0.0.0
+    https://github.com/iij/mruby-iijson.git:
+      url: https://github.com/iij/mruby-iijson.git
+      branch: master
+      commit: c5e730c30090d3cddae258f57ab9508edb3e9fce
+      version: 0.0.0
+  test:
+    https://github.com/iij/mruby-process.git:
+      url: https://github.com/iij/mruby-process.git
+      branch: master
+      commit: 95da206a5764f4e80146979b8e35bd7a9afd6850
+      version: 0.0.0
+    https://github.com/iij/mruby-iijson.git:
+      url: https://github.com/iij/mruby-iijson.git
+      branch: master
+      commit: c5e730c30090d3cddae258f57ab9508edb3e9fce
+      version: 0.0.0
+  fdtest:
+    https://github.com/iij/mruby-regexp-pcre.git:
+      url: https://github.com/iij/mruby-regexp-pcre.git
+      branch: master
+      commit: a961225c0953dd2bd987111f0836821573616de2
+      version: 0.0.0
+    https://github.com/iij/mruby-process.git:
+      url: https://github.com/iij/mruby-process.git
+      branch: master
+      commit: 95da206a5764f4e80146979b8e35bd7a9afd6850
+      version: 0.0.0
+    https://github.com/iij/mruby-iijson.git:
+      url: https://github.com/iij/mruby-iijson.git
+      branch: master
+      commit: c5e730c30090d3cddae258f57ab9508edb3e9fce
+      version: 0.0.0
+    https://github.com/gromnitsky/mruby-dir-glob.git:
+      url: https://github.com/gromnitsky/mruby-dir-glob.git
+      branch: master
+      commit: 334c040a2e2c4c2689f8c3440168011f64d57ada
+      version: 0.0.1
+    https://github.com/iij/mruby-dir.git:
+      url: https://github.com/iij/mruby-dir.git
+      branch: master
+      commit: 89dceefa1250fb1ae868d4cb52498e9e24293cd1
+      version: 0.0.0
+    https://github.com/iij/mruby-errno.git:
+      url: https://github.com/iij/mruby-errno.git
+      branch: master
+      commit: b4415207ff6ea62360619c89a1cff83259dc4db0
+      version: 0.0.0
+    https://github.com/ksss/mruby-file-stat.git:
+      url: https://github.com/ksss/mruby-file-stat.git
+      branch: master
+      commit: e9760c0d44bb8576b05f03aa5d23340e2312ffc8
+      version: 0.0.0

@@ -1,7 +1,7 @@
 module ReddishParser
   class WordType
     %w(
-      NORMAL QUOTE DQOUTE SPLIT
+      NORMAL NORMAL QUOTE DQOUTE SEPARATOR
     ).each do |const|
       self.const_set(const.to_sym, const)
     end

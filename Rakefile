@@ -25,7 +25,7 @@ task :compile => [:all] do
   FileUtils.mkdir_p(bindir)
   %W(#{mruby_root}/bin/#{APP_NAME}).each do |bin|
     next unless File.exist?(bin)
-    sh "strip --strip-unneeded #{bin}"
+    #sh "strip --strip-unneeded #{bin}"
     FileUtils.cp(bin, File.join(bindir, "#{APP_NAME}"))
   end
 end
@@ -77,6 +77,7 @@ task :clean do
     gem_build_dirs = t.gem_dir_to_repo_url.values.map{|g| File.join(build_dir, File.basename(g))}
     gem_build_dirs << File.join(build_dir, APP_NAME)
     gem_build_dirs << File.join(build_dir, "mruby-reddish-parser")
+    gem_build_dirs << File.join(build_dir, "mruby-bin-fdtest")
     FileUtils.rm_rf(gem_build_dirs, **{verbose: true, secure: true})
   end
 end

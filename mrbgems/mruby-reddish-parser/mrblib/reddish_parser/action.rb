@@ -22,18 +22,38 @@ module ReddishParser
         CommandConnector::Or.new(cmd1, cmd2)
       end
 
-      def assign_read_redirect(cmd, wordlist)
-        cmd.redirect << Redirect::Read.new(wordlist)
+      def assign_read_redirect(cmd, wordlist, fd=0)
+        cmd.redirect << Redirect::Read.new(wordlist, fd.to_i)
         cmd
       end
 
-      def assign_write_redirect(cmd, wordlist)
-        cmd.redirect << Redirect::Write.new(wordlist)
+      def assign_write_redirect(cmd, wordlist, fd=1)
+        cmd.redirect << Redirect::Write.new(wordlist, fd.to_i)
         cmd
       end
 
-      def assign_append_redirect(cmd, wordlist)
-        cmd.redirect << Redirect::Append.new(wordlist)
+      def assign_append_redirect(cmd, wordlist, fd=1)
+        cmd.redirect << Redirect::Append.new(wordlist, fd.to_i)
+        cmd
+      end
+
+      def assign_read_write_redirect(cmd, wordlist, fd=0)
+        cmd.redirect << Redirect::ReadWrite.new(wordlist, fd.to_i)
+        cmd
+      end
+
+      def assign_copy_read_redirect(cmd, src_fd, dest_fd=0)
+        cmd.redirect << Redirect::CopyRead.new(src_fd.to_s.to_i, dest_fd.to_i)
+        cmd
+      end
+
+      def assign_copy_write_redirect(cmd, src_fd, dest_fd=1)
+        cmd.redirect << Redirect::CopyWrite.new(src_fd.to_i, dest_fd.to_i)
+        cmd
+      end
+
+      def assign_close_redirect(cmd, fd)
+        cmd.redirect << Redirect::Close.new(fd.to_i)
         cmd
       end
     end
