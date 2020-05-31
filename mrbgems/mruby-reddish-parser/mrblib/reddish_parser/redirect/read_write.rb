@@ -1,8 +1,8 @@
 module ReddishParser
   module Redirect
-    class Write < Base
+    class ReadWrite < Base
       def initialize(filename, fd)
-        @mode = "w"
+        @mode = "a+"
         @perm = 0644
         super(filename, fd)
       end

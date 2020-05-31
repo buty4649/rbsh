@@ -1,17 +1,11 @@
 module ReddishParser
   module Redirect
-    class Read < Struct.new(:filename)
-
-      def apply
-        filename = self[:filename].to_s
-
-        new_fd = IO.sysopen(filename, "r")
-        IO.dup2(new_fd, STDIN.fileno)
-        STDIN.close
-
-        new_fd
+    class Read < Base
+      def initialize(filename, fd)
+        @mode = "r"
+        @perm = 0644
+        super(filename, fd)
       end
-
     end
   end
 end

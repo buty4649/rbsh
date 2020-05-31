@@ -6,7 +6,7 @@ module ReddishParser
         return self[:content]
       end
 
-      if self[:type] == WordType::SPLIT
+      if self[:type] == WordType::SEPARATOR
         return ''
       end
 

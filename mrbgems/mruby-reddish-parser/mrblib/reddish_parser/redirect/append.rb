@@ -1,17 +1,11 @@
 module ReddishParser
   module Redirect
-    class Append < Struct.new(:filename)
-
-      def apply
-        filename = self[:filename].to_s
-
-        new_fd = IO.sysopen(filename, "a", 0644)
-        IO.dup2(new_fd, STDOUT.fileno)
-        STDOUT.close
-
-        new_fd
+    class Append < Base
+      def initialize(filename, fd)
+        @mode = "a"
+        @perm = 0644
+        super(filename, fd)
       end
-
     end
   end
 end
