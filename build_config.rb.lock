@@ -74,6 +74,11 @@ builds:
       branch: master
       commit: c5e730c30090d3cddae258f57ab9508edb3e9fce
       version: 0.0.0
+    https://github.com/mattn/mruby-onig-regexp.git:
+      url: https://github.com/mattn/mruby-onig-regexp.git
+      branch: master
+      commit: db011517b97910ef8275d039de8c14961ef7a58c
+      version: 0.0.0
   test:
     https://github.com/iij/mruby-process.git:
       url: https://github.com/iij/mruby-process.git

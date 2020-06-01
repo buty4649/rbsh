@@ -12,7 +12,7 @@ def gem_config(conf)
   conf.gem mgem: 'mruby-linenoise'
   conf.gem mgem: 'mruby-signal-thread'
   conf.gem mgem: 'mruby-env'
-  conf.gem mgem: 'mruby-regexp-pcre'
+  conf.gem mgem: 'mruby-onig-regexp'
   conf.gem github: 'buty4649/mruby-process', branch: 'improve-process-exec'
   conf.gem github: 'haconiwa/mruby-exec'
 end
