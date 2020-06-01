@@ -2,6 +2,7 @@ module Reddish
   class Shell
     def initialize(args)
       @args = args
+      @job  = JobControl.new
     end
 
     def run
@@ -24,10 +25,10 @@ module Reddish
         break if line.nil?
 
         unless line.empty?
-          cmdline = ReddishParser.parse(line)
+          parse_result = ReddishParser.parse(line)
 
-          if cmdline
-            cmdline.exec
+          if parse_result
+            @job.run(parse_result)
           end
         end
       end

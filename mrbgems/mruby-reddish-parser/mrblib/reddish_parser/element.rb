@@ -1,4 +1,4 @@
 module ReddishParser
-  module Redirect
+  module Element
   end
 end
