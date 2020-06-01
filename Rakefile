@@ -47,7 +47,7 @@ end
 namespace :test do
   desc "run mruby & unit tests"
   # only build mtest for host
-  task :mtest => :compile do
+  task :mtest => :all do
     # in order to get mruby/test/t/synatx.rb __FILE__ to pass,
     # we need to make sure the tests are built relative from mruby_root
     MRuby.each_target do |target|
@@ -70,7 +70,7 @@ namespace :test do
   end
 
   desc "run integration tests"
-  task :bintest => :compile do
+  task :bintest => :all do
     MRuby.each_target do |target|
       clean_env(%w(MRUBY_ROOT MRUBY_CONFIG)) do
         run_bintest if target.bintest_enabled?
@@ -97,8 +97,8 @@ task :clean do
 end
 
 task :objclean do
-  objdirs =Dir.glob("#{MRUBY_ROOT}/build/*").select{|path| path !~ %r{/repos$}}
-  until objdirs.empty?
+  objdirs = Dir.glob("#{MRUBY_ROOT}/build/*").select{|path| path !~ %r{/repos$}}
+  unless objdirs.empty?
     FileUtils.rm_rf(objdirs, **{verbose: true, secure: true})
   end
 end
