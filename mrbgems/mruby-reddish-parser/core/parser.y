@@ -12,6 +12,8 @@ typedef struct parser_state {
 } parser_state;
 
 #define ACTION(p, n, c, ...)   mrb_funcall(p->state, p->action_class, n, c, __VA_ARGS__)
+#define REDIRECT(p, t, c, ...) ACTION(p, "make_redirect", (c+1), mrb_str_new_cstr(p->state, t), __VA_ARGS__)
+#define FIXNUM(i) mrb_fixnum_value(i)
 #define MRB_CONST_SET(s, c, v) mrb_const_set( s, \
                                 mrb_obj_value(c), \
                                 mrb_intern_lit(s, #v), \
@@ -32,8 +34,6 @@ static int yyparse(parser_state*);
 %token WORD NUMBER MINUS NUMBER_MINUS
 %token AND AND_AND OR OR_OR
 %token GT GT_GT LT
-%type wordlist
-%type simple_command simple_list
 %start inputunit
 
 %left AND_AND OR_OR
@@ -42,45 +42,71 @@ static int yyparse(parser_state*);
 
 inputunit
 : %empty
-| simple_list { p->result = $1; }
+| command_list { p->result = ACTION(p, "make_command_list", 1, $1); }
 
-simple_list
-: simple_command                     { $$ = $1; }
-| simple_list AND_AND simple_command { $$ = ACTION(p, "make_and_command_connector", 2, $1, $3); }
-| simple_list OR_OR   simple_command { $$ = ACTION(p, "make_or_command_connector",  2, $1, $3); }
+command_list
+: simple_command { $$ = $1; }
+/* &&   */| command_list AND_AND simple_command { $$ = ACTION(p, "make_and_command_connector", 2, $1, $3); }
+/* ||   */| command_list OR_OR   simple_command { $$ = ACTION(p, "make_or_command_connector",  2, $1, $3); }
 
 simple_command
-: wordlist { $$ = ACTION(p, "make_command", 1, $1); }
-/* <    */| simple_command LT wordlist          { $$ = ACTION(p, "assign_read_redirect", 2, $1, $3); }
-/* n<   */| simple_command NUMBER LT wordlist   { $$ = ACTION(p, "assign_read_redirect", 3, $1, $4, $2); }
-/* <&-  */| simple_command LT AND MINUS         { $$ = ACTION(p, "assign_close_redirect", 2, $1, mrb_fixnum_value(0)); }
-/* <&n  */| simple_command LT AND NUMBER        { $$ = ACTION(p, "assign_copy_read_redirect", 2, $1, $4); }
-/* <&n- */| simple_command LT AND NUMBER_MINUS  { $$ = ACTION(p, "assign_copy_write_redirect", 3, $1, $4, mrb_fixnum_value(0));
-                                                       ACTION(p, "assign_close_redirect", 2, $1, $4); }
-/* n<&- */| simple_command NUMBER LT AND MINUS  { $$ = ACTION(p, "assign_close_redirect", 2, $1, $2); }
-/* n<&n */| simple_command NUMBER LT AND NUMBER { $$ = ACTION(p, "assign_copy_read_redirect", 3, $1, $5, $2); }
-/* n<&n-*/| simple_command NUMBER LT AND NUMBER_MINUS { $$ = ACTION(p, "assign_copy_write_redirect", 3, $1, $5, $2);
-                                                             ACTION(p, "assign_close_redirect", 2, $1, $5); }
+: wordlist                     { $$ = ACTION(p, "make_command", 1, $1); }
+| simple_command redirect_list { $$ = ACTION(p, "assgin_redirect_list", 2, $1, $2); }
 
-/* >    */| simple_command GT wordlist          { $$ = ACTION(p, "assign_write_redirect",2, $1, $3); }
-/* n>   */| simple_command NUMBER GT wordlist   { $$ = ACTION(p, "assign_write_redirect", 3, $1, $4, $2); }
-/* >&-  */| simple_command GT AND MINUS         { $$ = ACTION(p, "assign_close_redirect", 2, $1, mrb_fixnum_value(1)); }
-/* >&n  */| simple_command GT AND NUMBER        { $$ = ACTION(p, "assign_copy_write_redirect", 2, $1, $4); }
-/* >&n- */| simple_command GT AND NUMBER_MINUS  { $$ = ACTION(p, "assign_copy_write_redirect", 3, $1, $4, mrb_fixnum_value(1));
-                                                       ACTION(p, "assign_close_redirect", 2, $1, $4); }
-/* n>&- */| simple_command NUMBER GT AND MINUS  { $$ = ACTION(p, "assign_close_redirect", 2, $1, $2); }
-/* n>&n */| simple_command NUMBER GT AND NUMBER { $$ = ACTION(p, "assign_copy_write_redirect", 3, $1, $5, $2); }
-/* n>&n-*/| simple_command NUMBER GT AND NUMBER_MINUS { $$ = ACTION(p, "assign_copy_write_redirect", 3, $1, $5, $2);
-                                                             ACTION(p, "assign_close_redirect", 2, $1, $5); }
-/* &>   */| simple_command AND GT wordlist       { $$ = ACTION(p, "assign_write_redirect", 2, $1, $4);
-                                                        ACTION(p, "assign_copy_write_redirect", 3, $1, mrb_fixnum_value(1), mrb_fixnum_value(2)); }
-/* >&   */| simple_command GT AND wordlist       { $$ = ACTION(p, "assign_write_redirect", 2, $1, $4);
-                                                        ACTION(p, "assign_copy_write_redirect", 3, $1, mrb_fixnum_value(1), mrb_fixnum_value(2)); }
+redirect_list
+: redirect { $$ = ACTION(p, "make_redirect_list", 1, $1); }
+| redirect_list redirect { $$ = ACTION(p, "add_redirect_list", 2, $1, $2); }
 
-/* >>   */| simple_command GT_GT wordlist        { $$ = ACTION(p, "assign_append_redirect", 2, $1, $3); }
-/* n>>  */| simple_command NUMBER GT_GT wordlist { $$ = ACTION(p, "assign_append_redirect", 3, $1, $4, $2); }
-/* <>   */| simple_command LT GT wordlist        { $$ = ACTION(p, "assign_read_write_redirect", 2, $1, $4); }
-/* n<>  */| simple_command NUMBER LT GT wordlist { $$ = ACTION(p, "assign_read_write_redirect", 3, $1, $5, $2); }
+redirect
+/* <    */: LT wordlist                { $$ = REDIRECT(p, "READ",     2, FIXNUM(0), $2); }
+/* n<   */| NUMBER LT wordlist         { $$ = REDIRECT(p, "READ",     2, $1, $3); }
+/* <&-  */| LT AND MINUS               { $$ = REDIRECT(p, "CLOSE",    1, FIXNUM(0)); }
+/* <&n  */| LT AND NUMBER              { $$ = REDIRECT(p, "COPYREAD", 2, FIXNUM(0), $3); }
+/* <&n- */| LT AND NUMBER_MINUS        { const mrb_value vals[] = {
+                                            REDIRECT(p, "COPYREAD", 2, FIXNUM(0), $3),
+                                            REDIRECT(p, "CLOSE",    1, $3) };
+                                         $$ = mrb_ary_new_from_values(p->state, 2, vals);
+                                       }
+/* n<&- */| NUMBER LT AND MINUS        { $$ = REDIRECT(p, "CLOSE",    1, $1); }
+/* n<&n */| NUMBER LT AND NUMBER       { $$ = REDIRECT(p, "COPYREAD", 2, $1, $4); }
+/* n<&n-*/| NUMBER LT AND NUMBER_MINUS { const mrb_value vals[] = {
+                                            REDIRECT(p, "COPYREAD", 2, $1, $4),
+                                            REDIRECT(p, "CLOSE",    1, $4)    };
+                                         $$ = mrb_ary_new_from_values(p->state, 2, vals);
+                                       }
+
+/* >    */| GT wordlist                { $$ = REDIRECT(p, "WRITE",     2, FIXNUM(1), $2); }
+/* n>   */| NUMBER GT wordlist         { $$ = REDIRECT(p, "WRITE",     2, $1, $3); }
+/* >&-  */| GT AND MINUS               { $$ = REDIRECT(p, "CLOSE",     1, FIXNUM(1)); }
+/* >&n  */| GT AND NUMBER              { $$ = REDIRECT(p, "COPYWRITE", 2, FIXNUM(1), $3); }
+/* >&n- */| GT AND NUMBER_MINUS        { const mrb_value vals[] = {
+                                            REDIRECT(p, "COPYWRITE", 2, FIXNUM(1), $3),
+                                            REDIRECT(p, "CLOSE",     1, $3)    };
+                                         $$ = mrb_ary_new_from_values(p->state, 2, vals);
+                                       }
+/* n>&- */| NUMBER GT AND MINUS        { $$ = REDIRECT(p, "CLOSE",     1, $1); }
+/* n>&n */| NUMBER GT AND NUMBER       { $$ = REDIRECT(p, "COPYWRITE", 2, $1, $4); }
+/* n>&n-*/| NUMBER GT AND NUMBER_MINUS { const mrb_value vals[] = {
+                                            REDIRECT(p, "COPYWRITE", 2, $1, $4),
+                                            REDIRECT(p, "CLOSE",     1, $4)    };
+                                         $$ = mrb_ary_new_from_values(p->state, 2, vals);
+                                       }
+/* &>   */| AND GT wordlist { const mrb_value vals[] = {
+                                REDIRECT(p, "WRITE",     2, FIXNUM(1), $3),
+                                REDIRECT(p, "COPYWRITE", 2, FIXNUM(2), FIXNUM(1)) };
+                                $$ = mrb_ary_new_from_values(p->state, 2, vals);
+                            }
+/* >&   */| GT AND wordlist { const mrb_value vals[] = {
+                                REDIRECT(p, "WRITE",     2, FIXNUM(1), $3),
+                                REDIRECT(p, "COPYWRITE", 2, FIXNUM(2), FIXNUM(1)) };
+                                $$ = mrb_ary_new_from_values(p->state, 2, vals);
+                            }
+
+/* >>   */| GT_GT wordlist        { $$ = REDIRECT(p, "APPEND", 2, FIXNUM(1), $2); }
+/* n>>  */| NUMBER GT_GT wordlist { $$ = REDIRECT(p, "APPEND", 2, $1, $3); }
+
+/* <>   */| LT GT wordlist        { $$ = REDIRECT(p, "READWRITE", 2, FIXNUM(0), $3); }
+/* n<>  */| NUMBER LT GT wordlist { $$ = REDIRECT(p, "READWRITE", 2, $1, $4); }
 
 wordlist
 : WORD          { $$ = ACTION(p, "make_word_list", 1, $1); }

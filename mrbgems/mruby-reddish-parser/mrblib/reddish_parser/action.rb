@@ -1,8 +1,16 @@
 module ReddishParser
   class Action
     class << self
+      def command_element
+        @command_element || Element::Command
+      end
+
+      def command_element=(klass)
+        @command_element ||= klass
+      end
+
       def make_word_list(word)
-        WordList.new(word)
+        Element::WordList.new(word)
       end
 
       def add_to_word_list(dest, word)
@@ -11,49 +19,51 @@ module ReddishParser
       end
 
       def make_command(wordlist)
-        Command.new(wordlist)
+        command_element.new(wordlist)
+      end
+
+      def make_command_list(command)
+        [command]
       end
 
       def make_and_command_connector(cmd1, cmd2)
-        CommandConnector::And.new(cmd1, cmd2)
+        Element::Connector.new(ConnectorType::AND, cmd1, cmd2)
       end
 
       def make_or_command_connector(cmd1, cmd2)
-        CommandConnector::Or.new(cmd1, cmd2)
+        Element::Connector.new(ConnectorType::OR, cmd1, cmd2)
       end
 
-      def assign_read_redirect(cmd, wordlist, fd=0)
-        cmd.redirect << Redirect::Read.new(wordlist, fd.to_i)
-        cmd
+      def make_redirect(type, dest_fd, *args)
+        t = RedirectType.const_get(type.to_s)
+        if t.nil?
+          raise UnknwonType.new("unknwon redirect type: #{type}")
+        end
+        redirect = Element::Redirect.new(type, dest_fd.to_i)
+        while (arg = args.shift) do
+          if arg.class == ReddishParser::Element::WordList
+            redirect.filename = arg
+          else
+            redirect.src_fd = arg.to_i
+          end
+        end
+        redirect
       end
 
-      def assign_write_redirect(cmd, wordlist, fd=1)
-        cmd.redirect << Redirect::Write.new(wordlist, fd.to_i)
-        cmd
+      def make_redirect_list(redirect)
+        redirect.class == Array ? redirect : [redirect]
       end
 
-      def assign_append_redirect(cmd, wordlist, fd=1)
-        cmd.redirect << Redirect::Append.new(wordlist, fd.to_i)
-        cmd
+      def add_redirect_list(list, redirect)
+        if redirect.class == Array
+          list += redirect
+        else
+          list << redirect
+        end
       end
 
-      def assign_read_write_redirect(cmd, wordlist, fd=0)
-        cmd.redirect << Redirect::ReadWrite.new(wordlist, fd.to_i)
-        cmd
-      end
-
-      def assign_copy_read_redirect(cmd, src_fd, dest_fd=0)
-        cmd.redirect << Redirect::CopyRead.new(src_fd.to_s.to_i, dest_fd.to_i)
-        cmd
-      end
-
-      def assign_copy_write_redirect(cmd, src_fd, dest_fd=1)
-        cmd.redirect << Redirect::CopyWrite.new(src_fd.to_i, dest_fd.to_i)
-        cmd
-      end
-
-      def assign_close_redirect(cmd, fd)
-        cmd.redirect << Redirect::Close.new(fd.to_i)
+      def assgin_redirect_list(cmd, redirect_list)
+        cmd.redirect = redirect_list
         cmd
       end
     end

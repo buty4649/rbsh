@@ -30,7 +30,7 @@ module ReddishParser
       else
         if m = match(/^(\d+)([<>])/)
           number = slice!(0...m.begin(2))
-          Token.new(number, TokenType::NUMBER)
+          Element::Token.new(number, TokenType::NUMBER)
         elsif is_the_before_token_redirect? && m = match(/^((-)|(\d+)-|(\d+))/)
           type = if m[2]
                    TokenType::MINUS
@@ -39,10 +39,10 @@ module ReddishParser
                  elsif m[4]
                    TokenType::NUMBER
                  end
-          Token.new(slice!(0..m.end(0)), type)
+          Element::Token.new(slice!(0..m.end(0)), type)
         elsif match(/^%!/)
           getc
-          Token.new(quote_word("!", WordType::DQOUTE), TokenType::WORD)
+          Element::Token.new(quote_word("!", WordType::DQOUTE), TokenType::WORD)
         elsif m = match(/^%([qQ])(\p{Punct}|[<>\|])/)
           getc; getc
           type = {"q" => WordType::QUOTE, "Q" => WordType::DQOUTE}[m[1]]
@@ -51,30 +51,30 @@ module ReddishParser
           end
           paren = {"(" => ")", "[" => "]", "{" => "}", "<" => ">"}[m[2]]
           paren ||= m[2]
-          Token.new(quote_word(paren, type), TokenType::WORD)
+          Element::Token.new(quote_word(paren, type), TokenType::WORD)
         else
-          Token.new(read_word, TokenType::WORD)
+          Element::Token.new(read_word, TokenType::WORD)
         end
       end
     end
 
     def nil_token
       getc
-      Token.new(nil, TokenType::YYEOF)
+      Element::Token.new(nil, TokenType::YYEOF)
     end
 
     def lt_token
       getc
-      Token.new(nil, TokenType::LT)
+      Element::Token.new(nil, TokenType::LT)
     end
 
     def gt_token
       getc
       if c == '>'
         getc
-        Token.new(nil, TokenType::GT_GT)
+        Element::Token.new(nil, TokenType::GT_GT)
       else
-        Token.new(nil, TokenType::GT)
+        Element::Token.new(nil, TokenType::GT)
       end
     end
 
@@ -82,9 +82,9 @@ module ReddishParser
       getc
       if c == '&'
         getc
-        Token.new(nil, TokenType::AND_AND)
+        Element::Token.new(nil, TokenType::AND_AND)
       else
-        Token.new(nil, TokenType::AND)
+        Element::Token.new(nil, TokenType::AND)
       end
     end
 
@@ -92,15 +92,15 @@ module ReddishParser
       getc
       if c == '|'
         getc
-        Token.new(nil, TokenType::OR_OR)
+        Element::Token.new(nil, TokenType::OR_OR)
       else
-        Token.new(nil, TokenType::OR)
+        Element::Token.new(nil, TokenType::OR)
       end
     end
 
     def separator_token
       getc while separator?
-      Token.new(Word.new(nil, WordType::SEPARATOR), TokenType::WORD)
+      Element::Token.new(Element::Word.new(nil, WordType::SEPARATOR), TokenType::WORD)
     end
 
     def read_word
@@ -119,7 +119,7 @@ module ReddishParser
       end
       str = slice!(0...i)
       getc
-      Word.new(str, type)
+      Element::Word.new(str, type)
     end
 
     def normal_word
@@ -130,7 +130,7 @@ module ReddishParser
       r = index(/[<>]/)
       i = r if r && r < i
 
-      Word.new(slice!(0...i), WordType::NORMAL)
+      Element::Word.new(slice!(0...i), WordType::NORMAL)
     end
 
     def c(i=0)

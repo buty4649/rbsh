@@ -9,7 +9,6 @@ int main(int argc, char *argv[])
 {
   mrb_state *mrb = mrb_open();
   mrb_value ARGV = mrb_ary_new_capa(mrb, argc);
-  struct RClass* dir;
   int i;
   int return_value;
 
