@@ -4,12 +4,12 @@
 #include "mruby/array.h"
 #include "mruby/variable.h"
 
-typedef struct cmdline_parse_state {
+typedef struct parser_state {
     mrb_state* state;
     mrb_value  parser_class;
     mrb_value  result;
     mrb_value  action_class;
-} cmdline_parse_state;
+} parser_state;
 
 #define ACTION(p, n, c, ...)   mrb_funcall(p->state, p->action_class, n, c, __VA_ARGS__)
 #define MRB_CONST_SET(s, c, v) mrb_const_set( s, \
@@ -19,15 +19,15 @@ typedef struct cmdline_parse_state {
 
 #define YYDEBUG 1
 
-static int yylex(void* , cmdline_parse_state*);
-static void yyerror(cmdline_parse_state*, const char*);
-static int yyparse(cmdline_parse_state*);
+static int yylex(void* , parser_state*);
+static void yyerror(parser_state*, const char*);
+static int yyparse(parser_state*);
 %}
 
 %define api.value.type {mrb_value}
 %define api.pure
-%parse-param {cmdline_parse_state* p}
-%lex-param {cmdline_parse_state* p}
+%parse-param {parser_state* p}
+%lex-param {parser_state* p}
 
 %token WORD NUMBER MINUS NUMBER_MINUS
 %token AND AND_AND OR OR_OR
@@ -88,7 +88,7 @@ wordlist
 
 %%
 
-int yylex(void* lval, cmdline_parse_state* p) {
+int yylex(void* lval, parser_state* p) {
     mrb_value token;
     int type;
 
@@ -104,14 +104,14 @@ int yylex(void* lval, cmdline_parse_state* p) {
     return type;
 }
 
-void yyerror(cmdline_parse_state* p, const char* s){
+void yyerror(parser_state* p, const char* s){
     mrb_value str = mrb_str_new_cstr(p->state, s);
     mrb_funcall(p->state, p->parser_class, "error", 1, str);
 }
 
 mrb_value mrb_reddish_parser_parse(mrb_state *mrb, mrb_value self) {
     mrb_value inputline;
-    cmdline_parse_state pstate;
+    parser_state pstate;
     struct RClass* rp = mrb_module_get(mrb, "ReddishParser");
 
     mrb_get_args(mrb, "S", &inputline);
