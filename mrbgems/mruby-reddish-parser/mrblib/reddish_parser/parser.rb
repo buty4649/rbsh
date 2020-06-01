@@ -40,6 +40,18 @@ module ReddishParser
                    TokenType::NUMBER
                  end
           Token.new(slice!(0..m.end(0)), type)
+        elsif match(/^%!/)
+          getc
+          Token.new(quote_word("!", WordType::DQOUTE), TokenType::WORD)
+        elsif m = match(/^%([qQ])(\p{Punct}|[<>\|])/)
+          getc; getc
+          type = {"q" => WordType::QUOTE, "Q" => WordType::DQOUTE}[m[1]]
+          if type.nil?
+            error("unknown type or not implimented of %string")
+          end
+          paren = {"(" => ")", "[" => "]", "{" => "}", "<" => ">"}[m[2]]
+          paren ||= m[2]
+          Token.new(quote_word(paren, type), TokenType::WORD)
         else
           Token.new(read_word, TokenType::WORD)
         end
@@ -99,9 +111,9 @@ module ReddishParser
       end
     end
 
-    def quote_word(quote, type)
+    def quote_word(paren, type)
       getc
-      i = index(quote)
+      i = index(paren)
       if i.nil?
         error("unterminated string")
       end
