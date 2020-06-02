@@ -1,14 +1,6 @@
 module ReddishParser
   class Action
     class << self
-      def command_element
-        @command_element || Element::Command
-      end
-
-      def command_element=(klass)
-        @command_element ||= klass
-      end
-
       def make_word_list(word)
         Element::WordList.new(word)
       end
@@ -18,11 +10,20 @@ module ReddishParser
         dest
       end
 
-      def make_command(wordlist)
-        command_element.new(wordlist)
+      def make_command(wordlist, redirect_list=nil)
+        Element::Command.new(wordlist, redirect_list)
       end
 
-      def make_command_list(command)
+      def make_command_list(command, async=false)
+        if command.class == Element::Connector
+          command.cmd2.async = async
+        else
+          command.async = async
+        end
+        [command]
+      end
+
+      def make_async_command(command)
         [command]
       end
 

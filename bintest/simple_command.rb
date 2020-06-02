@@ -25,5 +25,10 @@ assert('simple command') do
   assert_equal("test\n", run('echo %!test!').stdout)
   assert_equal("test\n", run('echo %!$REDDISH_BINTEST_ENV!').stdout)
 
+  assert_equal("test\n", run("echo test &").stdout)
+  assert_equal("test\n", run("echo test ;").stdout)
+  assert_equal("test\n", run("echo test &;").stdout)
+  assert_equal("test\n", run("echo test & ;").stdout)
+
   ENV.delete('REDDISH_BINTEST_ENV')
 end

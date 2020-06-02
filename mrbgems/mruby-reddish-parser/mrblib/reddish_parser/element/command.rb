@@ -1,18 +1,25 @@
 module ReddishParser
   module Element
     class Command
-      def initialize(wordlist)
+      def initialize(wordlist, redirect=nil)
         @wordlist = wordlist
-        @redirect = nil
+        @redirect = redirect
+        @async = false
       end
 
       def redirect=(redirect_list)
         @redirect = redirect_list
       end
 
-      def exec(fg=true)
+      def async=(flag)
+        @async = flag
+      end
+
+      def exec
         pid = Process.fork {
-          command = Utils.search_command(@wordlist.first.to_s)
+          command = @wordlist.first.to_s
+          next if command.empty?
+          assume_command = Utils.search_command(command)
           args = @wordlist.to_a
           progname = args.shift
 
@@ -20,13 +27,13 @@ module ReddishParser
             @redirect.each(&:apply)
           end
 
-          Exec.execve_override_procname(ENV.to_hash, progname, command, *args)
+          Exec.execve_override_procname(ENV.to_hash, progname, assume_command, *args)
         }
 
-        if fg
-          _, st = Process.wait2(pid)
-        else
+        if @async
           st = Process::Status.new(pid, nil)
+        else
+          _, st = Process.wait2(pid)
         end
 
         st
