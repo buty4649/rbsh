@@ -10,7 +10,7 @@ module Reddish
         puts "^C"
       end
 
-      if ENV["REDDISH_DEBUG"]
+      if ENV["REDDISH_PARSER_DEBUG"]
         ReddishParser.debug = true
       end
 
@@ -25,10 +25,21 @@ module Reddish
         break if line.nil?
 
         unless line.empty?
-          parse_result = ReddishParser.parse(line)
+          begin
+            parse_result = ReddishParser.parse(line)
 
-          if parse_result
-            @job.run(parse_result)
+            if parse_result
+              @job.run(parse_result)
+            end
+          rescue => e
+            puts "#{e.class} #{e.message}"
+            if ENV['REDDISH_DEBUG']
+              puts
+              puts "backtrace:"
+              e.backtrace.each_with_index do |t, i|
+                puts " [#{i}] #{t}"
+              end
+            end
           end
         end
       end
