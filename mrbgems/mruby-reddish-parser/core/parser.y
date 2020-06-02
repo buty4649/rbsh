@@ -13,6 +13,7 @@ typedef struct parser_state {
 
 #define ACTION(p, n, c, ...)   mrb_funcall(p->state, p->action_class, n, c, __VA_ARGS__)
 #define REDIRECT(p, t, c, ...) ACTION(p, "make_redirect", (c+1), mrb_str_new_cstr(p->state, t), __VA_ARGS__)
+#define CONNECTOR(p, t, c, ...)ACTION(p, "make_command_connector", (c+1), mrb_str_new_cstr(p->state, t), __VA_ARGS__)
 #define FIXNUM(i) mrb_fixnum_value(i)
 #define MRB_CONST_SET(s, c, v) mrb_const_set( s, \
                                 mrb_obj_value(c), \
@@ -32,7 +33,7 @@ static int yyparse(parser_state*);
 %lex-param {parser_state* p}
 
 %token WORD NUMBER MINUS NUMBER_MINUS
-%token AND AND_AND OR OR_OR
+%token AND AND_AND OR OR_OR SEMICOLON
 %token GT GT_GT LT
 %start inputunit
 
@@ -42,16 +43,20 @@ static int yyparse(parser_state*);
 
 inputunit
 : %empty
-| command_list { p->result = ACTION(p, "make_command_list", 1, $1); }
+| command_list { p->result = $1; }
 
 command_list
-: simple_command { $$ = $1; }
-/* &&   */| command_list AND_AND simple_command { $$ = ACTION(p, "make_and_command_connector", 2, $1, $3); }
-/* ||   */| command_list OR_OR   simple_command { $$ = ACTION(p, "make_or_command_connector",  2, $1, $3); }
+: simple_command { $$ = ACTION(p, "make_command_list", 1, $1); }
 
 simple_command
+: simple_command_element
+| simple_command AND_AND   simple_command_element { $$ = CONNECTOR(p, "AND", 2, $1, $3); }
+| simple_command OR_OR     simple_command_element { $$ = CONNECTOR(p, "OR",  2, $1, $3); }
+| simple_command SEMICOLON simple_command_element { $$ = CONNECTOR(p, "SEMICOLON", 2, $1, $3); }
+
+simple_command_element
 : wordlist                     { $$ = ACTION(p, "make_command", 1, $1); }
-| simple_command redirect_list { $$ = ACTION(p, "assgin_redirect_list", 2, $1, $2); }
+| simple_command_element redirect_list { $$ = ACTION(p, "assgin_redirect_list", 2, $1, $2); }
 
 redirect_list
 : redirect { $$ = ACTION(p, "make_redirect_list", 1, $1); }
@@ -165,15 +170,16 @@ mrb_value mrb_reddish_parser_debug(mrb_state *mrb, mrb_value self) {
 
 void mrb_tokentype_initialize(mrb_state* mrb, struct RClass* tt) {
     MRB_CONST_SET(mrb, tt, YYEOF);
-    MRB_CONST_SET(mrb, tt, WORD);
-    MRB_CONST_SET(mrb, tt, NUMBER);
-    MRB_CONST_SET(mrb, tt, MINUS);
-    MRB_CONST_SET(mrb, tt, NUMBER_MINUS);
     MRB_CONST_SET(mrb, tt, AND);
     MRB_CONST_SET(mrb, tt, AND_AND);
-    MRB_CONST_SET(mrb, tt, OR);
-    MRB_CONST_SET(mrb, tt, OR_OR);
     MRB_CONST_SET(mrb, tt, GT);
     MRB_CONST_SET(mrb, tt, GT_GT);
     MRB_CONST_SET(mrb, tt, LT);
+    MRB_CONST_SET(mrb, tt, MINUS);
+    MRB_CONST_SET(mrb, tt, NUMBER);
+    MRB_CONST_SET(mrb, tt, NUMBER_MINUS);
+    MRB_CONST_SET(mrb, tt, OR);
+    MRB_CONST_SET(mrb, tt, OR_OR);
+    MRB_CONST_SET(mrb, tt, SEMICOLON);
+    MRB_CONST_SET(mrb, tt, WORD);
 }

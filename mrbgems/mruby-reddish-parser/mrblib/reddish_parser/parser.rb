@@ -26,6 +26,7 @@ module ReddishParser
       when '>' then gt_token
       when '&' then and_token
       when '|' then or_token
+      when ';' then semicolorn_token
       when @separator_regexp then separator_token
       else
         if m = match(/^(\d+)([<>])/)
@@ -98,6 +99,11 @@ module ReddishParser
       end
     end
 
+    def semicolorn_token
+      getc
+      Element::Token.new(nil, TokenType::SEMICOLON)
+    end
+
     def separator_token
       getc while separator?
       Element::Token.new(Element::Word.new(nil, WordType::SEPARATOR), TokenType::WORD)
@@ -123,7 +129,7 @@ module ReddishParser
     end
 
     def normal_word
-      regexp = Regexp.new([@separator_regexp.to_s, '"', "'"].join('|'))
+      regexp = Regexp.new([@separator_regexp.to_s, '"', "'", ";"].join('|'))
       i = index(regexp) || length
 
       # check redirection word
