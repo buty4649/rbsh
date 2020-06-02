@@ -66,7 +66,15 @@ module ReddishParser
 
     def lt_token
       getc
-      Element::Token.new(nil, TokenType::LT)
+      if c == '>'
+        getc
+        Element::Token.new(nil, TokenType::LT_GT)
+      elsif c == '&'
+        getc
+        Element::Token.new(nil, TokenType::LT_AND)
+      else
+        Element::Token.new(nil, TokenType::LT)
+      end
     end
 
     def gt_token
@@ -74,6 +82,9 @@ module ReddishParser
       if c == '>'
         getc
         Element::Token.new(nil, TokenType::GT_GT)
+      elsif c == '&'
+        getc
+        Element::Token.new(nil, TokenType::GT_AND)
       else
         Element::Token.new(nil, TokenType::GT)
       end
@@ -84,6 +95,9 @@ module ReddishParser
       if c == '&'
         getc
         Element::Token.new(nil, TokenType::AND_AND)
+      elsif c == '>'
+        getc
+        Element::Token.new(nil, TokenType::AND_GT)
       else
         Element::Token.new(nil, TokenType::AND)
       end
@@ -129,7 +143,7 @@ module ReddishParser
     end
 
     def normal_word
-      regexp = Regexp.new([@separator_regexp.to_s, '"', "'", ";"].join('|'))
+      regexp = Regexp.new([@separator_regexp.to_s, '"', "'", ";", "&"].join('|'))
       i = index(regexp) || length
 
       # check redirection word
@@ -173,7 +187,7 @@ module ReddishParser
     end
 
     def is_the_before_token_redirect?
-      [TokenType::LT, TokenType::GT].include?(@two_tokens_ago) && @token_before_that == TokenType::AND
+      [TokenType::LT_AND, TokenType::GT_AND].include?(@token_before_that)
     end
 
     def error(str)

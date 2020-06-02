@@ -15,6 +15,7 @@ typedef struct parser_state {
 #define REDIRECT(p, t, c, ...) ACTION(p, "make_redirect", (c+1), mrb_str_new_cstr(p->state, t), __VA_ARGS__)
 #define CONNECTOR(p, t, c, ...)ACTION(p, "make_command_connector", (c+1), mrb_str_new_cstr(p->state, t), __VA_ARGS__)
 #define FIXNUM(i) mrb_fixnum_value(i)
+#define BOOL(b)   mrb_bool_value(b)
 #define MRB_CONST_SET(s, c, v) mrb_const_set( s, \
                                 mrb_obj_value(c), \
                                 mrb_intern_lit(s, #v), \
@@ -34,10 +35,8 @@ static int yyparse(parser_state*);
 
 %token WORD NUMBER MINUS NUMBER_MINUS
 %token AND AND_AND OR OR_OR SEMICOLON
-%token GT GT_GT LT
+%token GT GT_GT AND_GT GT_AND LT LT_AND LT_GT
 %start inputunit
-
-%left AND_AND OR_OR
 
 %%
 
@@ -46,17 +45,21 @@ inputunit
 | command_list { p->result = $1; }
 
 command_list
-: simple_command { $$ = ACTION(p, "make_command_list", 1, $1); }
+: simple_command     { $$ = ACTION(p, "make_command_list", 1, $1); }
+| simple_command AND { $$ = ACTION(p, "make_command_list", 1, $1, BOOL(1)); }
+| simple_command SEMICOLON { $$ = ACTION(p, "make_command_list", 1, $1); }
+| simple_command AND SEMICOLON { $$ = ACTION(p, "make_command_list", 1, $1, BOOL(1)); }
 
 simple_command
 : simple_command_element
 | simple_command AND_AND   simple_command_element { $$ = CONNECTOR(p, "AND", 2, $1, $3); }
 | simple_command OR_OR     simple_command_element { $$ = CONNECTOR(p, "OR",  2, $1, $3); }
+| simple_command AND       simple_command_element { $$ = CONNECTOR(p, "ASYNC", 2, $1, $3); }
 | simple_command SEMICOLON simple_command_element { $$ = CONNECTOR(p, "SEMICOLON", 2, $1, $3); }
 
 simple_command_element
-: wordlist                     { $$ = ACTION(p, "make_command", 1, $1); }
-| simple_command_element redirect_list { $$ = ACTION(p, "assgin_redirect_list", 2, $1, $2); }
+: wordlist { $$ = ACTION(p, "make_command", 1, $1); }
+| wordlist redirect_list { $$ = ACTION(p, "make_command", 2, $1, $2); }
 
 redirect_list
 : redirect { $$ = ACTION(p, "make_redirect_list", 1, $1); }
@@ -65,44 +68,44 @@ redirect_list
 redirect
 /* <    */: LT wordlist                { $$ = REDIRECT(p, "READ",     2, FIXNUM(0), $2); }
 /* n<   */| NUMBER LT wordlist         { $$ = REDIRECT(p, "READ",     2, $1, $3); }
-/* <&-  */| LT AND MINUS               { $$ = REDIRECT(p, "CLOSE",    1, FIXNUM(0)); }
-/* <&n  */| LT AND NUMBER              { $$ = REDIRECT(p, "COPYREAD", 2, FIXNUM(0), $3); }
-/* <&n- */| LT AND NUMBER_MINUS        { const mrb_value vals[] = {
-                                            REDIRECT(p, "COPYREAD", 2, FIXNUM(0), $3),
-                                            REDIRECT(p, "CLOSE",    1, $3) };
+/* <&-  */| LT_AND MINUS               { $$ = REDIRECT(p, "CLOSE",    1, FIXNUM(0)); }
+/* <&n  */| LT_AND NUMBER              { $$ = REDIRECT(p, "COPYREAD", 2, FIXNUM(0), $2); }
+/* <&n- */| LT_AND NUMBER_MINUS        { const mrb_value vals[] = {
+                                            REDIRECT(p, "COPYREAD", 2, FIXNUM(0), $2),
+                                            REDIRECT(p, "CLOSE",    1, $2) };
                                          $$ = mrb_ary_new_from_values(p->state, 2, vals);
                                        }
-/* n<&- */| NUMBER LT AND MINUS        { $$ = REDIRECT(p, "CLOSE",    1, $1); }
-/* n<&n */| NUMBER LT AND NUMBER       { $$ = REDIRECT(p, "COPYREAD", 2, $1, $4); }
-/* n<&n-*/| NUMBER LT AND NUMBER_MINUS { const mrb_value vals[] = {
-                                            REDIRECT(p, "COPYREAD", 2, $1, $4),
-                                            REDIRECT(p, "CLOSE",    1, $4)    };
+/* n<&- */| NUMBER LT_AND MINUS        { $$ = REDIRECT(p, "CLOSE",    1, $1); }
+/* n<&n */| NUMBER LT_AND NUMBER       { $$ = REDIRECT(p, "COPYREAD", 2, $1, $3); }
+/* n<&n-*/| NUMBER LT_AND NUMBER_MINUS { const mrb_value vals[] = {
+                                            REDIRECT(p, "COPYREAD", 2, $1, $3),
+                                            REDIRECT(p, "CLOSE",    1, $3)    };
                                          $$ = mrb_ary_new_from_values(p->state, 2, vals);
                                        }
 
 /* >    */| GT wordlist                { $$ = REDIRECT(p, "WRITE",     2, FIXNUM(1), $2); }
 /* n>   */| NUMBER GT wordlist         { $$ = REDIRECT(p, "WRITE",     2, $1, $3); }
-/* >&-  */| GT AND MINUS               { $$ = REDIRECT(p, "CLOSE",     1, FIXNUM(1)); }
-/* >&n  */| GT AND NUMBER              { $$ = REDIRECT(p, "COPYWRITE", 2, FIXNUM(1), $3); }
-/* >&n- */| GT AND NUMBER_MINUS        { const mrb_value vals[] = {
-                                            REDIRECT(p, "COPYWRITE", 2, FIXNUM(1), $3),
+/* >&-  */| GT_AND MINUS               { $$ = REDIRECT(p, "CLOSE",     1, FIXNUM(1)); }
+/* >&n  */| GT_AND NUMBER              { $$ = REDIRECT(p, "COPYWRITE", 2, FIXNUM(1), $2); }
+/* >&n- */| GT_AND NUMBER_MINUS        { const mrb_value vals[] = {
+                                            REDIRECT(p, "COPYWRITE", 2, FIXNUM(1), $2),
+                                            REDIRECT(p, "CLOSE",     1, $2)    };
+                                         $$ = mrb_ary_new_from_values(p->state, 2, vals);
+                                       }
+/* n>&- */| NUMBER GT_AND MINUS        { $$ = REDIRECT(p, "CLOSE",     1, $1); }
+/* n>&n */| NUMBER GT_AND NUMBER       { $$ = REDIRECT(p, "COPYWRITE", 2, $1, $3); }
+/* n>&n-*/| NUMBER GT_AND NUMBER_MINUS { const mrb_value vals[] = {
+                                            REDIRECT(p, "COPYWRITE", 2, $1, $3),
                                             REDIRECT(p, "CLOSE",     1, $3)    };
                                          $$ = mrb_ary_new_from_values(p->state, 2, vals);
                                        }
-/* n>&- */| NUMBER GT AND MINUS        { $$ = REDIRECT(p, "CLOSE",     1, $1); }
-/* n>&n */| NUMBER GT AND NUMBER       { $$ = REDIRECT(p, "COPYWRITE", 2, $1, $4); }
-/* n>&n-*/| NUMBER GT AND NUMBER_MINUS { const mrb_value vals[] = {
-                                            REDIRECT(p, "COPYWRITE", 2, $1, $4),
-                                            REDIRECT(p, "CLOSE",     1, $4)    };
-                                         $$ = mrb_ary_new_from_values(p->state, 2, vals);
-                                       }
-/* &>   */| AND GT wordlist { const mrb_value vals[] = {
-                                REDIRECT(p, "WRITE",     2, FIXNUM(1), $3),
+/* &>   */| AND_GT wordlist { const mrb_value vals[] = {
+                                REDIRECT(p, "WRITE",     2, FIXNUM(1), $2),
                                 REDIRECT(p, "COPYWRITE", 2, FIXNUM(2), FIXNUM(1)) };
                                 $$ = mrb_ary_new_from_values(p->state, 2, vals);
                             }
-/* >&   */| GT AND wordlist { const mrb_value vals[] = {
-                                REDIRECT(p, "WRITE",     2, FIXNUM(1), $3),
+/* >&   */| GT_AND wordlist { const mrb_value vals[] = {
+                                REDIRECT(p, "WRITE",     2, FIXNUM(1), $2),
                                 REDIRECT(p, "COPYWRITE", 2, FIXNUM(2), FIXNUM(1)) };
                                 $$ = mrb_ary_new_from_values(p->state, 2, vals);
                             }
@@ -110,8 +113,8 @@ redirect
 /* >>   */| GT_GT wordlist        { $$ = REDIRECT(p, "APPEND", 2, FIXNUM(1), $2); }
 /* n>>  */| NUMBER GT_GT wordlist { $$ = REDIRECT(p, "APPEND", 2, $1, $3); }
 
-/* <>   */| LT GT wordlist        { $$ = REDIRECT(p, "READWRITE", 2, FIXNUM(0), $3); }
-/* n<>  */| NUMBER LT GT wordlist { $$ = REDIRECT(p, "READWRITE", 2, $1, $4); }
+/* <>   */| LT_GT wordlist        { $$ = REDIRECT(p, "READWRITE", 2, FIXNUM(0), $2); }
+/* n<>  */| NUMBER LT_GT wordlist { $$ = REDIRECT(p, "READWRITE", 2, $1, $3); }
 
 wordlist
 : WORD          { $$ = ACTION(p, "make_word_list", 1, $1); }
@@ -172,9 +175,13 @@ void mrb_tokentype_initialize(mrb_state* mrb, struct RClass* tt) {
     MRB_CONST_SET(mrb, tt, YYEOF);
     MRB_CONST_SET(mrb, tt, AND);
     MRB_CONST_SET(mrb, tt, AND_AND);
+    MRB_CONST_SET(mrb, tt, AND_GT);
     MRB_CONST_SET(mrb, tt, GT);
+    MRB_CONST_SET(mrb, tt, GT_AND);
     MRB_CONST_SET(mrb, tt, GT_GT);
     MRB_CONST_SET(mrb, tt, LT);
+    MRB_CONST_SET(mrb, tt, LT_AND);
+    MRB_CONST_SET(mrb, tt, LT_GT);
     MRB_CONST_SET(mrb, tt, MINUS);
     MRB_CONST_SET(mrb, tt, NUMBER);
     MRB_CONST_SET(mrb, tt, NUMBER_MINUS);
