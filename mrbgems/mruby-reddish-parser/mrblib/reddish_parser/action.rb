@@ -26,12 +26,12 @@ module ReddishParser
         [command]
       end
 
-      def make_and_command_connector(cmd1, cmd2)
-        Element::Connector.new(ConnectorType::AND, cmd1, cmd2)
-      end
-
-      def make_or_command_connector(cmd1, cmd2)
-        Element::Connector.new(ConnectorType::OR, cmd1, cmd2)
+      def make_command_connector(type, cmd1, cmd2)
+        t = ConnectorType.const_get(type.to_s)
+        if t.nil?
+          raise UnknwonType.new("unknwon connector type: #{type}")
+        end
+        Element::Connector.new(t, cmd1, cmd2)
       end
 
       def make_redirect(type, dest_fd, *args)

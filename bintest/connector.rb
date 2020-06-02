@@ -12,4 +12,11 @@ assert('connector') do
   assert_equal("1\n3\n", run("echo 1 && false  || echo 3").stdout, "true && false|| true")
 
   assert_equal("2\n3\n", run("false || echo 2 && echo 3").stdout, "false || true && true")
+
+  assert_equal("1\n2\n", run("echo 1 ; echo 2").stdout, "cmd1 ; cmd2")
+  assert_equal("1\n2\n", run("echo 1; echo 2").stdout, "cmd1; cmd2")
+  assert_equal("1\n2\n3\n", run("echo 1 ; echo 2 && echo 3").stdout, "cmd1; cmd2 && cmd3")
+  assert_equal("1\n2\n", run("echo 1 ; echo 2 || echo 3").stdout, "cmd1; cmd2 || cmd3")
+  assert_equal("1\n2\n3\n", run("echo 1 && echo 2 ; echo 3").stdout, "cmd1 && cmd2 ; cmd3")
+  assert_equal("1\n3\n", run("echo 1 || echo 2 ; echo 3").stdout, "cmd1 || cmd2 ; cmd3")
 end
