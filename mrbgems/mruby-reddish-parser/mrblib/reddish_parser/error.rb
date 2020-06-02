@@ -1,4 +1,4 @@
 module ReddishParser
-  class ParserError < Exception; end
-  class UnknownType < Exception; end
+  class ParserError < StandardError; end
+  class UnknownType < StandardError; end
 end
