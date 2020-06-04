@@ -25,7 +25,7 @@ module ReddishParser
         result = Process.waitall
 
         # Process:Status of cmd2
-        result[1][1]
+        result.last.last
       end
     end
   end
