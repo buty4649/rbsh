@@ -34,7 +34,7 @@ static int yyparse(parser_state*);
 %lex-param {parser_state* p}
 
 %token WORD NUMBER MINUS NUMBER_MINUS
-%token AND AND_AND OR OR_OR SEMICOLON
+%token AND AND_AND OR OR_OR OR_AND SEMICOLON
 %token GT GT_GT AND_GT GT_AND LT LT_AND LT_GT
 %start inputunit
 
@@ -51,13 +51,18 @@ command_list
 | simple_command AND SEMICOLON { $$ = ACTION(p, "make_command_list", 1, $1, BOOL(1)); }
 
 simple_command
-: simple_command_element
-| simple_command AND_AND   simple_command_element { $$ = CONNECTOR(p, "AND", 2, $1, $3); }
-| simple_command OR_OR     simple_command_element { $$ = CONNECTOR(p, "OR",  2, $1, $3); }
-| simple_command AND       simple_command_element { $$ = CONNECTOR(p, "ASYNC", 2, $1, $3); }
-| simple_command SEMICOLON simple_command_element { $$ = CONNECTOR(p, "SEMICOLON", 2, $1, $3); }
+: pipeline
+| simple_command AND_AND   pipeline { $$ = CONNECTOR(p, "AND", 2, $1, $3); }
+| simple_command OR_OR     pipeline { $$ = CONNECTOR(p, "OR",  2, $1, $3); }
+| simple_command AND       pipeline { $$ = CONNECTOR(p, "ASYNC", 2, $1, $3); }
+| simple_command SEMICOLON pipeline { $$ = CONNECTOR(p, "SEMICOLON", 2, $1, $3); }
 
-simple_command_element
+pipeline
+: command
+| pipeline OR command     { $$ = ACTION(p, "make_pipe_command", 2, $1, $3); }
+| pipeline OR_AND command { mrb_value r = REDIRECT(p, "COPYWRITE", 2, FIXNUM(2), FIXNUM(1));
+                            $$ = ACTION(p, "make_pipe_command", 3, $1, $3, r); }
+command
 : wordlist { $$ = ACTION(p, "make_command", 1, $1); }
 | wordlist redirect_list { $$ = ACTION(p, "make_command", 2, $1, $2); }
 
@@ -186,6 +191,7 @@ void mrb_tokentype_initialize(mrb_state* mrb, struct RClass* tt) {
     MRB_CONST_SET(mrb, tt, NUMBER);
     MRB_CONST_SET(mrb, tt, NUMBER_MINUS);
     MRB_CONST_SET(mrb, tt, OR);
+    MRB_CONST_SET(mrb, tt, OR_AND);
     MRB_CONST_SET(mrb, tt, OR_OR);
     MRB_CONST_SET(mrb, tt, SEMICOLON);
     MRB_CONST_SET(mrb, tt, WORD);

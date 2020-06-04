@@ -108,6 +108,9 @@ module ReddishParser
       if c == '|'
         getc
         Element::Token.new(nil, TokenType::OR_OR)
+      elsif c == '&'
+        getc
+        Element::Token.new(nil, TokenType::OR_AND)
       else
         Element::Token.new(nil, TokenType::OR)
       end

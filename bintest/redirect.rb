@@ -1,13 +1,11 @@
 require File.join(File.dirname(__FILE__), "../lib/bintest_helper.rb")
 require 'tempfile'
-require 'json'
 
 def fdtest_run(args)
-  fdtest = File.join(File.dirname(__FILE__), "../mruby/build/fdtest/bin/fdtest")
-  out = run("#{fdtest} #{args}").stdout
+  out = run("#{FDTEST_PATH} #{args}").stdout
   if out == ""
     # If STDOUT is closed, STDERR will be used.
-    out = run("#{fdtest} #{args}").stderr
+    out = run("#{FDTEST_PATH} #{args}").stderr
   end
   out == "" ? {} : JSON.parse(out)
 end
