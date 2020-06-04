@@ -8,9 +8,15 @@ def __main__(argv)
     end
   end
 
-  begin
-    puts result.compact.to_h.to_json
-  rescue Errno::EBADF
-    STDERR.puts result.compact.to_h.to_json
+  if argv[1]
+    File.open(argv[1], "w") do |f|
+      f.puts result.compact.to_h.to_json
+    end
+  else
+    begin
+      puts result.compact.to_h.to_json
+    rescue Errno::EBADF
+      STDERR.puts result.compact.to_h.to_json
+    end
   end
 end

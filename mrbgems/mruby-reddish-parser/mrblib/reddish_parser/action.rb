@@ -27,6 +27,17 @@ module ReddishParser
         [command]
       end
 
+      def make_pipe_command(cmd1, cmd2, redirect=nil)
+        if redirect
+          if cmd1 == Element::Pipe
+            cmd1.cmd1.add_redirect(redirect)
+          else
+            cmd1.add_redirect(redirect)
+          end
+        end
+        Element::Pipe.new(cmd1, cmd2)
+      end
+
       def make_command_connector(type, cmd1, cmd2)
         t = ConnectorType.const_get(type.to_s)
         if t.nil?
