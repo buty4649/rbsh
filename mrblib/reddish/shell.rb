@@ -1,9 +1,18 @@
 module Reddish
   class Shell
     def initialize(args)
-      class << args; include Getopts; end
-      @opts = args.getopts("c:")
+      @opts = getopts(args)
       @job  = JobControl.new
+    end
+
+    def getopts(args)
+      class << args; include Getopts; end
+      opts = args.getopts("c:")
+      if opts["?"]
+        # Invalid option
+        exit(2)
+      end
+      opts
     end
 
     def read_from_tty
