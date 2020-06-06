@@ -9,20 +9,20 @@ builds:
       branch: master
       commit: 464d0b503e3c268524de089c885d5741f0bb99ff
       version: 0.0.0
-    https://github.com/pyama86/mruby-signal-thread.git:
-      url: https://github.com/pyama86/mruby-signal-thread.git
-      branch: master
-      commit: d6cf468b2f5aeb2a0ab8a51b6f810f9cff18b079
+    https://github.com/buty4649/mruby-signal-thread.git:
+      url: https://github.com/buty4649/mruby-signal-thread.git
+      branch: reset-sigmask
+      commit: 31621eff2aecf32bd7d9cbf0e4d33b49bd803a00
       version: 0.0.0
     https://github.com/iij/mruby-env.git:
       url: https://github.com/iij/mruby-env.git
       branch: master
       commit: 056ae324451ef16a50c7887e117f0ea30921b71b
       version: 0.0.0
-    https://github.com/iij/mruby-regexp-pcre.git:
-      url: https://github.com/iij/mruby-regexp-pcre.git
+    https://github.com/mattn/mruby-onig-regexp.git:
+      url: https://github.com/mattn/mruby-onig-regexp.git
       branch: master
-      commit: a961225c0953dd2bd987111f0836821573616de2
+      commit: db011517b97910ef8275d039de8c14961ef7a58c
       version: 0.0.0
     https://github.com/buty4649/mruby-process.git:
       url: https://github.com/buty4649/mruby-process.git
@@ -54,43 +54,17 @@ builds:
       branch: master
       commit: 15e3f32c06c1cf8fe14dfd29fa5364d1847c3da5
       version: 0.0.0
+    https://github.com/mttech/mruby-getopts:
+      url: https://github.com/mttech/mruby-getopts
+      branch: master
+      commit: 32878292c1162a911b39e1e0810a28ab2cb83f6a
+      version: 0.0.0
+  fdtest:
     https://github.com/gromnitsky/mruby-dir-glob.git:
       url: https://github.com/gromnitsky/mruby-dir-glob.git
       branch: master
       commit: 334c040a2e2c4c2689f8c3440168011f64d57ada
       version: 0.0.1
-    https://github.com/iij/mruby-dir.git:
-      url: https://github.com/iij/mruby-dir.git
-      branch: master
-      commit: 89dceefa1250fb1ae868d4cb52498e9e24293cd1
-      version: 0.0.0
-    https://github.com/ksss/mruby-file-stat.git:
-      url: https://github.com/ksss/mruby-file-stat.git
-      branch: master
-      commit: e9760c0d44bb8576b05f03aa5d23340e2312ffc8
-      version: 0.0.0
-    https://github.com/iij/mruby-iijson.git:
-      url: https://github.com/iij/mruby-iijson.git
-      branch: master
-      commit: c5e730c30090d3cddae258f57ab9508edb3e9fce
-      version: 0.0.0
-    https://github.com/mattn/mruby-onig-regexp.git:
-      url: https://github.com/mattn/mruby-onig-regexp.git
-      branch: master
-      commit: db011517b97910ef8275d039de8c14961ef7a58c
-      version: 0.0.0
-  test:
-    https://github.com/iij/mruby-process.git:
-      url: https://github.com/iij/mruby-process.git
-      branch: master
-      commit: 95da206a5764f4e80146979b8e35bd7a9afd6850
-      version: 0.0.0
-    https://github.com/iij/mruby-iijson.git:
-      url: https://github.com/iij/mruby-iijson.git
-      branch: master
-      commit: c5e730c30090d3cddae258f57ab9508edb3e9fce
-      version: 0.0.0
-  fdtest:
     https://github.com/iij/mruby-regexp-pcre.git:
       url: https://github.com/iij/mruby-regexp-pcre.git
       branch: master
@@ -106,11 +80,6 @@ builds:
       branch: master
       commit: c5e730c30090d3cddae258f57ab9508edb3e9fce
       version: 0.0.0
-    https://github.com/gromnitsky/mruby-dir-glob.git:
-      url: https://github.com/gromnitsky/mruby-dir-glob.git
-      branch: master
-      commit: 334c040a2e2c4c2689f8c3440168011f64d57ada
-      version: 0.0.1
     https://github.com/iij/mruby-dir.git:
       url: https://github.com/iij/mruby-dir.git
       branch: master
@@ -125,4 +94,25 @@ builds:
       url: https://github.com/ksss/mruby-file-stat.git
       branch: master
       commit: e9760c0d44bb8576b05f03aa5d23340e2312ffc8
+      version: 0.0.0
+  sigtest:
+    https://github.com/iij/mruby-process.git:
+      url: https://github.com/iij/mruby-process.git
+      branch: master
+      commit: 95da206a5764f4e80146979b8e35bd7a9afd6850
+      version: 0.0.0
+    https://github.com/buty4649/mruby-signal-thread.git:
+      url: https://github.com/buty4649/mruby-signal-thread.git
+      branch: reset-sigmask
+      commit: 31621eff2aecf32bd7d9cbf0e4d33b49bd803a00
+      version: 0.0.0
+    https://github.com/mattn/mruby-thread.git:
+      url: https://github.com/mattn/mruby-thread.git
+      branch: master
+      commit: fcb7498155933448de914e7bb291cd293c835bc4
+      version: 0.0.0
+    https://github.com/iij/mruby-io.git:
+      url: https://github.com/iij/mruby-io.git
+      branch: master
+      commit: 26b7967fa91f2330205ae5454ed203e1757ccb2e
       version: 0.0.0
