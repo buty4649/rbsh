@@ -49,7 +49,7 @@ module ReddishParser
         if @async || opts[:async]
           st = Process::Status.new(pid, nil)
         else
-          _, st = Process.wait2(pid)
+          _, st = Action.start_sigint_trap([pid]) { Process.wait2(pid) }
         end
 
         st

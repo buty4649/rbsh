@@ -22,7 +22,7 @@ module ReddishParser
         w.close
 
         # Array<Array<pid, Process::Status>>
-        result = Process.waitall
+        result = Action.start_sigint_trap([st1.pid, st2.pid]) { Process.waitall }
 
         # Process:Status of cmd2
         result.last.last
