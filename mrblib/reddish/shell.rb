@@ -41,18 +41,18 @@ module Reddish
       return if line.nil? || line.empty?
 
       begin
-        parse_result = ReddishParser.parse(line)
+        parse_result = Scanner.new(line).parse
 
         if parse_result
           @job.run(parse_result)
         end
       rescue => e
-        puts "#{e.class} #{e.message}"
+        STDERR.puts "#{e.class} #{e.message}"
         if ENV['REDDISH_DEBUG']
-          puts
-          puts "backtrace:"
+          STDERR.puts
+          STDERR.puts "backtrace:"
           e.backtrace.each_with_index do |t, i|
-            puts " [#{i}] #{t}"
+            STDERR.puts " [#{i}] #{t}"
           end
         end
       end

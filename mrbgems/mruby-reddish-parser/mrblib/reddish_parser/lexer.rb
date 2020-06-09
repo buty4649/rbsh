@@ -1,10 +1,9 @@
 module ReddishParser
-  class Parser
+  class Lexer
     def initialize(line)
-      @line = line
+      @line = line.dup
       @last_token = nil
       @token_before_that = nil
-      @two_tokens_ago = nil
 
       separator = ENV['IFS'] || " \t\n"
       @separator_regexp = Regexp.new(separator.split('').join('|'))
@@ -12,10 +11,7 @@ module ReddishParser
 
     def get_token
       token = read_token
-
-      @two_tokens_ago = @token_before_that
-      @token_before_that = token.type
-
+      @token_before_that = token.first
       token
     end
 
@@ -31,49 +27,45 @@ module ReddishParser
       else
         if m = match(/^(\d+)([<>])/)
           number = slice!(0...m.begin(2))
-          Element::Token.new(number, TokenType::NUMBER)
-        elsif is_the_before_token_redirect? && m = match(/^((-)|(\d+)-|(\d+))/)
-          type = if m[2]
-                   TokenType::MINUS
-                 elsif m[3]
-                   TokenType::NUMBER_MINUS
-                 elsif m[4]
-                   TokenType::NUMBER
-                 end
-          Element::Token.new(slice!(0..m.end(0)), type)
+          [:number, number]
+        elsif c == "-" && (is_the_before_token_redirect? || is_the_before_token_number?)
+          getc
+          [:"-"]
+        elsif is_the_before_token_redirect? && m = match(/^(\d+)/)
+          [:number, slice!(0...m.end(1))]
         elsif match(/^%!/)
           getc
-          Element::Token.new(quote_word("!", WordType::DQOUTE), TokenType::WORD)
+          [:word, quote_word("!", :dquote)]
         elsif m = match(/^%([qQ])(\p{Punct}|[<>\|])/)
           getc; getc
-          type = {"q" => WordType::QUOTE, "Q" => WordType::DQOUTE}[m[1]]
+          type = {"q" => :quote, "Q" => :dquote}[m[1]]
           if type.nil?
             error("unknown type or not implimented of %string")
           end
           paren = {"(" => ")", "[" => "]", "{" => "}", "<" => ">"}[m[2]]
           paren ||= m[2]
-          Element::Token.new(quote_word(paren, type), TokenType::WORD)
+          [:word, quote_word(paren, type)]
         else
-          Element::Token.new(read_word, TokenType::WORD)
+          [:word, read_word]
         end
       end
     end
 
     def nil_token
       getc
-      Element::Token.new(nil, TokenType::YYEOF)
+      [:eof]
     end
 
     def lt_token
       getc
       if c == '>'
         getc
-        Element::Token.new(nil, TokenType::LT_GT)
+        [:"<>"]
       elsif c == '&'
         getc
-        Element::Token.new(nil, TokenType::LT_AND)
+        [:"<&"]
       else
-        Element::Token.new(nil, TokenType::LT)
+        [:"<"]
       end
     end
 
@@ -81,12 +73,12 @@ module ReddishParser
       getc
       if c == '>'
         getc
-        Element::Token.new(nil, TokenType::GT_GT)
+        [:">>"]
       elsif c == '&'
         getc
-        Element::Token.new(nil, TokenType::GT_AND)
+        [:">&"]
       else
-        Element::Token.new(nil, TokenType::GT)
+        [:">"]
       end
     end
 
@@ -94,12 +86,12 @@ module ReddishParser
       getc
       if c == '&'
         getc
-        Element::Token.new(nil, TokenType::AND_AND)
+        [:"&&"]
       elsif c == '>'
         getc
-        Element::Token.new(nil, TokenType::AND_GT)
+        [:"&>"]
       else
-        Element::Token.new(nil, TokenType::AND)
+        [:"&"]
       end
     end
 
@@ -107,29 +99,29 @@ module ReddishParser
       getc
       if c == '|'
         getc
-        Element::Token.new(nil, TokenType::OR_OR)
+        [:"||"]
       elsif c == '&'
         getc
-        Element::Token.new(nil, TokenType::OR_AND)
+        [:"|&"]
       else
-        Element::Token.new(nil, TokenType::OR)
+        [:"|"]
       end
     end
 
     def semicolorn_token
       getc
-      Element::Token.new(nil, TokenType::SEMICOLON)
+      [:";"]
     end
 
     def separator_token
       getc while separator?
-      Element::Token.new(Element::Word.new(nil, WordType::SEPARATOR), TokenType::WORD)
+      [:word, [:separator, nil]]
     end
 
     def read_word
       case c
-      when "'" then quote_word("'", WordType::QUOTE)
-      when '"' then quote_word('"', WordType::DQOUTE)
+      when "'" then quote_word("'", :quote)
+      when '"' then quote_word('"', :dquote)
       else normal_word
       end
     end
@@ -142,7 +134,7 @@ module ReddishParser
       end
       str = slice!(0...i)
       getc
-      Element::Word.new(str, type)
+      [type, str]
     end
 
     def normal_word
@@ -153,7 +145,7 @@ module ReddishParser
       r = index(/[<>]/)
       i = r if r && r < i
 
-      Element::Word.new(slice!(0...i), WordType::NORMAL)
+      [:normal, slice!(0...i)]
     end
 
     def c(i=0)
@@ -190,7 +182,11 @@ module ReddishParser
     end
 
     def is_the_before_token_redirect?
-      [TokenType::LT_AND, TokenType::GT_AND].include?(@token_before_that)
+      [:"<&", :">&"].include?(@token_before_that)
+    end
+
+    def is_the_before_token_number?
+      @token_before_that == :number
     end
 
     def error(str)

@@ -1,15 +1,15 @@
-module ReddishParser
+module Reddish
   module Element
     class Redirect < Struct.new(:type, :dest_fd, :src_fd, :filename)
       def apply
         case self[:type]
-        when RedirectType::APPEND     then open_and_dup("a", 0644)
-        when RedirectType::CLOSE      then close
-        when RedirectType::COPYREAD   then copy("r", 0644)
-        when RedirectType::COPYWRITE  then copy("w", 0644)
-        when RedirectType::READ       then open_and_dup("r", 0644)
-        when RedirectType::READWRITE  then open_and_dup("a+", 0644)
-        when RedirectType::WRITE      then open_and_dup("w", 0644)
+        when :append     then open_and_dup("a", 0644)
+        when :close      then close
+        when :copyread   then copy("r", 0644)
+        when :copywrite  then copy("w", 0644)
+        when :read       then open_and_dup("r", 0644)
+        when :readwrite  then open_and_dup("a+", 0644)
+        when :write      then open_and_dup("w", 0644)
         end
       end
 

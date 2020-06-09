@@ -1,4 +1,4 @@
-module ReddishParser
+module Reddish
   module Element
     class Command
       attr_accessor :redirect
@@ -30,13 +30,13 @@ module ReddishParser
           progname = args.shift
 
           if fd = opts[:stdout]
-            Element::Redirect.new(RedirectType::COPYWRITE, 1, fd).apply
-            Element::Redirect.new(RedirectType::CLOSE, fd).apply
+            Element::Redirect.new(:copywrite, 1, fd).apply
+            Element::Redirect.new(:close, fd).apply
           end
 
           if fd = opts[:stdin]
-            Element::Redirect.new(RedirectType::COPYREAD, 0, fd).apply
-            Element::Redirect.new(RedirectType::CLOSE, fd).apply
+            Element::Redirect.new(:copyread, 0, fd).apply
+            Element::Redirect.new(:close, fd).apply
           end
 
           if @redirect
@@ -49,7 +49,7 @@ module ReddishParser
         if @async || opts[:async]
           st = Process::Status.new(pid, nil)
         else
-          _, st = Action.start_sigint_trap([pid]) { Process.wait2(pid) }
+          _, st = JobControl.start_sigint_trap([pid]) { Process.wait2(pid) }
         end
 
         st

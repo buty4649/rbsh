@@ -1,13 +1,13 @@
-module ReddishParser
+module Reddish
   module Element
-    class Word < Struct.new(:content, :type)
+    class Word < Struct.new(:type, :content)
 
       def to_s
-        if self[:type] == WordType::QUOTE
+        if self[:type] == :quote
           return self[:content]
         end
 
-        if self[:type] == WordType::SEPARATOR
+        if self[:type] == :separator
           return ''
         end
 
