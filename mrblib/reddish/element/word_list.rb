@@ -1,4 +1,4 @@
-module ReddishParser
+module Reddish
   module Element
     class WordList
 
@@ -9,13 +9,14 @@ module ReddishParser
       end
 
       def add(word)
-        if word.type == WordType::SEPARATOR
+        if word.type == :separator
           @list.push([]) unless @list.last.empty?
         else
           @list.last.push(word)
         end
         self
       end
+      alias :"<<" :add
 
       def length
         @list.length

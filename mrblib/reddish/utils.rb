@@ -1,4 +1,4 @@
-module ReddishParser
+module Reddish
   class Utils
     def self.search_command(command)
       return command if command.include?("/")

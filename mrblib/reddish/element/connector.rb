@@ -1,8 +1,8 @@
-module ReddishParser
+module Reddish
   module Element
     class Connector < Struct.new(:type, :cmd1, :cmd2)
       def exec
-        if self[:type] == ConnectorType::ASYNC
+        if self[:type] == :async
           self[:cmd1].async = true
         end
 
@@ -17,10 +17,10 @@ module ReddishParser
 
       def cmd2_exec?(r)
         t = self[:type]
-        (t == ConnectorType::AND && r.success?)   ||
-        (t == ConnectorType::OR  && r.success?.!) ||
-        t == ConnectorType::SEMICOLON ||
-        t == ConnectorType::ASYNC
+        (t == :and && r.success?)   ||
+        (t == :or  && r.success?.!) ||
+        t == :semicolon ||
+        t == :async
       end
     end
   end

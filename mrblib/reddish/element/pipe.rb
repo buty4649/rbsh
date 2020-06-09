@@ -1,4 +1,4 @@
-module ReddishParser
+module Reddish
   module Element
     class Pipe
       attr_accessor :cmd1, :cmd2
@@ -22,7 +22,7 @@ module ReddishParser
         w.close
 
         # Array<Array<pid, Process::Status>>
-        result = Action.start_sigint_trap([st1.pid, st2.pid]) { Process.waitall }
+        result = JobControl.start_sigint_trap([st1.pid, st2.pid]) { Process.waitall }
 
         # Process:Status of cmd2
         result.last.last
