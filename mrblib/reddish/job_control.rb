@@ -1,20 +1,16 @@
-module Reddish
-  class JobControl
-    def run(command_list)
-      th = SignalThread.trap(:INT, {detailed: true}) do |info|
-        pids.each {|pid| Process.kill(:INT, pid) }
-      end
-      command_list.each(&:exec)
-      th.cancel
+class JobControl
+  def run(executor, command_list)
+    command_list.each do |command|
+      executor.exec(command)
     end
+  end
 
-    def self.start_sigint_trap(pids, &block)
-      th = SignalThread.trap(:INT, {detailed: true}) do |info|
-        pids.each {|pid| Process.kill(:INT, pid)}
-      end
-      result = block.call
-      th.cancel
-      result
-    end
+  def self.start_sigint_trap(pids, &block)
+    #th = SignalThread.trap(:INT, {detailed: true}) do |info|
+    #  pids.each {|pid| Process.kill(:INT, pid)}
+    #end
+    result = block.call
+    #th.cancel
+    result
   end
 end

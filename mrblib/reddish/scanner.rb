@@ -43,10 +43,12 @@ module Reddish
     end
 
     def on_command_list(cmd, async=false)
-      if cmd.class == Element::Connector
-        cmd.cmd2.async = async
-      else
-        cmd.async = async
+      if async
+        if cmd.class == Element::Connector
+          cmd.cmd2.async = async
+        else
+          cmd.async = async
+        end
       end
       [cmd]
     end

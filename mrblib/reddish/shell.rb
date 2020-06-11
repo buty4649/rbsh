@@ -2,7 +2,8 @@ module Reddish
   class Shell
     def initialize(args)
       @opts = getopts(args)
-      @job  = JobControl.new
+      @job = JobControl.new
+      @executor = Executor.new
     end
 
     def getopts(args)
@@ -28,6 +29,8 @@ module Reddish
         ReddishParser.debug = true
       end
 
+      BuiltinCommand.define_commands(@executor)
+
       if cmd = @opts["c"]
         parse_and_exec(cmd)
       else
@@ -44,7 +47,7 @@ module Reddish
         parse_result = Scanner.new(line).parse
 
         if parse_result
-          @job.run(parse_result)
+          @job.run(@executor, parse_result)
         end
       rescue => e
         STDERR.puts "#{e.class} #{e.message}"
