@@ -18,25 +18,13 @@ module Reddish
       end
       alias :"<<" :add
 
-      def length
-        @list.length
-      end
-
-      def [](range)
-        @list[range].map(&:to_s).join
-      end
-
-      def first
-        self[0]
-      end
-
-      # @return Array<Word>
+      # @return Array<String>
       def to_a
         @list.select{|a| a.empty?.! }.map{|w| w.map(&:to_s).join }
       end
 
       def to_s
-        self.to_a.join
+        self.to_a&.join
       end
     end
   end
