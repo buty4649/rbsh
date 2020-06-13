@@ -4,6 +4,7 @@ assert('simple command') do
   assert_equal("test\n", run('echo test').stdout)
   assert_equal("test\n", run('echo "test"').stdout)
   assert_equal("test\n", run("echo 'test'").stdout)
+  assert_equal("\'\n",   run(%q{echo '\''}).stdout)
   assert_equal("testtesttest\n", run(%Q{echo "test"test'test'}).stdout)
 
   ENV['REDDISH_BINTEST_ENV'] = "test"

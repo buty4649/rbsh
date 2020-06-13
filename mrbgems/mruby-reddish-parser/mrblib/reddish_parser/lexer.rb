@@ -160,7 +160,11 @@ module ReddishParser
       s = 0
       while i = @line.index(p, s)
         break if c(i-1) != "\\"
-        s = i + 1
+
+        # remove backslash
+        slice!(i-1)
+
+        s = i
       end
       i
     end
