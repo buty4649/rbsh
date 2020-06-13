@@ -14,8 +14,8 @@ module Reddish
       Process::Status.new($$, 0)
     end
 
-    def self.error(cmd, msg, status=1)
-      STDERR.puts "reddish: #{cmd}: #{msg}"
+    def self.error(cmd, msg=nil, status=1)
+      STDERR.puts "reddish: #{cmd}: #{msg}" if msg
       Process::Status.new($$, status)
     end
 
@@ -55,9 +55,16 @@ module Reddish
     }
 
     def self.echo(*args)
-      class << args; include Getopts; end
-      opts = args.getopts("eEns")
-      str = args[(args.optind-1)..-1].join(opts["s"] ? "" : " ")
+      # ignore invalid option
+      if args.first !~ /^-[eEns]+$/
+        opts = {}
+        optind = 0
+      else
+        opts, optind = getopts("echo", args, "eEns")
+        return error("echo") if opts.nil?
+      end
+
+      str = args[(optind-1)..-1].join(opts["s"] ? "" : " ")
 
       str += "\n" if opts["n"].nil?
 
@@ -87,6 +94,19 @@ module Reddish
          .gsub(/\\U[0-9a-zA-Z]{1,8}/) {|m| hexstr2unicode(m[2..-1]) }
          .gsub(/\\u{[0-9a-zA-Z ]+}/)  {|m| m[3..-2].split(/ /).map{|s| hexstr2unicode(s)}.join }
          .gsub(/\\./) {|m| s = m[-1]; BACKSLASH_REPLACE_TABLE[s.to_sym] || s }
+    end
+
+    def self.getopts(progname, argv, shortopt, *longopts)
+      old_progname = $0
+      $0 = $PROGRAM_NAME = progname
+
+      class << argv; include Getopts; end
+      opts = argv.getopts(shortopt, *longopts)
+
+      $0 = $PROGRAM_NAME = old_progname
+
+      # ? is invalid option
+      opts["?"] ? nil : [opts, argv.optind]
     end
   end
 end
