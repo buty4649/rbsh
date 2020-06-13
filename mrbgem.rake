@@ -4,6 +4,7 @@ MRuby::Gem::Specification.new('reddish') do |spec|
   spec.summary = 'reddish'
   spec.bins    = ['reddish']
 
+  spec.add_dependency 'mruby-process-pgrp'
   spec.add_dependency 'mruby-reddish-parser'
   spec.add_dependency 'mruby-kernel-ext'
   spec.add_dependency 'mruby-io'

@@ -4,6 +4,7 @@ def gem_config(conf)
   conf.gem 'mrbgems/mruby-io-dup2'
   conf.gem 'mrbgems/mruby-io-fcntl'
   conf.gem 'mrbgems/mruby-io-stat'
+  conf.gem 'mrbgems/mruby-process-pgrp'
   conf.gem 'mrbgems/mruby-reddish-parser'
   conf.gem core: 'mruby-kernel-ext'
   conf.gem core: 'mruby-struct'

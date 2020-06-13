@@ -2,6 +2,7 @@ class JobControl
   def run(executor, command_list)
     command_list.each do |command|
       executor.exec(command)
+      executor.reset
     end
   end
 

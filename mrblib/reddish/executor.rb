@@ -2,10 +2,15 @@ module Reddish
   class Executor
     def initialize
       @cmd = {}
+      @pgid = nil
     end
 
     def define_command(name, code)
       @cmd[name.to_sym] = code
+    end
+
+    def reset
+      @pgid = nil
     end
 
     def exec(command, opts={})
@@ -69,7 +74,7 @@ module Reddish
         if command.async || opts[:async]
           exit_status  = Process::Status.new(pid, nil)
         else
-          $test = pid
+          setpgid(pid)
           _, exit_status = JobControl.start_sigint_trap([pid]) { Process.wait2(pid) }
         end
 
@@ -92,8 +97,11 @@ module Reddish
     def pipe_exec(pipe, opts)
       r, w = IO.pipe
       st1 = exec(pipe.cmd1, opts.merge({stdout: w.fileno, async: true}))
+      setpgid(st1.pid)
       st2 = exec(pipe.cmd2, opts.merge({stdin:  r.fileno, stdout: opts[:stdout], async: true}))
+      setpgid(st2.pid)
       r.close; w.close
+
 
       # Array<Array<pid, Process::Status>>
       result = JobControl.start_sigint_trap([st1.pid, st2.pid]) { Process.waitall }
@@ -135,6 +143,11 @@ module Reddish
       (t == :or  && r.success?.!) ||
       t == :semicolon ||
       t == :async
+    end
+
+    def setpgid(pid)
+      @pgid ||= pid
+      Process.setpgid(pid, @pgid)
     end
   end
 end
