@@ -33,6 +33,7 @@ assert('echo') do
   assert_equal("🍣🍣\n", run('echo -e \u{1f363 1f363}').stdout)
   assert_equal("\\e\n", run('echo -E \e').stdout)
   assert_equal("\\e", run('echo -nE \e').stdout)
+  assert_equal("-help\n", run('echo -help').stdout)
 end
 
 assert('puts') do

@@ -14,7 +14,7 @@ def gem_config(conf)
   conf.gem mgem: 'mruby-env'
   conf.gem mgem: 'mruby-onig-regexp'
   conf.gem github: 'buty4649/mruby-process', branch: 'improve-process-exec'
-  conf.gem github: 'buty4649/mruby-getopts', branch: 'add-optind-method'
+  conf.gem github: 'buty4649/mruby-getopts', branch: 'add-prog-name'
   conf.gem github: 'haconiwa/mruby-exec'
 end
 

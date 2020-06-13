@@ -11,8 +11,8 @@ builds:
       version: 0.0.0
     https://github.com/pyama86/mruby-signal-thread.git:
       url: https://github.com/pyama86/mruby-signal-thread.git
-      branch: reset-sigmask
-      commit: 31621eff2aecf32bd7d9cbf0e4d33b49bd803a00
+      branch: master
+      commit: 5ce0e3ec9575b179be5513917fe7ff81d4438be7
       version: 0.0.0
     https://github.com/iij/mruby-dir.git:
       url: https://github.com/iij/mruby-dir.git
@@ -36,8 +36,8 @@ builds:
       version: 0.0.0
     https://github.com/buty4649/mruby-getopts.git:
       url: https://github.com/buty4649/mruby-getopts.git
-      branch: add-optind-method
-      commit: ddee95ba9efea313f567980a9f4a2077c0b60451
+      branch: add-prog-name
+      commit: b8b8b252d9a60b8f38c230be750821e2bb07276e
       version: 0.0.0
     https://github.com/haconiwa/mruby-exec.git:
       url: https://github.com/haconiwa/mruby-exec.git
@@ -97,8 +97,8 @@ builds:
       version: 0.0.0
     https://github.com/buty4649/mruby-getopts.git:
       url: https://github.com/buty4649/mruby-getopts.git
-      branch: add-optind-method
-      commit: ddee95ba9efea313f567980a9f4a2077c0b60451
+      branch: add-prog-name
+      commit: b8b8b252d9a60b8f38c230be750821e2bb07276e
       version: 0.0.0
     https://github.com/haconiwa/mruby-exec.git:
       url: https://github.com/haconiwa/mruby-exec.git

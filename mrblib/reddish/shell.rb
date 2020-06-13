@@ -1,14 +1,14 @@
 module Reddish
   class Shell
-    def initialize(args)
-      @opts = getopts(args)
+    def initialize(opts)
+      @opts = opts
       @job = JobControl.new
       @executor = Executor.new
     end
 
-    def getopts(args)
+    def self.getopts(args)
       class << args; include Getopts; end
-      opts = args.getopts("c:")
+      opts = args.getopts("c:", "version")
       if opts["?"]
         # Invalid option
         exit(2)
