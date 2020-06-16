@@ -5,15 +5,17 @@ def gem_config(conf)
   conf.gem 'mrbgems/mruby-io-fcntl'
   conf.gem 'mrbgems/mruby-io-stat'
   conf.gem 'mrbgems/mruby-process-pgrp'
+  conf.gem 'mrbgems/mruby-signal-trap'
   conf.gem 'mrbgems/mruby-reddish-parser'
   conf.gem core: 'mruby-kernel-ext'
   conf.gem core: 'mruby-struct'
   conf.gem core: 'mruby-pack'
   conf.gem mgem: 'mruby-linenoise'
-  conf.gem mgem: 'mruby-signal-thread'
   conf.gem mgem: 'mruby-dir'
   conf.gem mgem: 'mruby-env'
-  conf.gem mgem: 'mruby-onig-regexp'
+  conf.gem mgem: 'mruby-onig-regexp' do |c|
+    c.cc.flags << "-Wdeclaration-after-statement"
+  end
   conf.gem github: 'buty4649/mruby-process', branch: 'improve-process-exec'
   conf.gem github: 'buty4649/mruby-getopts', branch: 'add-prog-name'
   conf.gem github: 'haconiwa/mruby-exec'

@@ -6,5 +6,5 @@ def __main__(argv)
     exit(0)
   end
 
-  sleep
+  sleep 10
 end

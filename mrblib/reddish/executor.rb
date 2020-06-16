@@ -65,17 +65,19 @@ module Reddish
         progname = cmd
         assume_command = search_command(cmd)
 
+        pgid = @pgid || 0
         pid = Process.fork do
+          Process.setpgid(0, pgid)
           rc.clexec = false
           rc.apply
           Exec.execve_override_procname(local_env, progname, assume_command, *args)
         end
+        @pgid ||= pid
 
         if command.async || opts[:async]
           exit_status  = Process::Status.new(pid, nil)
         else
-          setpgid(pid)
-          _, exit_status = JobControl.start_sigint_trap([pid]) { Process.wait2(pid) }
+          _, exit_status = JobControl.start_sigint_trap(@pgid) { Process.wait2(pid) }
         end
 
         exit_status
@@ -96,15 +98,15 @@ module Reddish
 
     def pipe_exec(pipe, opts)
       r, w = IO.pipe
-      st1 = exec(pipe.cmd1, opts.merge({stdout: w.fileno, async: true}))
-      setpgid(st1.pid)
-      st2 = exec(pipe.cmd2, opts.merge({stdin:  r.fileno, stdout: opts[:stdout], async: true}))
-      setpgid(st2.pid)
-      r.close; w.close
+      exec(pipe.cmd1, opts.merge({stdout: w.fileno, async: true}))
+      exec(pipe.cmd2, opts.merge({stdin:  r.fileno, stdout: opts[:stdout], async: true}))
+      begin r.close ; rescue Errno::EBADF => e; end
+      begin w.close ; rescue Errno::EBADF => e; end
 
+      return if opts[:async]
 
       # Array<Array<pid, Process::Status>>
-      result = JobControl.start_sigint_trap([st1.pid, st2.pid]) { Process.waitall }
+      result = JobControl.start_sigint_trap(@pgid) { Process.waitall }
 
       # Process:Status of cmd2
       result.last.last
@@ -143,11 +145,6 @@ module Reddish
       (t == :or  && r.success?.!) ||
       t == :semicolon ||
       t == :async
-    end
-
-    def setpgid(pid)
-      @pgid ||= pid
-      Process.setpgid(pid, @pgid)
     end
   end
 end

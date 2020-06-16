@@ -58,13 +58,12 @@ module Reddish
       # ignore invalid option
       if args.first !~ /^-[eEns]+$/
         opts = {}
-        optind = 0
+        str = args.join(opts["s"] ? "" : " ")
       else
         opts, optind = getopts("echo", args, "eEns")
         return error("echo") if opts.nil?
+        str = args[(optind-1)..-1].join(opts["s"] ? "" : " ")
       end
-
-      str = args[(optind-1)..-1].join(opts["s"] ? "" : " ")
 
       str += "\n" if opts["n"].nil?
 
