@@ -13,9 +13,7 @@ def gem_config(conf)
   conf.gem mgem: 'mruby-linenoise'
   conf.gem mgem: 'mruby-dir'
   conf.gem mgem: 'mruby-env'
-  conf.gem mgem: 'mruby-onig-regexp' do |c|
-    c.cc.flags << "-Wdeclaration-after-statement"
-  end
+  conf.gem mgem: 'mruby-onig-regexp'
   conf.gem github: 'buty4649/mruby-process', branch: 'improve-process-exec'
   conf.gem github: 'buty4649/mruby-getopts', branch: 'add-prog-name'
   conf.gem github: 'haconiwa/mruby-exec'
