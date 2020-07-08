@@ -23,7 +23,7 @@ mrb_value mrb_p_setpgid(mrb_state *mrb, mrb_value self) {
 
     mrb_get_args(mrb, "ii", &pid, &pgid);
     if (setpgid((pid_t)mrb_fixnum(pid), (pid_t)mrb_fixnum(pgid)) == -1 ) {
-        mrb_sys_fail(mrb, "getpgid");
+        mrb_sys_fail(mrb, "setpgid");
     }
 
     return mrb_fixnum_value(0);
