@@ -1,0 +1,6 @@
+{
+    "C_Cpp.default.forcedInclude": [
+        "/usr/include/x86_64-linux-gnu/bits/types/sigset_t.h",
+        "/usr/include/x86_64-linux-gnu/bits/sigaction.h"
+    ]
+}
