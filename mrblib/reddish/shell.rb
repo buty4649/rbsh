@@ -29,7 +29,7 @@ module Reddish
         ReddishParser.debug = true
       end
 
-      BuiltinCommand.define_commands(@executor)
+      BuiltinCommands.define_commands(@executor)
 
       if cmd = @opts["c"]
         parse_and_exec(cmd)
