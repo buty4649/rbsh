@@ -1,5 +1,5 @@
 module Reddish
-  module BuiltinCommand
+  module BuiltinCommands
     AVAILABLE_COMMANDS = %i(cd echo puts)
 
     def self.call(cmd, *args)
