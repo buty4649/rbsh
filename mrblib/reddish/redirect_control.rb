@@ -53,8 +53,8 @@ module Reddish
         @original_fd[dest_fd] ||= IO::fcntl(dest_fd, IO::F_DUPFD, SHELL_FD_BASE)
       end
 
+      IO.dup2(src_fd, dest_fd)
       new_fd = IO.new(dest_fd, mode)
-      IO.dup2(src_fd, new_fd.fileno)
       new_fd.close_on_exec = @clexec
     end
 

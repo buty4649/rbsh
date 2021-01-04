@@ -1,7 +1,7 @@
 require 'fileutils'
 require 'shellwords'
 
-MRUBY_VERSION="2.1.0"
+MRUBY_VERSION="2.1.2"
 
 file :mruby do
   #sh "git clone --depth=1 https://github.com/mruby/mruby"

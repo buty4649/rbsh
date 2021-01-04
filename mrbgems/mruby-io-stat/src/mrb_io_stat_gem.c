@@ -7,14 +7,14 @@
 #include "mruby/ext/io.h"
 
 mrb_value mrb_io_stat(mrb_state* mrb, mrb_value self) {
-    mrb_int fd;
+    int fd;
     struct stat stat;
     int ret, ai;
     mrb_value mrb_stat;
     mrb_value ary[1];
     struct RClass* file_class = mrb_class_get(mrb, "File");
 
-    fd = mrb_fixnum(mrb_io_fileno(mrb, self));
+    fd = mrb_io_fileno(mrb, self);
     ret = fstat(fd, &stat);
 
     if (ret == -1) {
