@@ -1,5 +1,7 @@
 module Reddish
   class Shell
+    PS1 = "reddish> "
+
     def initialize(opts)
       @opts = opts
       @job = JobControl.new
@@ -8,7 +10,7 @@ module Reddish
 
     def self.getopts(args)
       class << args; include Getopts; end
-      opts = args.getopts("c:", "version")
+      opts = args.getopts("ic:", "version")
       if opts["?"]
         # Invalid option
         exit(2)
@@ -17,11 +19,18 @@ module Reddish
     end
 
     def read_from_tty
-      linenoise("reddish> ")
-    rescue Errno::ENOTTY => e
-      # bugs:
-      # Errono::NOTTY occurs unintentionally.
-      # (e.g. `echo hoge | reddish` )
+      if @opts["i"]
+        STDOUT.write(PS1)
+        STDIN.gets
+      else
+        begin
+          linenoise(PS1)
+        rescue Errno::ENOTTY => e
+          # bugs:
+          # Errono::NOTTY occurs unintentionally.
+          # (e.g. `echo hoge | reddish` )
+        end
+      end
     end
 
     def run

@@ -1,6 +1,6 @@
 module Reddish
   module BuiltinCommands
-    AVAILABLE_COMMANDS = %i(cd echo puts)
+    AVAILABLE_COMMANDS = %i(cd echo exit puts)
 
     def self.call(cmd, *args)
       if AVAILABLE_COMMANDS.include?(cmd)
