@@ -70,7 +70,12 @@ module Reddish
           Process.setpgid(0, pgid)
           rc.clexec = false
           rc.apply
-          Exec.execve_override_procname(local_env, progname, assume_command, *args)
+          begin
+            Exec.execve_override_procname(local_env, progname, assume_command, *args)
+          rescue Errno::ENOENT
+            STDERR.puts "reddish-shell: Command '#{progname}' not found."
+            Process.exit(127)
+          end
         end
         @pgid ||= pid
 

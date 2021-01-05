@@ -2,12 +2,12 @@ module Reddish
   module BuiltinCommands
     module Base
       def success
-        Process::Status.new($$, 0)
+        $? = Process::Status.new($$, 0)
       end
 
       def error(cmd, msg=nil, status=1)
         STDERR.puts "reddish: #{cmd}: #{msg}" if msg
-        Process::Status.new($$, status)
+        $? = Process::Status.new($$, status)
       end
 
       def getopts(progname, argv, shortopt, *longopts)

@@ -13,6 +13,7 @@ module Reddish
 
         s = self[:content].gsub(/\${(\w+)}/) { ENV[$1] || "" }
         s = s.gsub(/\$(\w+)/) { ENV[$1] || "" }
+        s = s.gsub(/\$\?/) { $? >> 8 }
       end
 
     end
