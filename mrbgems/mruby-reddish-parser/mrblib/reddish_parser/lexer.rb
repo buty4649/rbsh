@@ -2,7 +2,6 @@ module ReddishParser
   class Lexer
     def initialize(line)
       @line = line.dup
-      @last_token = nil
       @token_before_that = nil
 
       separator = ENV['IFS'] || " \t\n"
@@ -10,6 +9,11 @@ module ReddishParser
     end
 
     def get_token
+      if @token_before_that.nil? ||
+         @token_before_that != :word
+        getc while separator?
+      end
+
       token = read_token
       @token_before_that = token.first
       token
@@ -130,7 +134,7 @@ module ReddishParser
       getc
       i = index(paren)
       if i.nil?
-        error("unterminated string")
+        raise SyntaxError.new("unterminated string")
       end
       str = slice!(0...i)
       getc
@@ -138,12 +142,8 @@ module ReddishParser
     end
 
     def normal_word
-      regexp = Regexp.new([@separator_regexp.to_s, '"', "'", ";", "&"].join('|'))
+      regexp = Regexp.new([@separator_regexp.to_s, %Q|["';&<>]|].join('|'))
       i = index(regexp) || length
-
-      # check redirection word
-      r = index(/[<>]/)
-      i = r if r && r < i
 
       [:normal, slice!(0...i)]
     end

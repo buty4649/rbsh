@@ -53,6 +53,13 @@ assert('redirect') do
   run("echo test 2>> #{tp} >&2")
   assert_equal("test\ntest\ntest\n", File.read(tp), "n>>")
 
+  result = run("3> #{tp} #{FDTEST_PATH}")
+  out = result.stdout || result.stderr
+  assert_equal(tp, (out.empty? ? {} : JSON.parse(out))["3"], "3> file fdtest")
+
+  fdtest_run("3> #{tp} #{tp}")
+  assert_equal(tp, json_from_file(tp)["3"], "fdtest 3> file file")
+
   tempfile.close
 
   assert_equal(tp, fdtest_run("<> #{tp}")["0"], "<>")

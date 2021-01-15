@@ -8,20 +8,20 @@
 
 typedef struct parser_state {
     mrb_state* state;
-    mrb_value  lexer;
     mrb_value  result;
     mrb_value  action;
 } parser_state;
 
 #define ACTION(p, n, c, ...)   mrb_funcall(p->state, p->action, n, c, __VA_ARGS__)
+#define COMMAND(p, e)          ACTION(p, "on_command", 1, e)
+#define CONNECTOR(p, t, a, b)  ACTION(p, "on_connector", 3, mrb_symbol_value(mrb_intern_cstr(p->state, t)), a, b)
+#define PIPELINE(p, a, b, r)   ACTION(p, "on_pipeline", 3, a, b, r)
 #define REDIRECT(p, t, c, ...) ACTION(p, "on_redirect", (c+1), mrb_symbol_value(mrb_intern_cstr(p->state, t)), __VA_ARGS__)
-#define CONNECTOR(p, t, c, ...)ACTION(p, "on_connector",(c+1), mrb_symbol_value(mrb_intern_cstr(p->state, t)), __VA_ARGS__)
+#define SIMPLELIST(p, c, a)    ACTION(p, "on_simple_list", 2, c, a)
+#define WORD(p, w)             ACTION(p, "on_word", 1, w)
+
 #define FIXNUM(i) mrb_fixnum_value(i)
 #define BOOL(b)   mrb_bool_value(b)
-#define MRB_CONST_SET(s, c, v) mrb_const_set( s, \
-                                mrb_obj_value(c), \
-                                mrb_intern_lit(s, #v), \
-                                mrb_fixnum_value((mrb_int)v) )
 
 #define YYDEBUG 1
 
@@ -44,89 +44,59 @@ static int yyparse(parser_state*);
 
 inputunit
 : %empty
-| command_list { p->result = $1; }
+| simple_list { p->result = $1; }
 
-command_list
-: simple_command     { $$ = ACTION(p, "on_command_list", 1, $1); }
-| simple_command AND { $$ = ACTION(p, "on_command_list", 2, $1, BOOL(1)); }
-| simple_command SEMICOLON     { $$ = ACTION(p, "on_command_list", 1, $1); }
-| simple_command AND SEMICOLON { $$ = ACTION(p, "on_command_list", 2, $1, BOOL(1)); }
+simple_list
+: connector { $$ = SIMPLELIST(p, $1, BOOL(0)); }
+| connector AND       { $$ = SIMPLELIST(p, $1, BOOL(1)); }
+| connector SEMICOLON { $$ = SIMPLELIST(p, $1, BOOL(0)); }
 
-simple_command
-: pipeline
-| simple_command AND_AND   pipeline { $$ = CONNECTOR(p, "and", 2, $1, $3); }
-| simple_command OR_OR     pipeline { $$ = CONNECTOR(p, "or",  2, $1, $3); }
-| simple_command AND       pipeline { $$ = CONNECTOR(p, "async", 2, $1, $3); }
-| simple_command SEMICOLON pipeline { $$ = CONNECTOR(p, "semicolon", 2, $1, $3); }
+connector
+: connector AND_AND   pipeline { $$ = CONNECTOR(p, "and", $1, $3); }
+| connector OR_OR     pipeline { $$ = CONNECTOR(p, "or",  $1, $3); }
+| connector AND       pipeline { $$ = CONNECTOR(p, "async", $1, $3); }
+| connector SEMICOLON pipeline { $$ = CONNECTOR(p, "semicolon", $1, $3); }
+| pipeline
 
 pipeline
-: command
-| pipeline OR command     { $$ = ACTION(p, "on_pipeline", 2, $1, $3); }
-| pipeline OR_AND command { mrb_value r = REDIRECT(p, "COPYWRITE", 2, FIXNUM(2), FIXNUM(1));
-                                 ACTION(p, "on_command", 2, $3, r);
-                            $$ = ACTION(p, "on_pipeline", 2, $1, $3); }
-command
-: wordlist { $$ = ACTION(p, "on_command", 1, $1); }
-| wordlist redirect_list { $$ = ACTION(p, "on_command", 2, $1, $2); }
+: pipeline OR command     { $$ = PIPELINE(p, $1, $3, BOOL(0)); }
+| pipeline OR_AND command { $$ = PIPELINE(p, $1, $3, BOOL(1)); }
+| command
 
-redirect_list
-: redirect { $$ = ACTION(p, "on_redirect_list", 1, $1); }
-| redirect_list redirect { $$ = ACTION(p, "on_redirect_list", 2, $2, $1); }
+command
+: simple_command { $$ = COMMAND(p, $1); }
+
+simple_command
+: simple_command_element { $$ = mrb_ary_new_from_values(p->state, 1, &$1); }
+| simple_command simple_command_element { mrb_ary_push(p->state, $1, $2); $$ = $1; }
+
+simple_command_element
+: WORD { $$ = WORD(p, $1); }
+| redirect
 
 redirect
-/* <    */: LT wordlist                { $$ = REDIRECT(p, "read",     2, FIXNUM(0), $2); }
-/* n<   */| NUMBER LT wordlist         { $$ = REDIRECT(p, "read",     2, $1, $3); }
+/* <    */: LT WORD                    { $$ = REDIRECT(p, "read",     2, FIXNUM(0), $2); }
+/* n<   */| NUMBER LT WORD             { $$ = REDIRECT(p, "read",     2, $1, $3); }
 /* <&-  */| LT_AND MINUS               { $$ = REDIRECT(p, "close",    1, FIXNUM(0)); }
 /* <&n  */| LT_AND NUMBER              { $$ = REDIRECT(p, "copyread", 2, FIXNUM(0), $2); }
-/* <&n- */| LT_AND NUMBER MINUS        { const mrb_value vals[] = {
-                                            REDIRECT(p, "copyread", 2, FIXNUM(0), $2),
-                                            REDIRECT(p, "close",    1, $2) };
-                                         $$ = mrb_ary_new_from_values(p->state, 2, vals);
-                                       }
+/* <&n- */| LT_AND NUMBER MINUS        { $$ = REDIRECT(p, "copyreadclose", 2, FIXNUM(0), $2); }
 /* n<&- */| NUMBER LT_AND MINUS        { $$ = REDIRECT(p, "close",    1, $1); }
 /* n<&n */| NUMBER LT_AND NUMBER       { $$ = REDIRECT(p, "copyread", 2, $1, $3); }
-/* n<&n-*/| NUMBER LT_AND NUMBER MINUS { const mrb_value vals[] = {
-                                            REDIRECT(p, "copyread", 2, $1, $3),
-                                            REDIRECT(p, "close",    1, $3)    };
-                                         $$ = mrb_ary_new_from_values(p->state, 2, vals);
-                                       }
-
-/* >    */| GT wordlist                { $$ = REDIRECT(p, "write",     2, FIXNUM(1), $2); }
-/* n>   */| NUMBER GT wordlist         { $$ = REDIRECT(p, "write",     2, $1, $3); }
+/* n<&n-*/| NUMBER LT_AND NUMBER MINUS { $$ = REDIRECT(p, "copyreadclose", 2, $1, $3); }
+/* >    */| GT WORD                    { $$ = REDIRECT(p, "write",     2, FIXNUM(1), $2); }
+/* n>   */| NUMBER GT WORD             { $$ = REDIRECT(p, "write",     2, $1, $3); }
 /* >&-  */| GT_AND MINUS               { $$ = REDIRECT(p, "close",     1, FIXNUM(1)); }
 /* >&n  */| GT_AND NUMBER              { $$ = REDIRECT(p, "copywrite", 2, FIXNUM(1), $2); }
-/* >&n- */| GT_AND NUMBER MINUS        { const mrb_value vals[] = {
-                                            REDIRECT(p, "copywrite", 2, FIXNUM(1), $2),
-                                            REDIRECT(p, "close",     1, $2)    };
-                                         $$ = mrb_ary_new_from_values(p->state, 2, vals);
-                                       }
+/* >&n- */| GT_AND NUMBER MINUS        { $$ = REDIRECT(p, "copywriteclose", 2, FIXNUM(1), $2); }
 /* n>&- */| NUMBER GT_AND MINUS        { $$ = REDIRECT(p, "close",     1, $1); }
 /* n>&n */| NUMBER GT_AND NUMBER       { $$ = REDIRECT(p, "copywrite", 2, $1, $3); }
-/* n>&n-*/| NUMBER GT_AND NUMBER MINUS { const mrb_value vals[] = {
-                                            REDIRECT(p, "copywrite", 2, $1, $3),
-                                            REDIRECT(p, "close",     1, $3)    };
-                                         $$ = mrb_ary_new_from_values(p->state, 2, vals);
-                                       }
-/* &>   */| AND_GT wordlist { const mrb_value vals[] = {
-                                REDIRECT(p, "write",     2, FIXNUM(1), $2),
-                                REDIRECT(p, "copywrite", 2, FIXNUM(2), FIXNUM(1)) };
-                                $$ = mrb_ary_new_from_values(p->state, 2, vals);
-                            }
-/* >&   */| GT_AND wordlist { const mrb_value vals[] = {
-                                REDIRECT(p, "write",     2, FIXNUM(1), $2),
-                                REDIRECT(p, "copywrite", 2, FIXNUM(2), FIXNUM(1)) };
-                                $$ = mrb_ary_new_from_values(p->state, 2, vals);
-                            }
-
-/* >>   */| GT_GT wordlist        { $$ = REDIRECT(p, "append", 2, FIXNUM(1), $2); }
-/* n>>  */| NUMBER GT_GT wordlist { $$ = REDIRECT(p, "append", 2, $1, $3); }
-
-/* <>   */| LT_GT wordlist        { $$ = REDIRECT(p, "readwrite", 2, FIXNUM(0), $2); }
-/* n<>  */| NUMBER LT_GT wordlist { $$ = REDIRECT(p, "readwrite", 2, $1, $3); }
-
-wordlist
-: WORD          { $$ = ACTION(p, "on_word", 1, $1); }
-| wordlist WORD { $$ = ACTION(p, "on_word", 2, $2, $1); }
+/* n>&n-*/| NUMBER GT_AND NUMBER MINUS { $$ = REDIRECT(p, "copywriteclose", 2, $1, $3); }
+/* &>   */| AND_GT WORD                { $$ = REDIRECT(p, "copystdoutstderr", 3, FIXNUM(1), FIXNUM(2), $2); }
+/* >&   */| GT_AND WORD                { $$ = REDIRECT(p, "copystdoutstderr", 3, FIXNUM(1), FIXNUM(2), $2); }
+/* >>   */| GT_GT WORD                 { $$ = REDIRECT(p, "append", 2, FIXNUM(1), $2); }
+/* n>>  */| NUMBER GT_GT WORD          { $$ = REDIRECT(p, "append", 2, $1, $3); }
+/* <>   */| LT_GT WORD                 { $$ = REDIRECT(p, "readwrite", 2, FIXNUM(0), $2); }
+/* n<>  */| NUMBER LT_GT WORD          { $$ = REDIRECT(p, "readwrite", 2, $1, $3); }
 
 %%
 static const struct token_type {
@@ -182,15 +152,23 @@ int yylex(void* lval, parser_state* p) {
 
 void yyerror(parser_state* p, const char* s){
     mrb_value str = mrb_str_new_cstr(p->state, s);
-    mrb_funcall(p->state, p->lexer, "error", 1, str);
+    mrb_funcall(p->state, p->action, "on_error", 1, str);
 }
 
+
 mrb_value mrb_reddish_parser_parse(mrb_state *mrb, mrb_value self) {
+    mrb_value line, action;
+    struct RClass *action_class;
     parser_state pstate;
+
+    mrb_get_args(mrb, "S", &line);
+
+    action_class = mrb_class_get_under(mrb, mrb_module_get(mrb, "ReddishParser"), "Action");
+    action = mrb_obj_new(mrb, action_class, 1, &line);
 
     pstate.state = mrb;
     pstate.result = mrb_nil_value();
-    pstate.action = self;
+    pstate.action = action;
 
     yyparse(&pstate);
 

@@ -1,5 +1,7 @@
 module Reddish
   class RedirectControl
+    class FileNotFound < StandardError; end
+
     attr_accessor :clexec
     SHELL_FD_BASE = 10
 
@@ -15,27 +17,29 @@ module Reddish
       @savefd = oneshot
 
       @redirect.each do |r|
+        filename = Executor.word2str(r.filename)
         case r.type
-        when :append     then open_and_dup(r.dest_fd, r.filename.to_s, "a")
-        when :close      then close(r.dest_fd)
-        when :copyread   then copy(r.dest_fd, r.src_fd, "r")
-        when :copywrite  then copy(r.dest_fd, r.src_fd, "w")
-        when :read       then open_and_dup(r.dest_fd, r.filename.to_s, "r")
-        when :readwrite  then open_and_dup(r.dest_fd, r.filename.to_s, "a+")
-        when :write      then open_and_dup(r.dest_fd, r.filename.to_s, "w")
+        when :append     then open_and_dup(r.dest, filename, "a")
+        when :close      then close(r.dest)
+        when :copyread   then copy(r.dest, r.src, "r")
+        when :copywrite  then copy(r.dest, r.src, "w")
+        when :read       then open_and_dup(r.dest, filename, "r")
+        when :readwrite  then open_and_dup(r.dest, filename, "a+")
+        when :write      then open_and_dup(r.dest, filename, "w")
         end
       end
 
       result = blk.call if blk
+    rescue Errno::ENOENT => e
+      raise FileNotFound.new(e.message)
+    ensure
       restore if oneshot
-
-      result
     end
 
     def restore
-      @original_fd.each do |src_fd, dest_fd|
-        close(src_fd)
-        IO::fcntl(dest_fd, IO::F_DUPFD, src_fd)
+      @original_fd.each do |src, dest|
+        close(src)
+        IO::fcntl(dest, IO::F_DUPFD, src)
       end
 
       (@opened_fd + @original_fd.values).each do |fd|
@@ -48,22 +52,22 @@ module Reddish
       IO._sysclose(fd)
     end
 
-    def copy(dest_fd, src_fd, mode)
-      if @savefd && dest_fd <= 2
-        @original_fd[dest_fd] ||= IO::fcntl(dest_fd, IO::F_DUPFD, SHELL_FD_BASE)
+    def copy(dest, src, mode)
+      if @savefd && dest <= 2
+        @original_fd[dest] ||= IO::fcntl(dest, IO::F_DUPFD, SHELL_FD_BASE)
       end
 
-      IO.dup2(src_fd, dest_fd)
-      new_fd = IO.new(dest_fd, mode)
+      IO.dup2(src, dest)
+      new_fd = IO.new(dest, mode)
       new_fd.close_on_exec = @clexec
     end
 
-    def open_and_dup(dest_fd, filename, mode)
+    def open_and_dup(dest, filename, mode)
       new_fd = IO.sysopen(filename, mode)
-      if new_fd != dest_fd
-        copy(dest_fd, new_fd, mode)
+      if new_fd != dest
+        copy(dest, new_fd, mode)
         close(new_fd)
-        new_fd = dest_fd
+        new_fd = dest
       end
       IO.open(new_fd).close_on_exec = @clexec
 

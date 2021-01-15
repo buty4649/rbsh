@@ -1,12 +1,26 @@
 module Reddish
   class Executor
+
+    class << self
+      def word2str(word)
+        return "" if word.nil? || word.type == :separator
+
+        str = word.to_s
+        return str if word.type == :quote
+
+        str.gsub(/\${(\w+)}/) { ENV[$1] || "" }
+           .gsub(/\$(\w+)/)   { ENV[$1] || "" }
+           .gsub(/\$\?/) { $? >> 8 }
+      end
+    end
+
     def initialize
-      @cmd = {}
+      @defined_command = {}
       @pgid = nil
     end
 
     def define_command(name, code)
-      @cmd[name.to_sym] = code
+      @defined_command[name.to_sym] = code
     end
 
     def reset
@@ -15,39 +29,41 @@ module Reddish
 
     def exec(command, opts={})
       klass = command.class
-      if klass == Element::Command
+      if klass == ReddishParser::Element::Command
         command_exec(command, opts)
-      elsif klass == Element::Connector
+      elsif klass == ReddishParser::Element::Connector
         connector_exec(command, opts)
-      elsif klass == Element::Pipe
+      elsif klass == ReddishParser::Element::Pipeline
         pipe_exec(command, opts)
       end
     end
 
     def command_exec(command, opts)
-      env, cmd, args = split(command.wordlist)
-      return if env.nil? && cmd.nil?
-
       redirect = command.redirect || []
       if fd = opts[:stdout]
-        redirect.unshift(Element::Redirect.new(:close, fd))
-        redirect.unshift(Element::Redirect.new(:copywrite, 1, fd))
+        redirect.unshift(ReddishParser::Element::Redirect.new(:close, fd))
+        redirect.unshift(ReddishParser::Element::Redirect.new(:copywrite, 1, fd))
       end
       if fd = opts[:stdin]
-        redirect.unshift(Element::Redirect.new(:close, fd))
-        redirect.unshift(Element::Redirect.new(:copyread, 0, fd))
+        redirect.unshift(ReddishParser::Element::Redirect.new(:close, fd))
+        redirect.unshift(ReddishParser::Element::Redirect.new(:copyread, 0, fd))
       end
       rc = RedirectControl.new(redirect)
 
-      if env && cmd.nil?
-        rc.apply(true) do
-          name, value = env.split("=", 2)
-          ENV[name] = value
-          Process::Status.new($$, 0)
+      env = command.env.map{|k,v| [k, Executor.word2str(v)]}.to_h
+      cmd, args = split_cmdline(command.cmdline)
+
+      if cmd.nil?
+        rc.apply(true)
+        env&.each do |name, value|
+          if value.empty?
+            ENV.delete(name)
+          else
+            ENV[name] = value
+          end
         end
-      elsif c = @cmd[cmd.to_sym]
-        old_env = env&.map do |e|
-          name, value = e.split("=", 2)
+      elsif c = @defined_command[cmd.to_sym]
+        old_env = env&.map do |name, value|
           old_value = ENV[name]
           ENV[name] = value
           [name, old_value]
@@ -61,7 +77,6 @@ module Reddish
 
         exit_status
       else
-        local_env = ENV.to_hash.merge(env || {})
         progname = cmd
         assume_command = search_command(cmd)
 
@@ -69,12 +84,16 @@ module Reddish
         pid = Process.fork do
           Process.setpgid(0, pgid)
           rc.clexec = false
-          rc.apply
+          e = ENV.to_hash.merge(env || {})
           begin
-            Exec.execve_override_procname(local_env, progname, assume_command, *args)
+            rc.apply
+            Exec.execve_override_procname(e, progname, assume_command, *args)
           rescue Errno::ENOENT
             STDERR.puts "reddish-shell: Command '#{progname}' not found."
             Process.exit(127)
+          rescue => e
+            STDERR.puts "reddish-shell: #{e.message}"
+            Process.exit(1)
           end
         end
         @pgid ||= pid
@@ -117,24 +136,6 @@ module Reddish
       result.last.last
     end
 
-    def split(wordlist)
-      env, cmd = nil
-      args = []
-      wordlist.to_a.each do |word|
-        if cmd.nil?
-          if word.index("=")
-            env ||= []
-            env << word
-          else
-            cmd = word
-          end
-        else
-          args << word
-        end
-      end
-      [env, cmd, args]
-    end
-
     def search_command(command)
       return command if command.include?("/")
 
@@ -150,6 +151,14 @@ module Reddish
       (t == :or  && r.success?.!) ||
       t == :semicolon ||
       t == :async
+    end
+
+    def split_cmdline(cmdline)
+      return if cmdline.nil?
+
+      list = cmdline.map{|c| c.map{|d| Executor.word2str(d)}.join }
+      list.select!{|l| l.empty?.!}
+      [list.first, list[1..-1]]
     end
   end
 end

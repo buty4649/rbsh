@@ -64,6 +64,21 @@ builds:
       branch: HEAD
       commit: 89523f3a2a4e800c394165695e12b3d92d5775a1
       version: 0.0.0
+    https://github.com/kou/mruby-pp.git:
+      url: https://github.com/kou/mruby-pp.git
+      branch: HEAD
+      commit: 0e71c1adabf1197a8291690ab1d21caa6551752d
+      version: 1.0.4
+    https://github.com/gromnitsky/mruby-dir-glob.git:
+      url: https://github.com/gromnitsky/mruby-dir-glob.git
+      branch: master
+      commit: 334c040a2e2c4c2689f8c3440168011f64d57ada
+      version: 0.0.1
+    https://github.com/ksss/mruby-file-stat.git:
+      url: https://github.com/ksss/mruby-file-stat.git
+      branch: master
+      commit: 66cf135ff9642d96a6127a79b307f6314e606deb
+      version: 0.0.0
   mirb:
     https://github.com/Asmod4n/mruby-linenoise.git:
       url: https://github.com/Asmod4n/mruby-linenoise.git
@@ -115,6 +130,21 @@ builds:
       branch: master
       commit: 5786d1787753b9cd90f3960174c1da2958bd7af2
       version: 0.0.0
+    https://github.com/kou/mruby-pp.git:
+      url: https://github.com/kou/mruby-pp.git
+      branch: HEAD
+      commit: 0e71c1adabf1197a8291690ab1d21caa6551752d
+      version: 1.0.4
+    https://github.com/gromnitsky/mruby-dir-glob.git:
+      url: https://github.com/gromnitsky/mruby-dir-glob.git
+      branch: master
+      commit: 334c040a2e2c4c2689f8c3440168011f64d57ada
+      version: 0.0.1
+    https://github.com/ksss/mruby-file-stat.git:
+      url: https://github.com/ksss/mruby-file-stat.git
+      branch: master
+      commit: 66cf135ff9642d96a6127a79b307f6314e606deb
+      version: 0.0.0
   fdtest:
     https://github.com/gromnitsky/mruby-dir-glob.git:
       url: https://github.com/gromnitsky/mruby-dir-glob.git
@@ -150,6 +180,11 @@ builds:
       url: https://github.com/ksss/mruby-file-stat.git
       branch: HEAD
       commit: 66cf135ff9642d96a6127a79b307f6314e606deb
+      version: 0.0.0
+    https://github.com/mattn/mruby-onig-regexp.git:
+      url: https://github.com/mattn/mruby-onig-regexp.git
+      branch: HEAD
+      commit: 76087d150d12f167e95ae10d326099b352cf3d18
       version: 0.0.0
   sigtest:
     https://github.com/iij/mruby-io.git:
