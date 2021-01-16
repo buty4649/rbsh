@@ -53,7 +53,7 @@ module Reddish
       return if line.nil? || line.empty?
 
       begin
-        parse_result = ReddishParser.parse(line)
+        parse_result = ReddishParser.parse(line, ENV["IFS"])
 
         if parse_result
           @job.run(@executor, parse_result)

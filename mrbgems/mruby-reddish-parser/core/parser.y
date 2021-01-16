@@ -196,18 +196,21 @@ void yyerror(parser_state* p, const char* s){
 
 
 mrb_value mrb_reddish_parser_parse(mrb_state *mrb, mrb_value self) {
-    mrb_value line, action, lexer;
+    mrb_value line, ifs, argv[2];
+    mrb_value action, lexer;
     struct RClass *action_class;
     struct RClass *lexer_class;
     parser_state pstate;
 
-    mrb_get_args(mrb, "S", &line);
+    mrb_get_args(mrb, "SS!", &line, &ifs);
 
     action_class = mrb_class_get_under(mrb, mrb_module_get(mrb, "ReddishParser"), "Action");
     action = mrb_obj_new(mrb, action_class, 0, NULL);
 
     lexer_class = mrb_class_get_under(mrb, mrb_module_get(mrb, "ReddishParser"), "Lexer");
-    lexer = mrb_obj_new(mrb, lexer_class, 1, &line);
+    argv[0] = line;
+    argv[1] = ifs;
+    lexer = mrb_obj_new(mrb, lexer_class, 2, argv);
 
     pstate.state = mrb;
     pstate.result = mrb_nil_value();
