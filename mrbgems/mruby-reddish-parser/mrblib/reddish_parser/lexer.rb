@@ -111,7 +111,7 @@ module ReddishParser
 
     def read_quote_word(term)
       t = Regexp.escape(term)
-      word = @line.slice!(/^.+?(?<!\\)#{t}/)
+      word = @line.slice!(/^.*?(?<!\\)#{t}/)
       raise SyntaxError.new("unterminated string") unless word
       word.delete_suffix!(term).gsub(/\\#{t}/, term)
     end
