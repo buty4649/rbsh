@@ -26,6 +26,10 @@ assert("if_statement") do
     "if true && true; then echo OK; fi",
     "if false; true; then echo OK; fi",
     "if true; then echo OK; fi &",
+    "unless false; then echo OK; end",
+    "unless true; then echo NG; else echo OK; end",
+    "if true; then unless false; then echo OK; end; fi",
+    "unless false; then if true; then echo OK; fi; end",
   ].each do |command|
     assert_equal("OK\n", run(command)[0], command)
   end

@@ -1,11 +1,12 @@
 module ReddishParser
   module Element
     class IfStatement
-      attr_reader :condition, :cmd1, :cmd2
+      attr_reader :condition, :reverse, :cmd1, :cmd2
       attr_accessor :async
 
-      def initialize(type, condition, cmd1, cmd2=nil)
+      def initialize(condition, reverse, cmd1, cmd2=nil)
         @condition = condition
+        @reverse = reverse
         @cmd1 = cmd1
         @cmd2 = cmd2
         @async = false

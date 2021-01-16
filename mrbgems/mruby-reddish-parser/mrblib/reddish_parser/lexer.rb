@@ -62,9 +62,9 @@ module ReddishParser
     def keyword_token
       return if @last_token && @statement.nil?
 
-      if @line.slice!(/^if(?=#{@separator_pattern})/)
+      if k = @line.slice!(/^(if|unless)(?=#{@separator_pattern})/)
         @statement = :if
-        Token.new(:if)
+        Token.new(k.to_sym)
       elsif @line.slice!(/^then(?=#{@separator_pattern})?/)
         Token.new(:then)
       elsif k = @line.slice!(/^el(se|s?if)(?=#{@separator_pattern})?/)

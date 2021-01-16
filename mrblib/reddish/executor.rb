@@ -158,7 +158,8 @@ module Reddish
 
     def if_statement(statement)
       exec(statement.condition)
-      if $?.success?
+      state = statement.reverse ? $?.success?.! : $?.success?
+      if state
         exec(statement.cmd1)
       elsif statement.cmd2
         exec(statement.cmd2)

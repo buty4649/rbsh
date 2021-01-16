@@ -14,16 +14,18 @@ typedef struct parser_state {
 } parser_state;
 
 #define ACTION(p, n, c, ...)   mrb_funcall(p->state, p->action, n, c, __VA_ARGS__)
-#define COMMAND(p, e)          ACTION(p, "on_command", 1, e)
-#define CONNECTOR(p, t, a, b)  ACTION(p, "on_connector", 3, mrb_symbol_value(mrb_intern_cstr(p->state, t)), a, b)
-#define IF_STMT(p, s, c, ...)  ACTION(p, "on_if_stmt", (c+1), s, __VA_ARGS__)
-#define PIPELINE(p, a, b, r)   ACTION(p, "on_pipeline", 3, a, b, r)
-#define REDIRECT(p, t, c, ...) ACTION(p, "on_redirect", (c+1), mrb_symbol_value(mrb_intern_cstr(p->state, t)), __VA_ARGS__)
-#define SIMPLELIST(p, c, a)    ACTION(p, "on_simple_list", 2, c, a)
-#define WORD(p, w)             ACTION(p, "on_word", 1, w)
+#define COMMAND(p, e)             ACTION(p, "on_command", 1, e)
+#define CONNECTOR(p, t, a, b)     ACTION(p, "on_connector", 3, mrb_symbol_value(mrb_intern_cstr(p->state, t)), a, b)
+#define IF_STMT(p, s, c, ...)     ACTION(p, "on_if_stmt", (c+2), s, MRB_FALSE, __VA_ARGS__)
+#define PIPELINE(p, a, b, r)      ACTION(p, "on_pipeline", 3, a, b, r)
+#define REDIRECT(p, t, c, ...)    ACTION(p, "on_redirect", (c+1), mrb_symbol_value(mrb_intern_cstr(p->state, t)), __VA_ARGS__)
+#define SIMPLELIST(p, c, a)       ACTION(p, "on_simple_list", 2, c, a)
+#define UNLESS_STMT(p, s, c, ...) ACTION(p, "on_if_stmt", (c+2), s, MRB_TRUE, __VA_ARGS__)
+#define WORD(p, w)                ACTION(p, "on_word", 1, w)
 
 #define FIXNUM(i) mrb_fixnum_value(i)
-#define BOOL(b)   mrb_bool_value(b)
+#define MRB_TRUE  mrb_true_value()
+#define MRB_FALSE mrb_false_value()
 
 #define YYDEBUG 1
 
@@ -38,7 +40,7 @@ static int yyparse(parser_state*);
 %lex-param {parser_state* p}
 
 %token WORD NUMBER MINUS NUMBER_MINUS
-%token IF THEN ELSE ELIF ELSIF FI END
+%token IF THEN ELSE ELIF ELSIF FI END UNLESS
 %token AND AND_AND OR OR_OR OR_AND SEMICOLON
 %token GT GT_GT AND_GT GT_AND LT LT_AND LT_GT
 %start inputunit
@@ -50,9 +52,9 @@ inputunit
 | simple_list { p->result = $1; }
 
 simple_list
-: connector { $$ = SIMPLELIST(p, $1, BOOL(0)); }
-| connector AND       { $$ = SIMPLELIST(p, $1, BOOL(1)); }
-| connector SEMICOLON { $$ = SIMPLELIST(p, $1, BOOL(0)); }
+: connector { $$ = SIMPLELIST(p, $1, MRB_FALSE); }
+| connector AND       { $$ = SIMPLELIST(p, $1, MRB_TRUE); }
+| connector SEMICOLON { $$ = SIMPLELIST(p, $1, MRB_FALSE); }
 
 connector
 : connector AND_AND   pipeline { $$ = CONNECTOR(p, "and", $1, $3); }
@@ -62,8 +64,8 @@ connector
 | pipeline
 
 pipeline
-: pipeline OR command     { $$ = PIPELINE(p, $1, $3, BOOL(0)); }
-| pipeline OR_AND command { $$ = PIPELINE(p, $1, $3, BOOL(1)); }
+: pipeline OR command     { $$ = PIPELINE(p, $1, $3, MRB_FALSE); }
+| pipeline OR_AND command { $$ = PIPELINE(p, $1, $3, MRB_TRUE); }
 | command
 
 compound_list
@@ -71,7 +73,11 @@ compound_list
 
 command
 : simple_command { $$ = COMMAND(p, $1); }
-| IF compound_list THEN compound_list FI                    { $$ = IF_STMT(p, $2, 1, $4); }
+| if_statement
+| unless_statement
+
+if_statement
+: IF compound_list THEN compound_list FI                    { $$ = IF_STMT(p, $2, 1, $4); }
 | IF compound_list THEN compound_list END                   { $$ = IF_STMT(p, $2, 1, $4); }
 | IF compound_list THEN compound_list ELSE compound_list FI { $$ = IF_STMT(p, $2, 2, $4, $6); }
 | IF compound_list THEN compound_list ELSE compound_list END{ $$ = IF_STMT(p, $2, 2, $4, $6); }
@@ -91,6 +97,10 @@ elsif_clause
 | ELSIF compound_list THEN compound_list ELSE compound_list { $$ = IF_STMT(p, $2, 2, $4, $6); }
 | ELSIF compound_list THEN compound_list elif_clause        { $$ = IF_STMT(p, $2, 2, $4, $5); }
 | ELSIF compound_list THEN compound_list elsif_clause       { $$ = IF_STMT(p, $2, 2, $4, $5); }
+
+unless_statement
+: UNLESS compound_list THEN compound_list END                   { $$ = UNLESS_STMT(p, $2, 1, $4); }
+| UNLESS compound_list THEN compound_list ELSE compound_list END{ $$ = UNLESS_STMT(p, $2, 2, $4, $6); }
 
 simple_command
 : simple_command_element { $$ = mrb_ary_new_from_values(p->state, 1, &$1); }
@@ -153,6 +163,7 @@ static const struct token_type {
     {"elsif", ELSIF},
     {"fi", FI},
     {"end", END},
+    {"unless", UNLESS},
     {NULL, 0}
 };
 
