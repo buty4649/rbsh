@@ -53,4 +53,16 @@ assert("if_statement") do
       assert_equal("tp2\n", File.read(tp2), command)
     end
   end
+
+  command = "if true; then echo FOO; fi && echo BAR"
+  assert_equal("FOO\nBAR\n", run(command)[0], command)
+
+  command = "if true; then echo FOO; false; fi && echo BAR"
+  assert_equal("FOO\n", run(command)[0], command)
+
+  command = "if false; then echo NG; fi || echo OK"
+  assert_equal("OK\n", run(command)[0], command)
+
+  command = "if true; then echo OK; fi | cat"
+  assert_equal("OK\n", run(command)[0], command)
 end

@@ -165,6 +165,9 @@ module Reddish
         elsif statement.cmd2
           exec(statement.cmd2)
         end
+
+        # return last status
+        $?
       end
     end
 
