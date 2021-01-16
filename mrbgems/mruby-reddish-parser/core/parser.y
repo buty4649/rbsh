@@ -14,6 +14,7 @@ typedef struct parser_state {
 } parser_state;
 
 #define ACTION(p, n, c, ...)   mrb_funcall(p->state, p->action, n, c, __VA_ARGS__)
+#define APPEND_REDIRECT(p, s, r)  ACTION(p, "on_append_redirect", 2, s, r)
 #define COMMAND(p, e)             ACTION(p, "on_command", 1, e)
 #define CONNECTOR(p, t, a, b)     ACTION(p, "on_connector", 3, mrb_symbol_value(mrb_intern_cstr(p->state, t)), a, b)
 #define IF_STMT(p, s, c, ...)     ACTION(p, "on_if_stmt", (c+2), s, MRB_FALSE, __VA_ARGS__)
@@ -73,7 +74,11 @@ compound_list
 
 command
 : simple_command { $$ = COMMAND(p, $1); }
-| if_statement
+| shell_command
+| shell_command redirect_list { APPEND_REDIRECT(p, $1, $2); $$ = $1; }
+
+shell_command
+: if_statement
 | unless_statement
 
 if_statement
@@ -109,6 +114,10 @@ simple_command
 simple_command_element
 : WORD { $$ = WORD(p, $1); }
 | redirect
+
+redirect_list
+: redirect
+| redirect_list redirect { mrb_ary_concat(p->state, $1, $2); $$ = $1; }
 
 redirect
 /* <    */: LT WORD                    { $$ = REDIRECT(p, "read",     2, FIXNUM(0), $2); }

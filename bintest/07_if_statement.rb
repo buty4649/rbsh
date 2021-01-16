@@ -38,4 +38,19 @@ assert("if_statement") do
 
   command = "echo OK; if true; then echo OK; fi"
   assert_equal("OK\nOK\n", run(command)[0], command)
+
+  Tempfile.open do |tempfile|
+    tp = tempfile.path
+    command = "if true; then echo OK; fi > #{tp}"
+    run(command)
+    assert_equal("OK\n", File.read(tp), command)
+
+    Tempfile.open do |tempfile2|
+      tp2 = tempfile2.path
+      command = "if true; then if true; then echo tp2; fi > #{tp2}; echo tp; fi > #{tp}"
+      run(command)
+      assert_equal("tp\n", File.read(tp), command)
+      assert_equal("tp2\n", File.read(tp2), command)
+    end
+  end
 end

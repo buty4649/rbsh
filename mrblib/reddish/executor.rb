@@ -157,12 +157,14 @@ module Reddish
     end
 
     def if_statement(statement)
-      exec(statement.condition)
-      state = statement.reverse ? $?.success?.! : $?.success?
-      if state
-        exec(statement.cmd1)
-      elsif statement.cmd2
-        exec(statement.cmd2)
+      RedirectControl.new(statement.redirect).apply(true) do
+        exec(statement.condition)
+        state = statement.reverse ? $?.success?.! : $?.success?
+        if state
+          exec(statement.cmd1)
+        elsif statement.cmd2
+          exec(statement.cmd2)
+        end
       end
     end
 

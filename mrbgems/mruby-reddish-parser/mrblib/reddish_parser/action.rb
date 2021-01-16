@@ -25,6 +25,10 @@ module ReddishParser
       end
     end
 
+    def on_append_redirect(command, redirect)
+      command.append_redirect(redirect)
+    end
+
     def on_command(elements)
       cmdline, redirect = nil
       elements.each do |element|
