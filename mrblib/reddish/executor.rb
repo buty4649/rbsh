@@ -10,7 +10,7 @@ module Reddish
 
         str.gsub(/\${(\w+)}/) { ENV[$1] || "" }
            .gsub(/\$(\w+)/)   { ENV[$1] || "" }
-           .gsub(/\$\?/) { $? >> 8 }
+           .gsub(/\$\?/) { $?.nil? ? 0 : $? >> 8 }
       end
     end
 
