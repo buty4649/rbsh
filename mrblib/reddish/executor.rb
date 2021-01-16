@@ -35,6 +35,16 @@ module Reddish
         connector_exec(command, opts)
       elsif klass == ReddishParser::Element::Pipeline
         pipe_exec(command, opts)
+      elsif klass == ReddishParser::Element::IfStatement
+        if command.async
+          Process.fork do
+            Process.setpgid(0, 0)
+            @pgid = $$
+            if_statement(command)
+          end
+        else
+          if_statement(command)
+        end
       end
     end
 
@@ -102,6 +112,7 @@ module Reddish
           exit_status  = Process::Status.new(pid, nil)
         else
           _, exit_status = JobControl.start_sigint_trap(@pgid) { Process.wait2(pid) }
+          reset
         end
 
         exit_status
@@ -143,6 +154,15 @@ module Reddish
                            .map {|dir| "#{dir}/#{command}" }
                            .find {|path| File.exists?(path) }
       return result || command
+    end
+
+    def if_statement(statement)
+      exec(statement.condition)
+      if $?.success?
+        exec(statement.cmd1)
+      elsif statement.cmd2
+        exec(statement.cmd2)
+      end
     end
 
     private

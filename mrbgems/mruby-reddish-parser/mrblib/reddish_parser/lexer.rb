@@ -8,6 +8,7 @@ module ReddishParser
     def initialize(line)
       @line = line.dup
       @last_token = nil
+      @statement = nil
 
       separator = ENV['IFS'] || " \t\n"
       @separator_pattern = "[#{separator}]"
@@ -20,11 +21,16 @@ module ReddishParser
 
       token = eof_token       ||
               simple_token    ||
-              separator_token ||
               number_token    ||
               hyphen_token    ||
+              keyword_token   ||
               word_token
+
       @last_token = token.type
+      if token.type == :";" && @statement.nil?
+        @last_token = nil
+      end
+
       token
     end
 
@@ -40,16 +46,6 @@ module ReddishParser
       Token.new(token.to_sym)
     end
 
-    def separator_token
-      if read_sperator
-        Token.new(:word, [:separator])
-      end
-    end
-
-    def read_sperator
-      @line.slice!(/^#{@separator_pattern}+/)
-    end
-
     def number_token
       if number = @line.slice!(/^\d+(?=[<>])/) ||
         ([:"<&", :">&"].include?(@last_token) && number = @line.slice!(/^\d+/))
@@ -58,16 +54,39 @@ module ReddishParser
     end
 
     def hyphen_token
-      if [:"<&", :">&", :number].include?(@last_token) && hyphen = @line.slice!("-")
-        Token.new(hyphen.to_sym)
+      if [:"<&", :">&", :number].include?(@last_token) && @line.slice!("-")
+        Token.new(:"-")
+      end
+    end
+
+    def keyword_token
+      return if @last_token && @statement.nil?
+
+      if @line.slice!(/^if(?=#{@separator_pattern})/)
+        @statement = :if
+        Token.new(:if)
+      elsif @line.slice!(/^then(?=#{@separator_pattern})?/)
+        Token.new(:then)
+      elsif k = @line.slice!(/^el(se|s?if)(?=#{@separator_pattern})?/)
+        Token.new(k.to_sym)
+      elsif k = @line.slice!(/^(fi|end)(?=#{@separator_pattern})?/)
+        @statement = nil
+        Token.new(k.to_sym)
       end
     end
 
     def word_token
-      word = quote_word   ||
+      word = separator    ||
+             quote_word   ||
              percent_word ||
              normal_word
       Token.new(:word, word)
+    end
+
+    def separator
+      if read_sperator
+        [:separator]
+      end
     end
 
     def quote_word
@@ -102,6 +121,10 @@ module ReddishParser
       pos = @line.index(/(?<!\\)(#{pattern})/)
       pos = pos ? pos - 1 : -1
       [:normal, @line.slice!(0..pos)]
+    end
+
+    def read_sperator
+      @line.slice!(/^#{@separator_pattern}+/)
     end
   end
 end

@@ -16,6 +16,7 @@ typedef struct parser_state {
 #define ACTION(p, n, c, ...)   mrb_funcall(p->state, p->action, n, c, __VA_ARGS__)
 #define COMMAND(p, e)          ACTION(p, "on_command", 1, e)
 #define CONNECTOR(p, t, a, b)  ACTION(p, "on_connector", 3, mrb_symbol_value(mrb_intern_cstr(p->state, t)), a, b)
+#define IF_STMT(p, s, c, ...)  ACTION(p, "on_if_stmt", (c+1), s, __VA_ARGS__)
 #define PIPELINE(p, a, b, r)   ACTION(p, "on_pipeline", 3, a, b, r)
 #define REDIRECT(p, t, c, ...) ACTION(p, "on_redirect", (c+1), mrb_symbol_value(mrb_intern_cstr(p->state, t)), __VA_ARGS__)
 #define SIMPLELIST(p, c, a)    ACTION(p, "on_simple_list", 2, c, a)
@@ -37,6 +38,7 @@ static int yyparse(parser_state*);
 %lex-param {parser_state* p}
 
 %token WORD NUMBER MINUS NUMBER_MINUS
+%token IF THEN ELSE ELIF ELSIF FI END
 %token AND AND_AND OR OR_OR OR_AND SEMICOLON
 %token GT GT_GT AND_GT GT_AND LT LT_AND LT_GT
 %start inputunit
@@ -64,8 +66,31 @@ pipeline
 | pipeline OR_AND command { $$ = PIPELINE(p, $1, $3, BOOL(1)); }
 | command
 
+compound_list
+: connector SEMICOLON
+
 command
 : simple_command { $$ = COMMAND(p, $1); }
+| IF compound_list THEN compound_list FI                    { $$ = IF_STMT(p, $2, 1, $4); }
+| IF compound_list THEN compound_list END                   { $$ = IF_STMT(p, $2, 1, $4); }
+| IF compound_list THEN compound_list ELSE compound_list FI { $$ = IF_STMT(p, $2, 2, $4, $6); }
+| IF compound_list THEN compound_list ELSE compound_list END{ $$ = IF_STMT(p, $2, 2, $4, $6); }
+| IF compound_list THEN compound_list elif_clause FI        { $$ = IF_STMT(p, $2, 2, $4, $5); }
+| IF compound_list THEN compound_list elif_clause END       { $$ = IF_STMT(p, $2, 2, $4, $5); }
+| IF compound_list THEN compound_list elsif_clause FI       { $$ = IF_STMT(p, $2, 2, $4, $5); }
+| IF compound_list THEN compound_list elsif_clause END      { $$ = IF_STMT(p, $2, 2, $4, $5); }
+
+elif_clause
+: ELIF compound_list THEN compound_list { $$ = IF_STMT(p, $2, 1, $4); }
+| ELIF compound_list THEN compound_list ELSE compound_list { $$ = IF_STMT(p, $2, 2, $4, $6); }
+| ELIF compound_list THEN compound_list elif_clause        { $$ = IF_STMT(p, $2, 2, $4, $5); }
+| ELIF compound_list THEN compound_list elsif_clause       { $$ = IF_STMT(p, $2, 2, $4, $5); }
+
+elsif_clause
+: ELSIF compound_list THEN compound_list { $$ = IF_STMT(p, $2, 1, $4); }
+| ELSIF compound_list THEN compound_list ELSE compound_list { $$ = IF_STMT(p, $2, 2, $4, $6); }
+| ELSIF compound_list THEN compound_list elif_clause        { $$ = IF_STMT(p, $2, 2, $4, $5); }
+| ELSIF compound_list THEN compound_list elsif_clause       { $$ = IF_STMT(p, $2, 2, $4, $5); }
 
 simple_command
 : simple_command_element { $$ = mrb_ary_new_from_values(p->state, 1, &$1); }
@@ -121,6 +146,13 @@ static const struct token_type {
     {"eof", YYEOF},
     {"number", NUMBER},
     {"word", WORD},
+    {"if", IF},
+    {"then", THEN},
+    {"else", ELSE},
+    {"elif", ELIF},
+    {"elsif", ELSIF},
+    {"fi", FI},
+    {"end", END},
     {NULL, 0}
 };
 

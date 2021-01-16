@@ -69,6 +69,10 @@ module ReddishParser
       [connector]
     end
 
+    def on_if_stmt(condition, cmd1, cmd2=nil)
+      Element::IfStatement.new(:if, condition, cmd1, cmd2)
+    end
+
     def on_error(msg)
       raise ReddishParser::ParserError.new(msg)
     end
