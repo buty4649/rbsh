@@ -1,9 +1,5 @@
 module ReddishParser
   class Action
-    def initialize(src)
-      @__lexer = Lexer.new(src)
-    end
-
     def on_word(word)
       Element::Word.new(word)
     end

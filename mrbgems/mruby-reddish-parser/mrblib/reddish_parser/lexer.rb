@@ -1,200 +1,107 @@
 module ReddishParser
   class Lexer
+    # '<', '<>', '<&', '>', '>>', '>&', '&', '&&', '&>', '|', '||', '|&', ';'
+    SIMPLE_TOKEN_PATTERN = '([<>&][>&]?|\|[|&]?|;)'
+    QUOTE_WORD_PATTERN = %Q!["']!
+    PERCENT_WORD_PATTERN = '(%(!|[qQ]\W))'
+
     def initialize(line)
       @line = line.dup
-      @token_before_that = nil
+      @last_token = nil
 
       separator = ENV['IFS'] || " \t\n"
-      @separator_regexp = Regexp.new(separator.split('').join('|'))
+      @separator_pattern = "[#{separator}]"
     end
 
     def get_token
-      if @token_before_that.nil? ||
-         @token_before_that != :word
-        getc while separator?
+      if @last_token.nil? || @last_token != :word
+         read_sperator
       end
 
-      token = read_token
-      @token_before_that = token.first
+      token = eof_token       ||
+              simple_token    ||
+              separator_token ||
+              number_token    ||
+              hyphen_token    ||
+              word_token
+      @last_token = token.type
       token
     end
 
-    def read_token
-      case c
-      when nil then nil_token
-      when '<' then lt_token
-      when '>' then gt_token
-      when '&' then and_token
-      when '|' then or_token
-      when ';' then semicolorn_token
-      when @separator_regexp then separator_token
-      else
-        if m = match(/^(\d+)([<>])/)
-          number = slice!(0...m.begin(2))
-          [:number, number]
-        elsif c == "-" && (is_the_before_token_redirect? || is_the_before_token_number?)
-          getc
-          [:"-"]
-        elsif is_the_before_token_redirect? && m = match(/^(\d+)/)
-          [:number, slice!(0...m.end(1))]
-        elsif match(/^%!/)
-          getc
-          [:word, quote_word("!", :dquote)]
-        elsif m = match(/^%([qQ])(\p{Punct}|[<>\|])/)
-          getc; getc
-          type = {"q" => :quote, "Q" => :dquote}[m[1]]
-          if type.nil?
-            error("unknown type or not implimented of %string")
-          end
-          paren = {"(" => ")", "[" => "]", "{" => "}", "<" => ">"}[m[2]]
-          paren ||= m[2]
-          [:word, quote_word(paren, type)]
-        else
-          [:word, read_word]
-        end
+    def eof_token
+      if @line.nil? || @line.empty?
+        return Token.new(:eof)
       end
     end
 
-    def nil_token
-      getc
-      [:eof]
-    end
-
-    def lt_token
-      getc
-      if c == '>'
-        getc
-        [:"<>"]
-      elsif c == '&'
-        getc
-        [:"<&"]
-      else
-        [:"<"]
-      end
-    end
-
-    def gt_token
-      getc
-      if c == '>'
-        getc
-        [:">>"]
-      elsif c == '&'
-        getc
-        [:">&"]
-      else
-        [:">"]
-      end
-    end
-
-    def and_token
-      getc
-      if c == '&'
-        getc
-        [:"&&"]
-      elsif c == '>'
-        getc
-        [:"&>"]
-      else
-        [:"&"]
-      end
-    end
-
-    def or_token
-      getc
-      if c == '|'
-        getc
-        [:"||"]
-      elsif c == '&'
-        getc
-        [:"|&"]
-      else
-        [:"|"]
-      end
-    end
-
-    def semicolorn_token
-      getc
-      [:";"]
+    def simple_token
+      token = @line.slice!(/^#{SIMPLE_TOKEN_PATTERN}/)
+      return unless token
+      Token.new(token.to_sym)
     end
 
     def separator_token
-      getc while separator?
-      [:word, [:separator, nil]]
-    end
-
-    def read_word
-      case c
-      when "'" then quote_word("'", :quote)
-      when '"' then quote_word('"', :dquote)
-      else normal_word
+      if read_sperator
+        Token.new(:word, [:separator])
       end
     end
 
-    def quote_word(paren, type)
-      getc
-      i = index(paren)
-      if i.nil?
-        raise SyntaxError.new("unterminated string")
+    def read_sperator
+      @line.slice!(/^#{@separator_pattern}+/)
+    end
+
+    def number_token
+      if number = @line.slice!(/^\d+(?=[<>])/) ||
+        ([:"<&", :">&"].include?(@last_token) && number = @line.slice!(/^\d+/))
+        Token.new(:number, number)
       end
-      str = slice!(0...i)
-      getc
-      [type, str]
+    end
+
+    def hyphen_token
+      if [:"<&", :">&", :number].include?(@last_token) && hyphen = @line.slice!("-")
+        Token.new(hyphen.to_sym)
+      end
+    end
+
+    def word_token
+      word = quote_word   ||
+             percent_word ||
+             normal_word
+      Token.new(:word, word)
+    end
+
+    def quote_word
+      if s = @line.slice!(/^#{QUOTE_WORD_PATTERN}/)
+        type = s == '"' ? :dquote : :quote
+        [type, read_quote_word(s)]
+      end
+    end
+
+    def percent_word
+      if s = @line.slice!(/^#{PERCENT_WORD_PATTERN}/)
+        _, quote, paren = s.split("")
+        if quote == "!"
+          quote = "Q"
+          paren = "!"
+        end
+        type = {"Q" => :dquote, "q" => :quote}[quote]
+        term = {"(" => ")", "[" => "]", "{" => "}", "<" => ">"}[paren] || paren
+        [type, read_quote_word(term)]
+      end
+    end
+
+    def read_quote_word(term)
+      t = Regexp.escape(term)
+      word = @line.slice!(/^.+?(?<!\\)#{t}/)
+      raise SyntaxError.new("unterminated string") unless word
+      word.delete_suffix!(term).gsub(/\\#{t}/, term)
     end
 
     def normal_word
-      regexp = Regexp.new([@separator_regexp.to_s, %Q|["';&<>]|].join('|'))
-      i = index(regexp) || length
-
-      [:normal, slice!(0...i)]
-    end
-
-    def c(i=0)
-      @line[i]
-    end
-
-    def length
-      @line.length
-    end
-
-    def index(p)
-      s = 0
-      while i = @line.index(p, s)
-        break if c(i-1) != "\\"
-
-        # remove backslash
-        slice!(i-1)
-
-        s = i
-      end
-      i
-    end
-
-    def getc
-      slice!(0)
-    end
-
-    def slice!(r)
-      @line.slice!(r)
-    end
-
-    def match(m)
-      m.match(@line)
-    end
-
-    def separator?
-      @separator_regexp.match(c)
-    end
-
-    def is_the_before_token_redirect?
-      [:"<&", :">&"].include?(@token_before_that)
-    end
-
-    def is_the_before_token_number?
-      @token_before_that == :number
-    end
-
-    def error(str)
-      raise ParserError.new(str)
+      pattern = [SIMPLE_TOKEN_PATTERN, QUOTE_WORD_PATTERN, PERCENT_WORD_PATTERN, @separator_pattern].join("|")
+      pos = @line.index(/(?<!\\)(#{pattern})/)
+      pos = pos ? pos - 1 : -1
+      [:normal, @line.slice!(0..pos)]
     end
   end
 end

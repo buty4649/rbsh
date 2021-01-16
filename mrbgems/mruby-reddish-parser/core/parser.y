@@ -10,6 +10,7 @@ typedef struct parser_state {
     mrb_state* state;
     mrb_value  result;
     mrb_value  action;
+    mrb_value  lexer;
 } parser_state;
 
 #define ACTION(p, n, c, ...)   mrb_funcall(p->state, p->action, n, c, __VA_ARGS__)
@@ -134,18 +135,13 @@ int sym2tt(const char *sym) {
 }
 
 int yylex(void* lval, parser_state* p) {
-    mrb_value lexer, token;
+    mrb_value token, token_type;
     int type;
 
-    lexer = mrb_iv_get(p->state, p->action, mrb_intern_lit(p->state, "@__lexer"));
-    token = mrb_funcall(p->state, lexer, "get_token", 0);
-
-    if (mrb_nil_p(token)) {
-        return YYEOF;
-    }
-
-    type = sym2tt(mrb_sym2name(p->state, mrb_symbol(mrb_ary_ref(p->state, token, 0))));
-    *((YYSTYPE*)lval) = mrb_ary_ref(p->state, token, 1);
+    token = mrb_funcall(p->state, p->lexer, "get_token", 0);
+    token_type = mrb_funcall(p->state, token, "type", 0);
+    type = sym2tt(mrb_sym2name(p->state, mrb_symbol(token_type)));
+    *((YYSTYPE*)lval) = mrb_funcall(p->state, token, "data", 0);
 
     return type;
 }
@@ -157,18 +153,23 @@ void yyerror(parser_state* p, const char* s){
 
 
 mrb_value mrb_reddish_parser_parse(mrb_state *mrb, mrb_value self) {
-    mrb_value line, action;
+    mrb_value line, action, lexer;
     struct RClass *action_class;
+    struct RClass *lexer_class;
     parser_state pstate;
 
     mrb_get_args(mrb, "S", &line);
 
     action_class = mrb_class_get_under(mrb, mrb_module_get(mrb, "ReddishParser"), "Action");
-    action = mrb_obj_new(mrb, action_class, 1, &line);
+    action = mrb_obj_new(mrb, action_class, 0, NULL);
+
+    lexer_class = mrb_class_get_under(mrb, mrb_module_get(mrb, "ReddishParser"), "Lexer");
+    lexer = mrb_obj_new(mrb, lexer_class, 1, &line);
 
     pstate.state = mrb;
     pstate.result = mrb_nil_value();
     pstate.action = action;
+    pstate.lexer = lexer;
 
     yyparse(&pstate);
 

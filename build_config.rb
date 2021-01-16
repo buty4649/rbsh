@@ -9,6 +9,7 @@ def gem_config(conf)
   conf.gem 'mrbgems/mruby-reddish-parser'
   conf.gem core: 'mruby-array-ext'
   conf.gem core: 'mruby-kernel-ext'
+  conf.gem core: 'mruby-enumerator'
   conf.gem core: 'mruby-enum-ext'
   conf.gem core: 'mruby-struct'
   conf.gem core: 'mruby-pack'
