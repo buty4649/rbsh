@@ -6,6 +6,7 @@ module Reddish
       @opts = opts
       @job = JobControl.new
       @executor = Executor.new
+      @data_home = File.join(File.expand_path(XDG["CONFIG_HOME"]), "reddish")
     end
 
     def self.getopts(args)
@@ -38,6 +39,12 @@ module Reddish
         ReddishParser.debug = true
       end
 
+      if File.exists?(history_file_path)
+        Linenoise::History.load(history_file_path)
+      elsif Dir.exists?(@data_home).!
+        Dir.mkdir(@data_home)
+      end
+
       BuiltinCommands.define_commands(@executor)
 
       if cmd = @opts["c"]
@@ -57,6 +64,11 @@ module Reddish
 
         if parse_result
           @job.run(@executor, parse_result)
+
+          if $?.success?
+            Linenoise::History.add(line)
+            Linenoise::History.save(history_file_path)
+          end
         end
       rescue => e
         STDERR.puts "#{e.class} #{e.message}"
@@ -68,6 +80,10 @@ module Reddish
           end
         end
       end
+    end
+
+    def history_file_path
+      File.join(@data_home, "history.txt")
     end
   end
 end
