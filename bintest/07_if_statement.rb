@@ -2,6 +2,10 @@ require File.join(File.dirname(__FILE__), "../lib/bintest_helper.rb")
 
 assert("if_statement") do
   [
+    "if true; echo OK; end",
+    "if false; echo NG; else echo OK; end",
+    "if false; echo NG; elsif true; echo OK; end",
+    "if false; echo NG; elsif false; echo NG; else echo OK; end",
     "if true; then echo OK; fi",
     "if true; then echo OK; end",
     "if false;then echo NG; else echo OK; fi",

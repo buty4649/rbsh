@@ -27,6 +27,7 @@ typedef struct parser_state {
 #define FIXNUM(i) mrb_fixnum_value(i)
 #define MRB_TRUE  mrb_true_value()
 #define MRB_FALSE mrb_false_value()
+#define NIL       mrb_nil_value()
 
 #define YYDEBUG 1
 
@@ -82,7 +83,10 @@ shell_command
 | unless_statement
 
 if_statement
-: IF compound_list THEN compound_list FI                    { $$ = IF_STMT(p, $2, 1, $4); }
+: IF compound_list END                                      { $$ = IF_STMT(p, $2, 0, NULL); }
+| IF compound_list ELSE compound_list END                   { $$ = IF_STMT(p, $2, 2, NIL, $4); }
+| IF compound_list elsif_clause END                         { $$ = IF_STMT(p, $2, 2, NIL, $3); }
+| IF compound_list THEN compound_list FI                    { $$ = IF_STMT(p, $2, 1, $4); }
 | IF compound_list THEN compound_list END                   { $$ = IF_STMT(p, $2, 1, $4); }
 | IF compound_list THEN compound_list ELSE compound_list FI { $$ = IF_STMT(p, $2, 2, $4, $6); }
 | IF compound_list THEN compound_list ELSE compound_list END{ $$ = IF_STMT(p, $2, 2, $4, $6); }
@@ -92,13 +96,15 @@ if_statement
 | IF compound_list THEN compound_list elsif_clause END      { $$ = IF_STMT(p, $2, 2, $4, $5); }
 
 elif_clause
-: ELIF compound_list THEN compound_list { $$ = IF_STMT(p, $2, 1, $4); }
+: ELIF compound_list THEN compound_list                    { $$ = IF_STMT(p, $2, 1, $4); }
 | ELIF compound_list THEN compound_list ELSE compound_list { $$ = IF_STMT(p, $2, 2, $4, $6); }
 | ELIF compound_list THEN compound_list elif_clause        { $$ = IF_STMT(p, $2, 2, $4, $5); }
 | ELIF compound_list THEN compound_list elsif_clause       { $$ = IF_STMT(p, $2, 2, $4, $5); }
 
 elsif_clause
-: ELSIF compound_list THEN compound_list { $$ = IF_STMT(p, $2, 1, $4); }
+: ELSIF compound_list                                       { $$ = IF_STMT(p, $2, 0, NULL); }
+| ELSIF compound_list ELSE compound_list                    { $$ = IF_STMT(p, $2, 2, NIL, $4); }
+| ELSIF compound_list THEN compound_list                    { $$ = IF_STMT(p, $2, 1, $4); }
 | ELSIF compound_list THEN compound_list ELSE compound_list { $$ = IF_STMT(p, $2, 2, $4, $6); }
 | ELSIF compound_list THEN compound_list elif_clause        { $$ = IF_STMT(p, $2, 2, $4, $5); }
 | ELSIF compound_list THEN compound_list elsif_clause       { $$ = IF_STMT(p, $2, 2, $4, $5); }

@@ -4,7 +4,7 @@ module ReddishParser
       attr_reader :condition, :reverse, :cmd1, :cmd2, :redirect
       attr_accessor :async
 
-      def initialize(condition, reverse, cmd1, cmd2=nil)
+      def initialize(condition, reverse, cmd1=nil, cmd2=nil)
         @condition = condition
         @reverse = reverse
         @cmd1 = cmd1

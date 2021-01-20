@@ -73,8 +73,33 @@ module ReddishParser
       [connector]
     end
 
-    def on_if_stmt(condition, reverse, cmd1, cmd2=nil)
-      Element::IfStatement.new(condition, reverse, cmd1, cmd2)
+    def on_if_stmt(condition, reverse, cmd1=nil, cmd2=nil)
+      if cmd1
+        Element::IfStatement.new(condition, reverse, cmd1, cmd2)
+      else
+        # Dig the head Element::Connector.
+        # If type is Semicolon, set it to condition.
+        # ex. if cmd1; cmd2 ; cmd3 && cmd4; end
+        #        ~~~~
+        #        this
+
+        last_semicolon = nil
+        current = condition
+        while current.class != Element::Command
+          if current.type == :semicolon
+            last_semicolon = current
+          end
+          current = current.cmd1
+        end
+
+        if last_semicolon
+          condition_cmd = last_semicolon.cmd1
+          last_semicolon.cmd1 = nil
+          Element::IfStatement.new(condition_cmd, reverse, condition, cmd2)
+        else
+          Element::IfStatement.new(condition, reverse, nil, cmd2)
+        end
+      end
     end
 
     def on_error(msg)
