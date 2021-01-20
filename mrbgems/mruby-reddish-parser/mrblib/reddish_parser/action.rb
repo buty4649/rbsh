@@ -46,11 +46,11 @@ module ReddishParser
 
     def on_pipeline(cmd1, cmd2, redirect)
       if redirect
-        target = cmd1.class == Element::Pipeline ? cmd1.cmd2 : cmd2
+        target = cmd1.class == Element::Connector ? cmd1.cmd2 : cmd2
         target.append_redirect(Element::Redirect.new(:copywrite, 2, 1, nil))
       end
 
-      Element::Pipeline.new(cmd1, cmd2)
+      Element::Connector.new(:pipeline, cmd1, cmd2)
     end
 
     def on_connector(type, cmd1, cmd2)

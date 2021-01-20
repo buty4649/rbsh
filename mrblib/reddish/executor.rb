@@ -33,8 +33,6 @@ module Reddish
         command_exec(command, opts)
       elsif klass == ReddishParser::Element::Connector
         connector_exec(command, opts)
-      elsif klass == ReddishParser::Element::Pipeline
-        pipe_exec(command, opts)
       elsif klass == ReddishParser::Element::IfStatement
         if command.async
           Process.fork do
@@ -120,15 +118,19 @@ module Reddish
     end
 
     def connector_exec(connector, opts)
-      cmd1_opts = opts || {}
-      cmd1_opts.merge({async: true}) if opts[:async]
-      result = exec(connector.cmd1, cmd1_opts)
+      if connector.type == :pipeline
+        pipe_exec(connector, opts)
+      else
+        cmd1_opts = opts || {}
+        cmd1_opts.merge({async: true}) if opts[:async]
+        result = exec(connector.cmd1, cmd1_opts)
 
-      if cmd2_exec?(connector.type, result)
-        result = exec(connector.cmd2, opts)
+        if cmd2_exec?(connector.type, result)
+          result = exec(connector.cmd2, opts)
+        end
+
+        result
       end
-
-      result
     end
 
     def pipe_exec(pipe, opts)
