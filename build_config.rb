@@ -39,13 +39,6 @@ MRuby::Build.new do |conf|
   gem_config(conf)
 end
 
-MRuby::Build.new('mirb') do |conf|
-  toolchain :gcc
-
-  conf.gem core: 'mruby-bin-mirb'
-  gem_config(conf)
-end
-
 MRuby::Build.new('fdtest') do |conf|
   toolchain :gcc
 
