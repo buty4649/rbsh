@@ -79,6 +79,11 @@ builds:
       branch: master
       commit: 66cf135ff9642d96a6127a79b307f6314e606deb
       version: 0.0.0
+    https://github.com/katzer/mruby-os.git:
+      url: https://github.com/katzer/mruby-os.git
+      branch: HEAD
+      commit: 89523f3a2a4e800c394165695e12b3d92d5775a1
+      version: 0.0.0
   mirb:
     https://github.com/Asmod4n/mruby-linenoise.git:
       url: https://github.com/Asmod4n/mruby-linenoise.git

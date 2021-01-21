@@ -5,13 +5,12 @@ module ReddishParser
     QUOTE_WORD_PATTERN = %Q!["']!
     PERCENT_WORD_PATTERN = '(%(!|[qQ]\W))'
 
-    def initialize(line, ifs)
+    def initialize(line)
       @line = line.dup
       @last_token = nil
       @statement = nil
 
-      separator = ifs || " \t\n"
-      @separator_pattern = "[#{separator}]"
+      @separator_pattern = "[ \t\n]"
     end
 
     def get_token
