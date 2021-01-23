@@ -37,13 +37,11 @@ assert("if_statement") do
     "if true; then unless false; then echo OK; end; fi",
     "unless false; then if true; then echo OK; fi; end",
   ].each do |command|
-    assert_equal("OK\n", run(command)[0], command)
+    assert_stdout("OK\n", command)
   end
 
-  assert_equal("if\n", run("echo if")[0], "echo if")
-
-  command = "echo OK; if true; then echo OK; fi"
-  assert_equal("OK\nOK\n", run(command)[0], command)
+  assert_stdout("if\n", "echo if")
+  assert_stdout("OK\nOK\n", "echo OK; if true; then echo OK; fi")
 
   Tempfile.open do |tempfile|
     tp = tempfile.path
@@ -60,15 +58,11 @@ assert("if_statement") do
     end
   end
 
-  command = "if true; then echo FOO; fi && echo BAR"
-  assert_equal("FOO\nBAR\n", run(command)[0], command)
+  assert_stdout("FOO\nBAR\n", "if true; then echo FOO; fi && echo BAR")
+  assert_stdout("FOO\n",      "if true; then echo FOO; false; fi && echo BAR")
 
-  command = "if true; then echo FOO; false; fi && echo BAR"
-  assert_equal("FOO\n", run(command)[0], command)
+  assert_stdout("OK\n",  "if false; then echo NG; fi || echo OK")
+  assert_stdout("OK\n",  "if true; then echo OK; fi | cat")
 
-  command = "if false; then echo NG; fi || echo OK"
-  assert_equal("OK\n", run(command)[0], command)
-
-  command = "if true; then echo OK; fi | cat"
-  assert_equal("OK\n", run(command)[0], command)
+  assert_stdout("OK\n",  ["if", "true", "echo OK", "end"])
 end

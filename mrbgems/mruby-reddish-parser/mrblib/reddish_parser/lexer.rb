@@ -1,5 +1,6 @@
 module ReddishParser
   class Lexer
+
     # '<', '<>', '<&', '>', '>>', '>&', '&', '&&', '&>', '|', '||', '|&', ';'
     SIMPLE_TOKEN_PATTERN = '([<>&][>&]?|\|[|&]?|;)'
     QUOTE_WORD_PATTERN = %Q!["']!
@@ -8,17 +9,20 @@ module ReddishParser
     def initialize(line)
       @line = line.dup
       @last_token = nil
-      @statement = nil
+      @statement = 0
 
-      @separator_pattern = "[ \t\n]"
+      if ReddishParser.lexer_debug
+        STDERR.puts "lexer: Input line #{@line.gsub(/\n/, "\\n")}"
+      end
     end
 
     def get_token
       if @last_token.nil? || @last_token != :word
-         read_sperator
+        read_separator(false)
       end
 
       token = eof_token       ||
+              newline_token   ||
               simple_token    ||
               number_token    ||
               hyphen_token    ||
@@ -26,8 +30,12 @@ module ReddishParser
               word_token
 
       @last_token = token.type
-      if token.type == :";" && @statement.nil?
+      if token.type == :";" && @statement.zero?
         @last_token = nil
+      end
+
+      if ReddishParser.lexer_debug
+        STDERR.puts "lexer: Token type: #{token.type}"
       end
 
       token
@@ -39,15 +47,24 @@ module ReddishParser
       end
     end
 
+    def newline_token
+      # remove escaped newline
+      @line.slice!(/\A\\\n/)
+
+      if token = @line.slice!(/\A\n/)
+        Token.new(token.to_sym)
+      end
+    end
+
     def simple_token
-      token = @line.slice!(/^#{SIMPLE_TOKEN_PATTERN}/)
+      token = @line.slice!(/\A#{SIMPLE_TOKEN_PATTERN}/)
       return unless token
       Token.new(token.to_sym)
     end
 
     def number_token
-      if number = @line.slice!(/^\d+(?=[<>])/) ||
-        ([:"<&", :">&"].include?(@last_token) && number = @line.slice!(/^\d+/))
+      if number = @line.slice!(/\A\d+(?=[<>])/) ||
+        ([:"<&", :">&"].include?(@last_token) && number = @line.slice!(/\A\d+/))
         Token.new(:number, number)
       end
     end
@@ -59,17 +76,17 @@ module ReddishParser
     end
 
     def keyword_token
-      return if @last_token && @statement.nil?
+      return if @last_token && @statement.zero?
 
-      if k = @line.slice!(/^(if|unless)(?=#{@separator_pattern})/)
-        @statement = :if
+      if k = @line.slice!(/\A(if|unless)(?=#{separator_pattern}|\z)/)
+        @statement += 1
         Token.new(k.to_sym)
-      elsif @line.slice!(/^then(?=#{@separator_pattern})?/)
+      elsif @line.slice!(/\Athen(?=#{separator_pattern})?/)
         Token.new(:then)
-      elsif k = @line.slice!(/^el(se|s?if)(?=#{@separator_pattern})?/)
+      elsif k = @line.slice!(/\Ael(se|s?if)(?=#{separator_pattern})?/)
         Token.new(k.to_sym)
-      elsif k = @line.slice!(/^(fi|end)(?=#{@separator_pattern})?/)
-        @statement = nil
+      elsif k = @line.slice!(/\A(fi|end)(?=#{separator_pattern})?/)
+        @statement -= 1
         Token.new(k.to_sym)
       end
     end
@@ -83,20 +100,20 @@ module ReddishParser
     end
 
     def separator
-      if read_sperator
+      if read_separator
         [:separator]
       end
     end
 
     def quote_word
-      if s = @line.slice!(/^#{QUOTE_WORD_PATTERN}/)
+      if s = @line.slice!(/\A#{QUOTE_WORD_PATTERN}/)
         type = s == '"' ? :dquote : :quote
         [type, read_quote_word(s)]
       end
     end
 
     def percent_word
-      if s = @line.slice!(/^#{PERCENT_WORD_PATTERN}/)
+      if s = @line.slice!(/\A#{PERCENT_WORD_PATTERN}/)
         _, quote, paren = s.split("")
         if quote == "!"
           quote = "Q"
@@ -110,20 +127,28 @@ module ReddishParser
 
     def read_quote_word(term)
       t = Regexp.escape(term)
-      word = @line.slice!(/^.*?(?<!\\)#{t}/)
-      raise SyntaxError.new("unterminated string") unless word
+      word = @line.slice!(/\A.*?(?<!\\)#{t}/m)
+      raise UnterminatedString.new unless word
       word.delete_suffix!(term).gsub(/\\#{t}/, term)
     end
 
     def normal_word
-      pattern = [SIMPLE_TOKEN_PATTERN, QUOTE_WORD_PATTERN, PERCENT_WORD_PATTERN, @separator_pattern].join("|")
+      pattern = [SIMPLE_TOKEN_PATTERN, QUOTE_WORD_PATTERN, PERCENT_WORD_PATTERN, separator_pattern].join("|")
       pos = @line.index(/(?<!\\)(#{pattern})/)
       pos = pos ? pos - 1 : -1
       [:normal, @line.slice!(0..pos)]
     end
 
-    def read_sperator
-      @line.slice!(/^#{@separator_pattern}+/)
+    def read_separator(newline=true)
+      @line.slice!(/\A#{separator_pattern(newline)}+/)
+    end
+
+    def separator_pattern(newline=true)
+      newline ? "[ \t\n]" : "[ \t]"
+    end
+
+    def state
+      [@statement]
     end
   end
 end

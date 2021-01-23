@@ -1,6 +1,7 @@
 module Reddish
   class Shell
     PS1 = "reddish> "
+    PS2 = "reddish* "
 
     def initialize(opts)
       @opts = opts
@@ -19,18 +20,12 @@ module Reddish
       opts
     end
 
-    def read_from_tty
+    def readline(prompt)
       if @opts["i"]
-        STDOUT.write(PS1)
+        STDOUT.write(prompt)
         STDIN.gets
       else
-        begin
-          linenoise(PS1)
-        rescue Errno::ENOTTY => e
-          # bugs:
-          # Errono::NOTTY occurs unintentionally.
-          # (e.g. `echo hoge | reddish` )
-        end
+        linenoise(prompt)
       end
     end
 
@@ -39,6 +34,11 @@ module Reddish
         ReddishParser.debug = true
       end
 
+      if ENV["REDDISH_LEXER_DEBUG"]
+        ReddishParser.lexer_debug = true
+      end
+
+      Linenoise.multi_line = true
       if File.exists?(history_file_path)
         Linenoise::History.load(history_file_path)
       elsif Dir.exists?(@data_home).!
@@ -50,35 +50,55 @@ module Reddish
       if cmd = @opts["c"]
         parse_and_exec(cmd)
       else
-        while line = read_from_tty
-          parse_and_exec(line)
+        cmdline = []
+        need_next_list = false
+        loop do
+          line = readline(need_next_list ? PS2 : PS1)
+          break if line.nil? && cmdline.empty?
+          cmdline << line
+          if line[-1] == "\\"
+            need_next_list = true
+            next
+          end
+          parse_and_exec(cmdline.join("\n"))
+
+          cmdline.each do |cmd|
+            Linenoise::History.add(cmd)
+          end
+          Linenoise::History.save(history_file_path)
+
+          need_next_list = false
+        rescue ReddishParser::UnterminatedString, ReddishParser::UnexpectedKeyword => e
+          if line.nil?
+            need_next_list = false
+            STDERR.puts "Unterminated string."
+          else
+            need_next_list = true
+          end
+        rescue Errno::EAGAIN, Errno::EWOULDBLOCK => e
+          # reset command line
+          need_next_list = false
+        rescue => e
+          need_next_list = false
+          STDERR.puts "#{e.class} #{e.message}"
+          if ENV['REDDISH_DEBUG']
+            STDERR.puts
+            STDERR.puts "backtrace:"
+            e.backtrace.each_with_index do |t, i|
+              STDERR.puts " [#{i}] #{t}"
+            end
+          end
+        ensure
+          cmdline = [] unless need_next_list
         end
       end
     end
 
     def parse_and_exec(line)
-      return if line.nil? || line.empty?
+      parse_result = ReddishParser.parse(line)
 
-      begin
-        parse_result = ReddishParser.parse(line)
-
-        if parse_result
-          @job.run(@executor, parse_result)
-
-          if $?.success?
-            Linenoise::History.add(line)
-            Linenoise::History.save(history_file_path)
-          end
-        end
-      rescue => e
-        STDERR.puts "#{e.class} #{e.message}"
-        if ENV['REDDISH_DEBUG']
-          STDERR.puts
-          STDERR.puts "backtrace:"
-          e.backtrace.each_with_index do |t, i|
-            STDERR.puts " [#{i}] #{t}"
-          end
-        end
+      if parse_result
+        @job.run(@executor, parse_result)
       end
     end
 

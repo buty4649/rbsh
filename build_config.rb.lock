@@ -4,16 +4,6 @@ mruby_version:
   release_no: 20102
 builds:
   host:
-    https://github.com/Asmod4n/mruby-linenoise.git:
-      url: https://github.com/Asmod4n/mruby-linenoise.git
-      branch: HEAD
-      commit: 464d0b503e3c268524de089c885d5741f0bb99ff
-      version: 0.0.0
-    https://github.com/pyama86/mruby-signal-thread.git:
-      url: https://github.com/pyama86/mruby-signal-thread.git
-      branch: master
-      commit: 5ce0e3ec9575b179be5513917fe7ff81d4438be7
-      version: 0.0.0
     https://github.com/iij/mruby-dir.git:
       url: https://github.com/iij/mruby-dir.git
       branch: HEAD
@@ -44,111 +34,30 @@ builds:
       branch: HEAD
       commit: 29085a3357ce6029e56f0e599a1a314d26bd2247
       version: 0.0.0
-    https://github.com/iij/mruby-mtest.git:
-      url: https://github.com/iij/mruby-mtest.git
-      branch: HEAD
-      commit: 34a477d249b0d21671058be33aa75d04c3e981ba
-      version: 0.0.0
-    https://github.com/iij/mruby-errno.git:
-      url: https://github.com/iij/mruby-errno.git
-      branch: HEAD
-      commit: b4415207ff6ea62360619c89a1cff83259dc4db0
-      version: 0.0.0
-    https://github.com/mattn/mruby-thread.git:
-      url: https://github.com/mattn/mruby-thread.git
-      branch: master
-      commit: 5786d1787753b9cd90f3960174c1da2958bd7af2
-      version: 0.0.0
-    https://github.com/appPlant/mruby-os.git:
-      url: https://github.com/appPlant/mruby-os.git
-      branch: HEAD
-      commit: 89523f3a2a4e800c394165695e12b3d92d5775a1
-      version: 0.0.0
     https://github.com/kou/mruby-pp.git:
       url: https://github.com/kou/mruby-pp.git
       branch: HEAD
       commit: 0e71c1adabf1197a8291690ab1d21caa6551752d
       version: 1.0.4
-    https://github.com/gromnitsky/mruby-dir-glob.git:
-      url: https://github.com/gromnitsky/mruby-dir-glob.git
-      branch: master
-      commit: 334c040a2e2c4c2689f8c3440168011f64d57ada
-      version: 0.0.1
-    https://github.com/ksss/mruby-file-stat.git:
-      url: https://github.com/ksss/mruby-file-stat.git
-      branch: master
-      commit: 66cf135ff9642d96a6127a79b307f6314e606deb
+    https://github.com/iij/mruby-mtest.git:
+      url: https://github.com/iij/mruby-mtest.git
+      branch: HEAD
+      commit: 34a477d249b0d21671058be33aa75d04c3e981ba
       version: 0.0.0
     https://github.com/katzer/mruby-os.git:
       url: https://github.com/katzer/mruby-os.git
       branch: HEAD
       commit: 89523f3a2a4e800c394165695e12b3d92d5775a1
       version: 0.0.0
-  mirb:
-    https://github.com/Asmod4n/mruby-linenoise.git:
-      url: https://github.com/Asmod4n/mruby-linenoise.git
-      branch: HEAD
-      commit: 464d0b503e3c268524de089c885d5741f0bb99ff
-      version: 0.0.0
-    https://github.com/pyama86/mruby-signal-thread.git:
-      url: https://github.com/pyama86/mruby-signal-thread.git
-      branch: master
-      commit: 5ce0e3ec9575b179be5513917fe7ff81d4438be7
-      version: 0.0.0
-    https://github.com/iij/mruby-dir.git:
-      url: https://github.com/iij/mruby-dir.git
-      branch: HEAD
-      commit: 89dceefa1250fb1ae868d4cb52498e9e24293cd1
-      version: 0.0.0
-    https://github.com/iij/mruby-env.git:
-      url: https://github.com/iij/mruby-env.git
-      branch: HEAD
-      commit: 056ae324451ef16a50c7887e117f0ea30921b71b
-      version: 0.0.0
-    https://github.com/mattn/mruby-onig-regexp.git:
-      url: https://github.com/mattn/mruby-onig-regexp.git
-      branch: HEAD
-      commit: 76087d150d12f167e95ae10d326099b352cf3d18
-      version: 0.0.0
-    https://github.com/buty4649/mruby-process.git:
-      url: https://github.com/buty4649/mruby-process.git
-      branch: HEAD
-      commit: 8f6da98a984706468c63dc525edbcfeb7156833c
-      version: 0.0.0
-    https://github.com/buty4649/mruby-getopts.git:
-      url: https://github.com/buty4649/mruby-getopts.git
-      branch: HEAD
-      commit: b8b8b252d9a60b8f38c230be750821e2bb07276e
-      version: 0.0.0
-    https://github.com/haconiwa/mruby-exec.git:
-      url: https://github.com/haconiwa/mruby-exec.git
-      branch: HEAD
-      commit: 29085a3357ce6029e56f0e599a1a314d26bd2247
-      version: 0.0.0
     https://github.com/iij/mruby-errno.git:
       url: https://github.com/iij/mruby-errno.git
       branch: HEAD
       commit: b4415207ff6ea62360619c89a1cff83259dc4db0
       version: 0.0.0
-    https://github.com/mattn/mruby-thread.git:
-      url: https://github.com/mattn/mruby-thread.git
-      branch: master
-      commit: 5786d1787753b9cd90f3960174c1da2958bd7af2
-      version: 0.0.0
-    https://github.com/kou/mruby-pp.git:
-      url: https://github.com/kou/mruby-pp.git
+    https://github.com/buty4649/mruby-linenoise.git:
+      url: https://github.com/buty4649/mruby-linenoise.git
       branch: HEAD
-      commit: 0e71c1adabf1197a8291690ab1d21caa6551752d
-      version: 1.0.4
-    https://github.com/gromnitsky/mruby-dir-glob.git:
-      url: https://github.com/gromnitsky/mruby-dir-glob.git
-      branch: master
-      commit: 334c040a2e2c4c2689f8c3440168011f64d57ada
-      version: 0.0.1
-    https://github.com/ksss/mruby-file-stat.git:
-      url: https://github.com/ksss/mruby-file-stat.git
-      branch: master
-      commit: 66cf135ff9642d96a6127a79b307f6314e606deb
+      commit: 7cdc0e7b2a71f66de1d62578a51b8eba8f9d21af
       version: 0.0.0
   fdtest:
     https://github.com/gromnitsky/mruby-dir-glob.git:
@@ -156,10 +65,10 @@ builds:
       branch: HEAD
       commit: 334c040a2e2c4c2689f8c3440168011f64d57ada
       version: 0.0.1
-    https://github.com/iij/mruby-regexp-pcre.git:
-      url: https://github.com/iij/mruby-regexp-pcre.git
+    https://github.com/mattn/mruby-onig-regexp.git:
+      url: https://github.com/mattn/mruby-onig-regexp.git
       branch: HEAD
-      commit: a961225c0953dd2bd987111f0836821573616de2
+      commit: 76087d150d12f167e95ae10d326099b352cf3d18
       version: 0.0.0
     https://github.com/iij/mruby-process.git:
       url: https://github.com/iij/mruby-process.git
@@ -185,11 +94,6 @@ builds:
       url: https://github.com/ksss/mruby-file-stat.git
       branch: HEAD
       commit: 66cf135ff9642d96a6127a79b307f6314e606deb
-      version: 0.0.0
-    https://github.com/mattn/mruby-onig-regexp.git:
-      url: https://github.com/mattn/mruby-onig-regexp.git
-      branch: HEAD
-      commit: 76087d150d12f167e95ae10d326099b352cf3d18
       version: 0.0.0
   sigtest:
     https://github.com/iij/mruby-io.git:

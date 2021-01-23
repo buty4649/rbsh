@@ -43,7 +43,7 @@ static int yyparse(parser_state*);
 
 %token WORD NUMBER MINUS NUMBER_MINUS
 %token IF THEN ELSE ELIF ELSIF FI END UNLESS
-%token AND AND_AND OR OR_OR OR_AND SEMICOLON
+%token AND_AND OR_OR OR_AND
 %token GT GT_GT AND_GT GT_AND LT LT_AND LT_GT
 %start inputunit
 
@@ -54,24 +54,30 @@ inputunit
 | simple_list { p->result = $1; }
 
 simple_list
-: connector { $$ = SIMPLELIST(p, $1, MRB_FALSE); }
-| connector AND       { $$ = SIMPLELIST(p, $1, MRB_TRUE); }
-| connector SEMICOLON { $$ = SIMPLELIST(p, $1, MRB_FALSE); }
+: connector     { $$ = SIMPLELIST(p, $1, MRB_FALSE); }
+| connector '&' { $$ = SIMPLELIST(p, $1, MRB_TRUE); }
+| connector ';' { $$ = SIMPLELIST(p, $1, MRB_FALSE); }
 
 connector
-: connector AND_AND   pipeline { $$ = CONNECTOR(p, "and", $1, $3); }
-| connector OR_OR     pipeline { $$ = CONNECTOR(p, "or",  $1, $3); }
-| connector AND       pipeline { $$ = CONNECTOR(p, "async", $1, $3); }
-| connector SEMICOLON pipeline { $$ = CONNECTOR(p, "semicolon", $1, $3); }
-| pipeline
+: connector AND_AND newline_list pipeline { $$ = CONNECTOR(p, "and", $1, $4); }
+| connector OR_OR   newline_list pipeline { $$ = CONNECTOR(p, "or",  $1, $4); }
+| connector '&'     newline_list pipeline { $$ = CONNECTOR(p, "async", $1, $4); }
+| connector ';'     newline_list pipeline { $$ = CONNECTOR(p, "semicolon", $1, $4); }
+| connector '\n'    newline_list pipeline { $$ = CONNECTOR(p, "semicolon", $1, $4); }
+| newline_list pipeline      { $$ = $2; }
 
 pipeline
-: pipeline OR command     { $$ = PIPELINE(p, $1, $3, MRB_FALSE); }
+: pipeline '|' command    { $$ = PIPELINE(p, $1, $3, MRB_FALSE); }
 | pipeline OR_AND command { $$ = PIPELINE(p, $1, $3, MRB_TRUE); }
 | command
 
 compound_list
-: connector SEMICOLON
+: connector ';' newline_list
+| connector '\n' newline_list
+
+newline_list
+: %empty
+| newline_list '\n'
 
 command
 : simple_command { $$ = COMMAND(p, $1); }
@@ -83,7 +89,7 @@ shell_command
 | unless_statement
 
 if_statement
-: IF compound_list END                                      { $$ = IF_STMT(p, $2, 0, NULL); }
+: IF compound_list END                                      { $$ = IF_STMT(p, $2, 0, NIL); }
 | IF compound_list ELSE compound_list END                   { $$ = IF_STMT(p, $2, 2, NIL, $4); }
 | IF compound_list elsif_clause END                         { $$ = IF_STMT(p, $2, 2, NIL, $3); }
 | IF compound_list THEN compound_list FI                    { $$ = IF_STMT(p, $2, 1, $4); }
@@ -102,7 +108,7 @@ elif_clause
 | ELIF compound_list THEN compound_list elsif_clause       { $$ = IF_STMT(p, $2, 2, $4, $5); }
 
 elsif_clause
-: ELSIF compound_list                                       { $$ = IF_STMT(p, $2, 0, NULL); }
+: ELSIF compound_list                                       { $$ = IF_STMT(p, $2, 0, NIL); }
 | ELSIF compound_list ELSE compound_list                    { $$ = IF_STMT(p, $2, 2, NIL, $4); }
 | ELSIF compound_list THEN compound_list                    { $$ = IF_STMT(p, $2, 1, $4); }
 | ELSIF compound_list THEN compound_list ELSE compound_list { $$ = IF_STMT(p, $2, 2, $4, $6); }
@@ -110,7 +116,7 @@ elsif_clause
 | ELSIF compound_list THEN compound_list elsif_clause       { $$ = IF_STMT(p, $2, 2, $4, $5); }
 
 unless_statement
-: UNLESS compound_list END                                       { $$ = UNLESS_STMT(p, $2, 0, NULL); }
+: UNLESS compound_list END                                       { $$ = UNLESS_STMT(p, $2, 0, NIL); }
 | UNLESS compound_list ELSE compound_list END                    { $$ = UNLESS_STMT(p, $2, 2, NIL, $4); }
 | UNLESS compound_list THEN compound_list END                    { $$ = UNLESS_STMT(p, $2, 1, $4); }
 | UNLESS compound_list THEN compound_list ELSE compound_list END { $$ = UNLESS_STMT(p, $2, 2, $4, $6); }
@@ -156,7 +162,10 @@ static const struct token_type {
     const char *name;
     int type;
 } token_types[] = {
-    {"&",  AND},
+    {"\n", '\n'},
+    {";",  ';'},
+    {"&",  '&'},
+    {"|",  '|'},
     {"&&", AND_AND},
     {"&>", AND_GT},
     {">",  GT},
@@ -166,10 +175,8 @@ static const struct token_type {
     {"<&", LT_AND},
     {"<>", LT_GT},
     {"-",  MINUS},
-    {"|",  OR},
     {"|&", OR_AND},
     {"||", OR_OR},
-    {";",  SEMICOLON},
     {"eof", YYEOF},
     {"number", NUMBER},
     {"word", WORD},
@@ -208,7 +215,8 @@ int yylex(void* lval, parser_state* p) {
 
 void yyerror(parser_state* p, const char* s){
     mrb_value str = mrb_str_new_cstr(p->state, s);
-    mrb_funcall(p->state, p->action, "on_error", 1, str);
+    mrb_value state = mrb_funcall(p->state, p->lexer, "state", 0);
+    mrb_funcall(p->state, p->action, "on_error", 2, str, state);
 }
 
 
