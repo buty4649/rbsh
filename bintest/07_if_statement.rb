@@ -30,6 +30,8 @@ assert("if_statement") do
     "if true && true; then echo OK; fi",
     "if false; true; then echo OK; fi",
     "if true; then echo OK; fi &",
+    "unless false; echo OK; end",
+    "unless true; echo NG; else echo OK; end",
     "unless false; then echo OK; end",
     "unless true; then echo NG; else echo OK; end",
     "if true; then unless false; then echo OK; end; fi",

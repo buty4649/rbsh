@@ -110,8 +110,10 @@ elsif_clause
 | ELSIF compound_list THEN compound_list elsif_clause       { $$ = IF_STMT(p, $2, 2, $4, $5); }
 
 unless_statement
-: UNLESS compound_list THEN compound_list END                   { $$ = UNLESS_STMT(p, $2, 1, $4); }
-| UNLESS compound_list THEN compound_list ELSE compound_list END{ $$ = UNLESS_STMT(p, $2, 2, $4, $6); }
+: UNLESS compound_list END                                       { $$ = UNLESS_STMT(p, $2, 0, NULL); }
+| UNLESS compound_list ELSE compound_list END                    { $$ = UNLESS_STMT(p, $2, 2, NIL, $4); }
+| UNLESS compound_list THEN compound_list END                    { $$ = UNLESS_STMT(p, $2, 1, $4); }
+| UNLESS compound_list THEN compound_list ELSE compound_list END { $$ = UNLESS_STMT(p, $2, 2, $4, $6); }
 
 simple_command
 : simple_command_element { $$ = mrb_ary_new_from_values(p->state, 1, &$1); }
