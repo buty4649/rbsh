@@ -184,9 +184,11 @@ module Reddish
     def split_cmdline(cmdline)
       return if cmdline.nil?
 
-      list = cmdline.map{|c| c.map{|d| Executor.word2str(d)}.join }
-      list.select!{|l| l.empty?.!}
-      [list.first, list[1..-1]]
+      list = cmdline.map do |c|
+        next if c.empty?
+        c.map{|d| Executor.word2str(d)}.join
+      end.compact
+      [list.shift, list]
     end
   end
 end
