@@ -5,7 +5,7 @@ MRuby::Gem::Specification.new('mruby-reddish-parser') do |spec|
 
   spec.add_dependency 'mruby-struct'
   spec.add_dependency 'mruby-io'
-  spec.add_dependency 'mruby-io-stat'
+  spec.add_dependency 'mruby-file-stat'
   spec.add_dependency 'mruby-env',     mgem: 'mruby-env'
   spec.add_dependency 'mruby-process', github: 'buty4649/mruby-process', branch: 'improve-process-exec'
   spec.add_dependency 'mruby-exec',    github: 'buty4649/mruby-exec',    branch: 'add-execve_override_procname'

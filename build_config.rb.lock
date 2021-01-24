@@ -59,6 +59,16 @@ builds:
       branch: HEAD
       commit: 7cdc0e7b2a71f66de1d62578a51b8eba8f9d21af
       version: 0.0.0
+    https://github.com/gromnitsky/mruby-dir-glob.git:
+      url: https://github.com/gromnitsky/mruby-dir-glob.git
+      branch: HEAD
+      commit: 334c040a2e2c4c2689f8c3440168011f64d57ada
+      version: 0.0.1
+    https://github.com/ksss/mruby-file-stat.git:
+      url: https://github.com/ksss/mruby-file-stat.git
+      branch: HEAD
+      commit: 66cf135ff9642d96a6127a79b307f6314e606deb
+      version: 0.0.0
   fdtest:
     https://github.com/gromnitsky/mruby-dir-glob.git:
       url: https://github.com/gromnitsky/mruby-dir-glob.git

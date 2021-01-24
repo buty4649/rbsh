@@ -3,7 +3,6 @@ def gem_config(conf)
 
   conf.gem 'mrbgems/mruby-io-dup2'
   conf.gem 'mrbgems/mruby-io-fcntl'
-  conf.gem 'mrbgems/mruby-io-stat'
   conf.gem 'mrbgems/mruby-process-pgrp'
   conf.gem 'mrbgems/mruby-signal-trap'
   conf.gem 'mrbgems/mruby-reddish-parser'
@@ -15,6 +14,8 @@ def gem_config(conf)
   conf.gem core: 'mruby-struct'
   conf.gem core: 'mruby-pack'
   conf.gem mgem: 'mruby-dir'
+  conf.gem mgem: 'mruby-dir-glob'
+  conf.gem mgem: 'mruby-file-stat'
   conf.gem mgem: 'mruby-env'
   conf.gem mgem: 'mruby-onig-regexp' do |c|
     c.cc.flags << '-std=gnu99 -Wno-declaration-after-statement'

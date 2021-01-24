@@ -157,8 +157,8 @@ module Reddish
       return command if command.include?("/")
 
       result = ENV["PATH"].split(/:/)
-                           .map {|dir| "#{dir}/#{command}" }
-                           .find {|path| File.exists?(path) }
+                          .map {|dir| "#{dir}/#{command}" }
+                          .find {|path| File.exists?(path) }
       return result || command
     end
 
