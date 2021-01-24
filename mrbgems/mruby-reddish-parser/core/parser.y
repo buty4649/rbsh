@@ -15,12 +15,12 @@ typedef struct parser_state {
 
 #define ACTION(p, n, c, ...)   mrb_funcall(p->state, p->action, n, c, __VA_ARGS__)
 #define APPEND_REDIRECT(p, s, r)  ACTION(p, "on_append_redirect", 2, s, r)
+#define ASYNC(p, c)               ACTION(p, "on_async", 1, c)
 #define COMMAND(p, e)             ACTION(p, "on_command", 1, e)
 #define CONNECTOR(p, t, a, b)     ACTION(p, "on_connector", 3, mrb_symbol_value(mrb_intern_cstr(p->state, t)), a, b)
 #define IF_STMT(p, s, c, ...)     ACTION(p, "on_if_stmt", (c+2), s, MRB_FALSE, __VA_ARGS__)
 #define PIPELINE(p, a, b, r)      ACTION(p, "on_pipeline", 3, a, b, r)
 #define REDIRECT(p, t, c, ...)    ACTION(p, "on_redirect", (c+1), mrb_symbol_value(mrb_intern_cstr(p->state, t)), __VA_ARGS__)
-#define SIMPLELIST(p, c, a)       ACTION(p, "on_simple_list", 2, c, a)
 #define UNLESS_STMT(p, s, c, ...) ACTION(p, "on_if_stmt", (c+2), s, MRB_TRUE, __VA_ARGS__)
 #define WORD(p, w)                ACTION(p, "on_word", 1, w)
 
@@ -50,21 +50,23 @@ static int yyparse(parser_state*);
 %%
 
 inputunit
-: %empty
-| simple_list { p->result = $1; }
+: simple_list terminator { p->result = $1; YYACCEPT;}
+| YYEOF                  { p->result = NIL;YYACCEPT;}
+
+terminator: '\n' | YYEOF
 
 simple_list
-: connector     { $$ = SIMPLELIST(p, $1, MRB_FALSE); }
-| connector '&' { $$ = SIMPLELIST(p, $1, MRB_TRUE); }
-| connector ';' { $$ = SIMPLELIST(p, $1, MRB_FALSE); }
+: connector
+| connector '&' { $$ = ASYNC(p, $1); }
+| connector ';'
+
 
 connector
 : connector AND_AND newline_list pipeline { $$ = CONNECTOR(p, "and", $1, $4); }
 | connector OR_OR   newline_list pipeline { $$ = CONNECTOR(p, "or",  $1, $4); }
-| connector '&'     newline_list pipeline { $$ = CONNECTOR(p, "async", $1, $4); }
-| connector ';'     newline_list pipeline { $$ = CONNECTOR(p, "semicolon", $1, $4); }
-| connector '\n'    newline_list pipeline { $$ = CONNECTOR(p, "semicolon", $1, $4); }
-| newline_list pipeline      { $$ = $2; }
+| connector '&' pipeline                  { $$ = CONNECTOR(p, "async", $1, $3); }
+| connector ';' pipeline                  { $$ = CONNECTOR(p, "semicolon", $1, $3); }
+| pipeline
 
 pipeline
 : pipeline '|' command    { $$ = PIPELINE(p, $1, $3, MRB_FALSE); }
@@ -72,8 +74,25 @@ pipeline
 | command
 
 compound_list
-: connector ';' newline_list
-| connector '\n' newline_list
+: list
+| newline_list list1 { $$ = $2; }
+
+list
+: newline_list list0 { $$ = $2; }
+
+list0
+: list1 '\n' newline_list
+| list1 '&'  newline_list { $$ = ASYNC(p, $1); }
+| list1 ';'  newline_list
+
+list1
+: list1 AND_AND newline_list pipeline { $$ = CONNECTOR(p, "and", $1, $4); }
+| list1 OR_OR   newline_list pipeline { $$ = CONNECTOR(p, "or",  $1, $4); }
+| list1 '&'     newline_list pipeline { $$ = CONNECTOR(p, "async", $1, $4); }
+| list1 ';'     newline_list pipeline { $$ = CONNECTOR(p, "semicolon", $1, $4); }
+| list1 '\n'    newline_list pipeline { $$ = CONNECTOR(p, "semicolon", $1, $4); }
+| pipeline
+
 
 newline_list
 : %empty

@@ -13,60 +13,61 @@ def json_from_file(filename)
 end
 
 assert('redirect') do
-  tempfile = Tempfile.new
-  tp = tempfile.path
+  Tempfile.open do |fp|
+    tp = fp.path
 
-  assert_equal(tp, fdtest_run("< #{tp}")["0"],       "<")
-  assert_equal(tp, fdtest_run("3<  #{tp}")["3"],     "n<")
-  assert_equal(nil,fdtest_run("<&-")["0"],           "<&-")
-  assert_equal(tp, fdtest_run("3< #{tp} <&3")["0"],  "<&n")
-  assert_equal(nil,fdtest_run("3< #{tp} <&3-")["3"], "<&n-")
-  assert_equal(nil,fdtest_run("3< #{tp} 3<&-")["3"], "n<&-")
-  assert_equal(tp, fdtest_run("3< #{tp} 4<&3")["3"], "n<&n")
-  assert_equal(tp, fdtest_run("3< #{tp} 4<&3")["4"], "n<&n")
-  assert_equal(nil,fdtest_run("3< #{tp} 4<&3-")["3"],"n<&n-")
-  assert_equal(tp ,fdtest_run("3< #{tp} 4<&3-")["4"],"n<&n-")
+    assert_equal(tp, fdtest_run("< #{tp}")["0"],       "<")
+    assert_equal(tp, fdtest_run("3<  #{tp}")["3"],     "n<")
+    assert_equal(nil,fdtest_run("<&-")["0"],           "<&-")
+    assert_equal(tp, fdtest_run("3< #{tp} <&3")["0"],  "<&n")
+    assert_equal(nil,fdtest_run("3< #{tp} <&3-")["3"], "<&n-")
+    assert_equal(nil,fdtest_run("3< #{tp} 3<&-")["3"], "n<&-")
+    assert_equal(tp, fdtest_run("3< #{tp} 4<&3")["3"], "n<&n")
+    assert_equal(tp, fdtest_run("3< #{tp} 4<&3")["4"], "n<&n")
+    assert_equal(nil,fdtest_run("3< #{tp} 4<&3-")["3"],"n<&n-")
+    assert_equal(tp ,fdtest_run("3< #{tp} 4<&3-")["4"],"n<&n-")
 
-  assert_equal(nil,fdtest_run("> #{tp}")["1"],       ">")
-  assert_equal(tp, json_from_file(tp)["1"],   ">")
-  assert_equal(tp, fdtest_run("3> #{tp}")["3"],      "n>")
-  assert_equal(nil,fdtest_run(">&-")["1"],           ">&-")
-  assert_equal(nil,fdtest_run("3> #{tp} >&3")["1"],  ">&n")
-  assert_equal(tp, json_from_file(tp)["1"],   ">&n")
-  assert_equal(tp, json_from_file(tp)["3"],   ">&n")
-  assert_equal(nil,fdtest_run(">&2-")["2"],          ">&n-")
-  assert_equal(nil,fdtest_run("2>&-")["2"],          "n>&-")
-  assert_equal(tp, fdtest_run("3> #{tp} 4>&3")["3"], "n>&n")
-  assert_equal(tp, fdtest_run("3> #{tp} 4>&3")["4"], "n>&n")
-  assert_equal(nil,fdtest_run("3> #{tp} 4>&3-")["3"],"n>&n-")
-  assert_equal(tp, fdtest_run("3> #{tp} 4>&3-")["4"],"n>&n-")
-  assert_equal(nil,fdtest_run("&> #{tp}")["1"],       "&>")
-  assert_equal(tp, json_from_file(tp)["1"],    "&>")
-  assert_equal(tp, json_from_file(tp)["2"],    "&>")
-  assert_equal(nil,fdtest_run(">& #{tp}")["1"],       ">&")
-  assert_equal(tp, json_from_file(tp)["1"],    ">&")
-  assert_equal(tp, json_from_file(tp)["2"],    ">&")
+    assert_equal(nil,fdtest_run("> #{tp}")["1"],       ">")
+    assert_equal(tp, json_from_file(tp)["1"],   ">")
+    assert_equal(tp, fdtest_run("3> #{tp}")["3"],      "n>")
+    assert_equal(nil,fdtest_run(">&-")["1"],           ">&-")
+    assert_equal(nil,fdtest_run("3> #{tp} >&3")["1"],  ">&n")
+    assert_equal(tp, json_from_file(tp)["1"],   ">&n")
+    assert_equal(tp, json_from_file(tp)["3"],   ">&n")
+    assert_equal(nil,fdtest_run(">&2-")["2"],          ">&n-")
+    assert_equal(nil,fdtest_run("2>&-")["2"],          "n>&-")
+    assert_equal(tp, fdtest_run("3> #{tp} 4>&3")["3"], "n>&n")
+    assert_equal(tp, fdtest_run("3> #{tp} 4>&3")["4"], "n>&n")
+    assert_equal(nil,fdtest_run("3> #{tp} 4>&3-")["3"],"n>&n-")
+    assert_equal(tp, fdtest_run("3> #{tp} 4>&3-")["4"],"n>&n-")
+    assert_equal(nil,fdtest_run("&> #{tp}")["1"],       "&>")
+    assert_equal(tp, json_from_file(tp)["1"],    "&>")
+    assert_equal(tp, json_from_file(tp)["2"],    "&>")
+    assert_equal(nil,fdtest_run(">& #{tp}")["1"],       ">&")
+    assert_equal(tp, json_from_file(tp)["1"],    ">&")
+    assert_equal(tp, json_from_file(tp)["2"],    ">&")
 
-  run("echo test >  #{tp}")
-  run("echo test >> #{tp}")
-  assert_equal("test\ntest\n", File.read(tp), ">>")
-  run("echo test 2>> #{tp} >&2")
-  assert_equal("test\ntest\ntest\n", File.read(tp), "n>>")
+    run("echo test >  #{tp}")
+    run("echo test >> #{tp}")
+    assert_equal("test\ntest\n", File.read(tp), ">>")
+    run("echo test 2>> #{tp} >&2")
+    assert_equal("test\ntest\ntest\n", File.read(tp), "n>>")
 
-  result = run("3> #{tp} #{FDTEST_PATH}")
-  out = result.stdout || result.stderr
-  assert_equal(tp, (out.empty? ? {} : JSON.parse(out))["3"], "3> file fdtest")
+    result = run("3> #{tp} #{FDTEST_PATH}")
+    out = result.stdout || result.stderr
+    assert_equal(tp, (out.empty? ? {} : JSON.parse(out))["3"], "3> file fdtest")
 
-  fdtest_run("3> #{tp} #{tp}")
-  assert_equal(tp, json_from_file(tp)["3"], "fdtest 3> file file")
+    fdtest_run("3> #{tp} #{tp}")
+    assert_equal(tp, json_from_file(tp)["3"], "fdtest 3> file file")
+  end
 
-  tempfile.close
+  Dir.mktmpdir do |dir|
+    tempfile = File.join(dir, "tempfile1")
+    assert_equal(tempfile, fdtest_run("<> #{tempfile}")["0"], "<>")
+    assert_true(File.exist?(tempfile), "<>")
 
-  assert_equal(tp, fdtest_run("<> #{tp}")["0"], "<>")
-  assert_true(File.exist?(tp), "<>")
-  FileUtils.rm(tp)
-
-  assert_equal(tp, fdtest_run("3<> #{tp}")["3"], "n<>")
-  assert_true(File.exist?(tp), "3<>")
-  FileUtils.rm(tp)
+    tempfile2 = File.join(dir, "tempfile2")
+    assert_equal(tempfile2, fdtest_run("3<> #{tempfile2}")["3"], "n<>")
+    assert_true(File.exist?(tempfile2), "3<>")
+  end
 end

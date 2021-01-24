@@ -12,17 +12,17 @@ module ReddishParser
       @statement = 0
 
       if ReddishParser.lexer_debug
-        STDERR.puts "lexer: Input line #{@line.gsub(/\n/, "\\n")}"
+        STDERR.puts "lexer: Input line:#{@line.gsub(/\n/, "\\n")}"
       end
     end
 
     def get_token
       if @last_token.nil? || @last_token != :word
-        read_separator(false)
+        read_separator(@last_token.nil?)
       end
 
-      token = eof_token       ||
-              newline_token   ||
+      token = newline_token   ||
+              eof_token       ||
               simple_token    ||
               number_token    ||
               hyphen_token    ||
@@ -30,12 +30,18 @@ module ReddishParser
               word_token
 
       @last_token = token.type
-      if token.type == :";" && @statement.zero?
+      if [:";", :"\n"].include?(token.type) && @statement.zero?
         @last_token = nil
       end
 
       if ReddishParser.lexer_debug
-        STDERR.puts "lexer: Token type: #{token.type}"
+        type = token.type
+        if type == :"\n"
+          type = "newline"
+        elsif type == :word
+          type = "word #{token.data.first} '#{token.data.last}'"
+        end
+        STDERR.puts "lexer:   Token type: #{type}"
       end
 
       token
@@ -51,8 +57,8 @@ module ReddishParser
       # remove escaped newline
       @line.slice!(/\A\\\n/)
 
-      if token = @line.slice!(/\A\n/)
-        Token.new(token.to_sym)
+      if token = @line.slice!(/\A\n+/)
+        Token.new(token[0].to_sym)
       end
     end
 

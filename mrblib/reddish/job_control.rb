@@ -1,9 +1,7 @@
 class JobControl
-  def run(executor, command_list)
-    command_list.each do |command|
-      executor.exec(command)
-      executor.reset
-    end
+  def run(executor, command)
+    executor.exec(command)
+    executor.reset
   end
 
   def self.start_sigint_trap(pgid, &block)

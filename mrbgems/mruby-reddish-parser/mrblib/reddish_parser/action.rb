@@ -29,6 +29,12 @@ module ReddishParser
       command.append_redirect(redirect)
     end
 
+    def on_async(cmd)
+      target = cmd.class == Element::Connector ? cmd.cmd2 :  cmd
+      target.async = true
+      cmd
+    end
+
     def on_command(elements)
       cmdline, redirect = nil
       elements.each do |element|
@@ -60,17 +66,6 @@ module ReddishParser
       else
         Element::Connector.new(type, cmd1, cmd2)
       end
-    end
-
-    def on_simple_list(connector, async)
-      if async
-        if connector.class == Element::Connector
-          connector.cmd2.async = true
-        else
-          connector.async = true
-        end
-      end
-      [connector]
     end
 
     def on_if_stmt(condition, reverse, cmd1=nil, cmd2=nil)
