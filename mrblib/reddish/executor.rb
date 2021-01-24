@@ -8,9 +8,10 @@ module Reddish
         str = word.to_s
         return str if word.type == :quote
 
-        str.gsub(/\${(\w+)}/) { ENV[$1] || "" }
-           .gsub(/\$(\w+)/)   { ENV[$1] || "" }
-           .gsub(/\$\?/) { $?.nil? ? 0 : $? >> 8 }
+        str.gsub(/(?<!\\)\${(\w+)}/) { ENV[$1] || "" }
+           .gsub(/(?<!\\)\$(\w+)/)   { ENV[$1] || "" }
+           .gsub(/(?<!\\)\$\?/)      { $?.nil? ? 0 : $? >> 8 }
+           .gsub(/\\\$/, "$")
       end
     end
 
