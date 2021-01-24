@@ -29,6 +29,7 @@ assert('simple command') do
   assert_stdout("\'\n", %q{echo '\''})
   assert_stdout("$REDDISH_BINTEST_ENV\n", %Q{echo '$REDDISH_BINTEST_ENV'})
   assert_stdout("$REDDISH_BINTEST_ENV\n", 'echo %q|$REDDISH_BINTEST_ENV|')
+  assert_stdout("testtesttest\n", %q|TEST=test"test"'test' bash -c 'echo $TEST'|)
   ENV.delete('REDDISH_BINTEST_ENV')
 
   assert_equal("OK\n", `echo "echo OK" | #{BIN_PATH}`, "pipe exec")

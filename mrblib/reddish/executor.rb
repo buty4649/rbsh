@@ -58,7 +58,10 @@ module Reddish
       end
       rc = RedirectControl.new(redirect)
 
-      env = command.env.map{|k,v| [k, Executor.word2str(v)]}.to_h
+      env = command.env.map do |key, values|
+        value = values.map{|v| Executor.word2str(v)}.join
+        [key, value]
+      end.to_h
       cmd, args = split_cmdline(command.cmdline)
 
       if cmd.nil?

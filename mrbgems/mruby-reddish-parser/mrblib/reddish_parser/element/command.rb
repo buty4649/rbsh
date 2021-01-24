@@ -28,8 +28,11 @@ module ReddishParser
 
           k, v = c.to_s.split(/=/, 2)
           break unless k =~ /^\w+$/
-          env[k] = Element::Word.new([:normal, v])
           list.shift
+          env[k] = [Element::Word.new([:normal, v])]
+          until list.empty? || list.first.type == :separator
+            env[k] << list.shift
+          end
         end
 
         if list.empty?
