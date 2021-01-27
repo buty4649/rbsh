@@ -113,7 +113,7 @@ module ReddishParser
 
     def quote_word
       if s = @line.slice!(/\A#{QUOTE_WORD_PATTERN}/)
-        type = s == '"' ? :dquote : :quote
+        type = s == '"' ? :normal : :quote
         [type, read_quote_word(s)]
       end
     end
@@ -125,7 +125,7 @@ module ReddishParser
           quote = "Q"
           paren = "!"
         end
-        type = {"Q" => :dquote, "q" => :quote}[quote]
+        type = {"Q" => :normal, "q" => :quote}[quote]
         term = {"(" => ")", "[" => "]", "{" => "}", "<" => ">"}[paren] || paren
         [type, read_quote_word(term)]
       end
