@@ -72,27 +72,22 @@ module ReddishParser
       if cmd1
         Element::IfStatement.new(condition, reverse, cmd1, cmd2)
       else
-        # Dig the head Element::Connector.
-        # If type is Semicolon, set it to condition.
-        # ex. if cmd1; cmd2 ; cmd3 && cmd4; end
-        #        ~~~~
-        #        this
-
-        last_semicolon = nil
-        current = condition
-        while current.class != Element::Command
-          if current.type == :semicolon
-            last_semicolon = current
-          end
-          current = current.cmd1
-        end
-
-        if last_semicolon
-          condition_cmd = last_semicolon.cmd1
-          last_semicolon.cmd1 = nil
+        if condition_cmd = dig_condition_command!(condition)
           Element::IfStatement.new(condition_cmd, reverse, condition, cmd2)
         else
           Element::IfStatement.new(condition, reverse, nil, cmd2)
+        end
+      end
+    end
+
+    def on_while_stmt(condition, cmd=nil)
+      if cmd
+        Element::WhileStatement.new(condition, cmd)
+      else
+        if condition_cmd = dig_condition_command!(condition)
+          Element::WhileStatement.new(condition_cmd, condition)
+        else
+          Element::WhileStatement.new(condition, nil)
         end
       end
     end
@@ -102,6 +97,30 @@ module ReddishParser
         raise ReddishParser::ParserError.new(msg)
       else
         raise ReddishParser::UnexpectedKeyword.new(msg)
+      end
+    end
+
+    private
+    def dig_condition_command!(command)
+      # Dig the head Element::Connector.
+      # If type is Semicolon, set it to condition.
+      # ex. if cmd1; cmd2 ; cmd3 && cmd4; end
+      #        ~~~~
+      #        this
+
+      last_semicolon = nil
+      current = command
+      while current.class != Element::Command
+        if current.type == :semicolon
+          last_semicolon = current
+        end
+        current = current.cmd1
+      end
+
+      if last_semicolon
+        condition_cmd = last_semicolon.cmd1
+        last_semicolon.cmd1 = nil
+        condition_cmd
       end
     end
   end

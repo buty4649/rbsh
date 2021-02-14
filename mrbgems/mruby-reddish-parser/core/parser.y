@@ -22,6 +22,7 @@ typedef struct parser_state {
 #define PIPELINE(p, a, b, r)      ACTION(p, "on_pipeline", 3, a, b, r)
 #define REDIRECT(p, t, c, ...)    ACTION(p, "on_redirect", (c+1), mrb_symbol_value(mrb_intern_cstr(p->state, t)), __VA_ARGS__)
 #define UNLESS_STMT(p, s, c, ...) ACTION(p, "on_if_stmt", (c+2), s, MRB_TRUE, __VA_ARGS__)
+#define WHILE_STMT(p, s, c)    ACTION(p, "on_while_stmt", 2, s, c)
 #define WORD(p, w)                ACTION(p, "on_word", 1, w)
 
 #define FIXNUM(i) mrb_fixnum_value(i)
@@ -43,6 +44,7 @@ static int yyparse(parser_state*);
 
 %token WORD NUMBER MINUS NUMBER_MINUS
 %token IF THEN ELSE ELIF ELSIF FI END UNLESS
+%token WHILE DO DONE
 %token AND_AND OR_OR OR_AND
 %token GT GT_GT AND_GT GT_AND LT LT_AND LT_GT
 %start inputunit
@@ -106,6 +108,7 @@ command
 shell_command
 : if_statement
 | unless_statement
+| while_statement
 
 if_statement
 : IF compound_list END                                      { $$ = IF_STMT(p, $2, 0, NIL); }
@@ -139,6 +142,11 @@ unless_statement
 | UNLESS compound_list ELSE compound_list END                    { $$ = UNLESS_STMT(p, $2, 2, NIL, $4); }
 | UNLESS compound_list THEN compound_list END                    { $$ = UNLESS_STMT(p, $2, 1, $4); }
 | UNLESS compound_list THEN compound_list ELSE compound_list END { $$ = UNLESS_STMT(p, $2, 2, $4, $6); }
+
+while_statement
+: WHILE compound_list END                   { $$ = WHILE_STMT(p, $2, NIL); }
+| WHILE compound_list DO compound_list DONE { $$ = WHILE_STMT(p, $2, $4); }
+| WHILE compound_list DO compound_list END  { $$ = WHILE_STMT(p, $2, $4); }
 
 simple_command
 : simple_command_element { $$ = mrb_ary_new_from_values(p->state, 1, &$1); }
@@ -207,6 +215,9 @@ static const struct token_type {
     {"fi", FI},
     {"end", END},
     {"unless", UNLESS},
+    {"while", WHILE},
+    {"do", DO},
+    {"done", DONE},
     {NULL, 0}
 };
 

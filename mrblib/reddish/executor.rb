@@ -56,6 +56,16 @@ module Reddish
         else
           if_statement(command)
         end
+      elsif klass == ReddishParser::Element::WhileStatement
+        if command.async
+          Process.fork do
+            Process.setpgid(0, 0)
+            @pgid = $$
+            while_statement(command)
+          end
+        else
+          while_statement(command)
+        end
       end
     end
 
@@ -182,6 +192,19 @@ module Reddish
           exec(statement.cmd1)
         elsif statement.cmd2
           exec(statement.cmd2)
+        end
+
+        # return last status
+        $?
+      end
+    end
+
+    def while_statement(statement)
+      RedirectControl.new(statement.redirect).apply(true) do
+        loop do
+          exec(statement.condition)
+          break unless $?.success?
+          exec(statement.cmd)
         end
 
         # return last status
