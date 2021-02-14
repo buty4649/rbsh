@@ -3,7 +3,7 @@ module ReddishParser
 
     # '<', '<>', '<&', '>', '>>', '>&', '&', '&&', '&>', '|', '||', '|&', ';'
     SIMPLE_TOKEN_PATTERN = '([<>&][>&]?|\|[|&]?|;)'
-    QUOTE_WORD_PATTERN = %Q!["']!
+    QUOTE_WORD_PATTERN = %Q!["'`]!
     PERCENT_WORD_PATTERN = '(%(!|[qQ]\W))'
 
     def initialize(line)
@@ -100,6 +100,7 @@ module ReddishParser
     def word_token
       word = separator    ||
              quote_word   ||
+             exec_word    ||
              percent_word ||
              normal_word
       Token.new(:word, word)
@@ -113,8 +114,18 @@ module ReddishParser
 
     def quote_word
       if s = @line.slice!(/\A#{QUOTE_WORD_PATTERN}/)
-        type = s == '"' ? :normal : :quote
+        type = case s
+               when '"' then :normal
+               when "'" then :quote
+               when '`' then :execute
+               end
         [type, read_quote_word(s)]
+      end
+    end
+
+    def exec_word
+      if s = @line.slice!(/\A\$\(/)
+        [:execute, read_quote_word(")")]
       end
     end
 

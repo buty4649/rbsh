@@ -8,10 +8,22 @@ module Reddish
         str = word.to_s
         return str if word.type == :quote
 
-        str.gsub(/(?<!\\)\${(\w+)}/) { ENV[$1] || "" }
-           .gsub(/(?<!\\)\$(\w+)/)   { ENV[$1] || "" }
-           .gsub(/(?<!\\)\$\?/)      { $?.nil? ? 0 : $? >> 8 }
-           .gsub(/\\\$/, "$")
+        str = str.gsub(/(?<!\\)\${(\w+)}/) { ENV[$1] || "" }
+                 .gsub(/(?<!\\)\$(\w+)/)   { ENV[$1] || "" }
+                 .gsub(/(?<!\\)\$\?/)      { $?.nil? ? 0 : $? >> 8 }
+                 .gsub(/\\\$/, "$")
+
+        return str if word.type != :execute
+
+        parse = ReddishParser.parse(str)
+
+        r, w = IO.pipe
+        Executor.new.exec(parse, {stdout: w.fileno})
+        w.close
+        result = r.read.chomp.split(/ \t\n/)
+        r.close
+
+        result.nil? ? nil : result
       end
     end
 
@@ -60,7 +72,7 @@ module Reddish
       rc = RedirectControl.new(redirect)
 
       env = command.env.map do |key, values|
-        value = values.map{|v| Executor.word2str(v)}.join
+        value = values.map{|v| Executor.word2str(v)}.flatten.join
         [key, value]
       end.to_h
       cmd, args = split_cmdline(command.cmdline)
@@ -190,7 +202,8 @@ module Reddish
 
       list = cmdline.map do |c|
         next if c.empty?
-        c.map{|d| Executor.word2str(d)}.join
+        d = c.map{|d| Executor.word2str(d)}.flatten.compact
+        d.empty? ? nil : d.join
       end.compact
       [list.shift, list]
     end

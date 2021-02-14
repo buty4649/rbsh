@@ -23,6 +23,10 @@ assert('simple command') do
     "echo test &",
     "echo test ;",
     ["echo \\", "test"],
+    "echo `echo test`",
+    "echo `echo $REDDISH_BINTEST_ENV`",
+    "echo $(echo test)",
+    "echo $(echo $REDDISH_BINTEST_ENV)",
   ].each do |command|
     assert_stdout("test\n", command)
   end
