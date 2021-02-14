@@ -1,11 +1,12 @@
 module ReddishParser
   module Element
     class WhileStatement
-      attr_reader :condition, :cmd, :redirect
+      attr_reader :condition, :reverse, :cmd, :redirect
       attr_accessor :async
 
-      def initialize(condition, cmd=nil)
+      def initialize(condition, reverse, cmd=nil)
         @condition = condition
+        @reverse = reverse
         @cmd = cmd
         @async = false
       end

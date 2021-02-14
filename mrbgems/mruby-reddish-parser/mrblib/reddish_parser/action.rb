@@ -80,14 +80,14 @@ module ReddishParser
       end
     end
 
-    def on_while_stmt(condition, cmd=nil)
+    def on_while_stmt(condition, reverse, cmd=nil)
       if cmd
-        Element::WhileStatement.new(condition, cmd)
+        Element::WhileStatement.new(condition, reverse, cmd)
       else
         if condition_cmd = dig_condition_command!(condition)
-          Element::WhileStatement.new(condition_cmd, condition)
+          Element::WhileStatement.new(condition_cmd, reverse, condition)
         else
-          Element::WhileStatement.new(condition, nil)
+          Element::WhileStatement.new(condition, reverse, nil)
         end
       end
     end

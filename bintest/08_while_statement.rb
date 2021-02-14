@@ -6,12 +6,14 @@ assert("while_statement") do
     "while [ $TEST -ne 10 ]; echo $TEST; TEST=`expr $TEST + 1`; end",
     "while [ $TEST -ne 10 ]; do echo $TEST; TEST=`expr $TEST + 1`; done",
     "while [ $TEST -ne 10 ]; do echo $TEST; TEST=`expr $TEST + 1`; end",
+    "until [ $TEST -eq 10 ]; echo $TEST; TEST=`expr $TEST + 1`; end",
+    "until [ $TEST -eq 10 ]; do echo $TEST; TEST=`expr $TEST + 1`; end",
   ].each do |command|
     ENV['TEST'] = "0"
     assert_stdout(expect_output, command)
   end
 
-  ["while", "do", "done"].each do |keyword|
+  ["while", "do", "done", "until"].each do |keyword|
     assert_stdout("#{keyword}\n", "echo #{keyword}")
   end
 

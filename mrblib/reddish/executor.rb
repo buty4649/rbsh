@@ -203,7 +203,8 @@ module Reddish
       RedirectControl.new(statement.redirect).apply(true) do
         loop do
           exec(statement.condition)
-          break unless $?.success?
+          state = statement.reverse ? $?.success?.! : $?.success?
+          break unless state
           exec(statement.cmd)
         end
 
