@@ -1,18 +1,15 @@
 def gem_config(conf)
-  #conf.gembox 'default'
+
+  Dir.glob("#{root}/mrbgems/mruby-*/mrbgem.rake") do |x|
+    g = File.basename File.dirname x
+    conf.gem :core => g unless g =~ /^mruby-(bin-.+|test)$/
+  end
 
   conf.gem 'mrbgems/mruby-io-dup2'
   conf.gem 'mrbgems/mruby-io-fcntl'
   conf.gem 'mrbgems/mruby-process-pgrp'
   conf.gem 'mrbgems/mruby-signal-trap'
   conf.gem 'mrbgems/mruby-reddish-parser'
-  conf.gem core: 'mruby-array-ext'
-  conf.gem core: 'mruby-kernel-ext'
-  conf.gem core: 'mruby-enumerator'
-  conf.gem core: 'mruby-enum-ext'
-  conf.gem core: 'mruby-numeric-ext'
-  conf.gem core: 'mruby-struct'
-  conf.gem core: 'mruby-pack'
   conf.gem mgem: 'mruby-dir'
   conf.gem mgem: 'mruby-dir-glob'
   conf.gem mgem: 'mruby-file-stat'
