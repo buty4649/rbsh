@@ -19,5 +19,5 @@ def run(command)
 end
 
 def assert_stdout(assert, command)
-  assert_equal(assert, run(command).stdout, command)
+  assert_match(assert, run(command).stdout, command)
 end

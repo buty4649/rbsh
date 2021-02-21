@@ -12,17 +12,23 @@ module Reddish
 
     def self.getopts(args)
       class << args; include Getopts; end
-      opts = args.getopts("ic:", "version")
+      opts = args.getopts("ic:r", "version", "ruby")
       if opts["?"]
         # Invalid option
         exit(2)
       end
       args.optind.times { args.shift }
-      opts["script"] = args.first
+      opts["script"] = args.shift
+      opts["args"] = args
       opts
     end
 
     def run
+      if @opts["r"] || @opts["ruby"]
+        script = @opts["script"] || "-"
+        exit(Ruby.exec_from_file(script, *@opts["args"]))
+      end
+
       if ENV["REDDISH_PARSER_DEBUG"]
         ReddishParser.debug = true
       end

@@ -10,6 +10,7 @@ def gem_config(conf)
   conf.gem 'mrbgems/mruby-process-pgrp'
   conf.gem 'mrbgems/mruby-signal-trap'
   conf.gem 'mrbgems/mruby-reddish-parser'
+  conf.gem 'mrbgems/mruby-ruby-exec'
   conf.gem mgem: 'mruby-dir'
   conf.gem mgem: 'mruby-dir-glob'
   conf.gem mgem: 'mruby-file-stat'
@@ -21,6 +22,7 @@ def gem_config(conf)
   conf.gem github: 'buty4649/mruby-getopts', branch: 'add-prog-name'
   conf.gem github: 'buty4649/mruby-linenoise', branch: 'raise-ctrl-c'
   conf.gem github: 'haconiwa/mruby-exec'
+  conf.gem github: 'ij/mruby-require'
 
   conf.gem github: "kou/mruby-pp"
 end
