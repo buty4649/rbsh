@@ -30,6 +30,9 @@ module Reddish
     def initialize
       @defined_command = {}
       @pgid = nil
+      @loop_level = 0
+      @breaking = 0
+      @continuing = 0
     end
 
     def define_command(name, code)
@@ -41,6 +44,7 @@ module Reddish
     end
 
     def exec(command, opts={})
+      return if @breaking.nonzero? || @continuing.nonzero?
       klass = command.class
       if klass == ReddishParser::Element::Command
         command_exec(command, opts)
@@ -96,6 +100,8 @@ module Reddish
             ENV[name] = value
           end
         end
+      elsif cmd =~ /^(break|continue|next)$/
+        return do_break_or_continue(cmd, args)
       elsif c = @defined_command[cmd.to_sym]
         old_env = env&.map do |name, value|
           old_value = ENV[name]
@@ -201,19 +207,36 @@ module Reddish
 
     def while_statement(statement)
       RedirectControl.new(statement.redirect).apply(true) do
+        @loop_level += 1
         loop do
           exec(statement.condition)
           state = statement.reverse ? $?.success?.! : $?.success?
-          break unless state
+          unless state
+            @breaking -= 1 if @breaking.nonzero?
+            @continuing -= 1 if @continuing.nonzero?
+            break
+          end
+
           exec(statement.cmd)
+
+          if @breaking.nonzero?
+            @breaking -= 1
+            break
+          end
+
+          if @continuing.nonzero?
+            @continuing -= 1
+            break if @continuing.nonzero?
+          end
         end
+
+        @loop_level -= 1
 
         # return last status
         $?
       end
     end
 
-    private
     def cmd2_exec?(t, r)
       (t == :and && r.success?)   ||
       (t == :or  && r.success?.!) ||
@@ -230,6 +253,42 @@ module Reddish
         d.empty? ? nil : d.join
       end.compact
       [list.shift, list]
+    end
+
+    def do_break_or_continue(cmd, args)
+      if @loop_level.zero?
+        STDERR.puts %|reddish-shell: #{cmd}: only meaningful in a `for', `while', or `until' loop|
+        return Process::Status.new(nil, 1)
+      end
+
+      level = 1
+
+      unless args.empty?
+        if args.length > 1
+          STDERR.puts %|reddish-shell: #{cmd}: too many arguments|
+          return Process::Status.new(nil, 1)
+        end
+
+        if args.first !~ /^\d+/
+          STDERR.puts %|reddish-shell: #{cmd}: numeric argument require|
+          return Process::Status.new(nil, 1)
+        end
+
+        level = args.first.to_i
+      end
+
+      if level <= 0
+        STDERR.puts %|reddish-shell: #{cmd}: loop count out of range|
+        return Process::Status.new(nil, 1)
+      end
+
+      level = @loop_level if level >= @loop_level
+
+      if cmd =~ /continue|next/
+        @continuing = level
+      elsif cmd == "break"
+        @breaking = level
+      end
     end
   end
 end

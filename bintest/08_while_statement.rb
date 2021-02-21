@@ -34,5 +34,57 @@ assert("while_statement") do
   ENV['TEST'] = "0"
   assert_stdout(expect_output,  ["while [ $TEST -ne 10 ]", "echo $TEST", "TEST=`expr $TEST + 1`", "end"])
 
+  ENV['TEST'] = "0"
+  assert_stdout("0\n",  <<-EOS)
+  while [ $TEST -ne 10 ]
+    echo $TEST
+    break
+    TEST=`expr $TEST + 1`
+  end
+  EOS
+
+  ENV['TEST'] = "0"
+  assert_stdout("0\n",  <<-EOS)
+  while [ $TEST -ne 10 ]
+    echo $TEST
+    while true;
+      break 2
+      TEST=`expr $TEST + 1`
+    end
+  end
+  EOS
+
+  ENV['TEST'] = "0"
+  assert_stdout(expect_output,  <<-EOS)
+  while [ $TEST -ne 10 ]
+    echo $TEST
+    TEST=`expr $TEST + 1`
+    continue
+    echo NG
+  end
+  EOS
+
+  ENV['TEST'] = "0"
+  assert_stdout(expect_output,  <<-EOS)
+  while [ $TEST -ne 10 ]
+    echo $TEST
+    TEST=`expr $TEST + 1`
+    while true
+      continue 2
+      TEST=`expr $TEST + 1`
+    end
+  end
+  EOS
+
+  ENV['TEST'] = "0"
+  assert_stdout(expect_output,  <<-EOS)
+  while [ $TEST -ne 10 ]
+    echo $TEST
+    TEST=`expr $TEST + 1`
+    next
+    echo NG
+  end
+  EOS
+
   ENV.delete("TEST")
 end
