@@ -1,38 +1,13 @@
 module Reddish
   class Executor
 
-    class << self
-      def word2str(word)
-        return "" if word.nil? || word.type == :separator
-
-        str = word.to_s
-        return str if word.type == :quote
-
-        str = str.gsub(/(?<!\\)\${(\w+)}/) { ENV[$1] || "" }
-                 .gsub(/(?<!\\)\$(\w+)/)   { ENV[$1] || "" }
-                 .gsub(/(?<!\\)\$\?/)      { $?.nil? ? 0 : $? >> 8 }
-                 .gsub(/\\\$/, "$")
-
-        return str if word.type != :execute
-
-        parse = ReddishParser.parse(str)
-
-        r, w = IO.pipe
-        Executor.new.exec(parse, {stdout: w.fileno})
-        w.close
-        result = r.read.chomp.split(/ \t\n/)
-        r.close
-
-        result.nil? ? nil : result
-      end
-    end
-
-    def initialize
+    def initialize(variable)
       @defined_command = {}
       @pgid = nil
       @loop_level = 0
       @breaking = 0
       @continuing = 0
+      @variable = variable
     end
 
     def define_command(name, code)
@@ -74,22 +49,21 @@ module Reddish
     end
 
     def command_exec(command, opts)
-      redirect = command.redirect || []
-      if fd = opts[:stdout]
-        redirect.unshift(ReddishParser::Element::Redirect.new(:close, fd))
-        redirect.unshift(ReddishParser::Element::Redirect.new(:copywrite, 1, fd))
-      end
-      if fd = opts[:stdin]
-        redirect.unshift(ReddishParser::Element::Redirect.new(:close, fd))
-        redirect.unshift(ReddishParser::Element::Redirect.new(:copyread, 0, fd))
-      end
-      rc = RedirectControl.new(redirect)
-
       env = command.env.map do |key, values|
-        value = values.map{|v| Executor.word2str(v)}.flatten.join
+        value = values.map{|v| word2str(v)}.flatten.join
         [key, value]
       end.to_h
       cmd, args = split_cmdline(command.cmdline)
+
+      rc = setup_redirect_control(command.redirect)
+      if fd = opts[:stdout]
+        rc.append(:copywrite, 1, fd)
+        rc.append(:close, fd)
+      end
+      if fd = opts[:stdin]
+        rc.append(:copyread, 0, fd)
+        rc.append(:close, fd)
+      end
 
       if cmd.nil?
         rc.apply(true)
@@ -191,7 +165,7 @@ module Reddish
     end
 
     def if_statement(statement)
-      RedirectControl.new(statement.redirect).apply(true) do
+      setup_redirect_control(statement.redirect).apply(true) do
         exec(statement.condition)
         state = statement.reverse ? $?.success?.! : $?.success?
         if state
@@ -206,7 +180,7 @@ module Reddish
     end
 
     def while_statement(statement)
-      RedirectControl.new(statement.redirect).apply(true) do
+      setup_redirect_control(statement.redirect).apply(true) do
         @loop_level += 1
         loop do
           exec(statement.condition)
@@ -249,7 +223,7 @@ module Reddish
 
       list = cmdline.map do |c|
         next if c.empty?
-        d = c.map{|d| Executor.word2str(d)}.flatten.compact
+        d = c.map{|d| word2str(d)}.flatten.compact
         d.empty? ? nil : d.join
       end.compact
       [list.shift, list]
@@ -289,6 +263,41 @@ module Reddish
       elsif cmd == "break"
         @breaking = level
       end
+    end
+
+    def word2str(word)
+      return "" if word.nil? || word.type == :separator
+
+      str = word.to_s
+      return str if word.type == :quote
+
+      str = str.gsub(/(?<!\\)\${(\w+)}/) { @variable[$1] || "" }
+                .gsub(/(?<!\\)\$(\w+)/)   { @variable[$1] || "" }
+                .gsub(/(?<!\\)\$\?/)      { $?.nil? ? 0 : $? >> 8 }
+                .gsub(/\\\$/, "$")
+
+      return str if word.type != :execute
+
+      parse = ReddishParser.parse(str)
+
+      r, w = IO.pipe
+      Executor.new(@variable).exec(parse, {stdout: w.fileno})
+      w.close
+      result = r.read.chomp.split(/ \t\n/)
+      r.close
+
+      result.nil? ? nil : result
+    end
+
+    def setup_redirect_control(redirect)
+      rc = RedirectControl.new
+
+      redirect&.each do |r|
+        filename = word2str(r.filename)
+        rc.append(r.type, r.dest, r.src, filename)
+      end
+
+      rc
     end
   end
 end

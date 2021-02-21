@@ -5,27 +5,30 @@ module Reddish
     attr_accessor :clexec
     SHELL_FD_BASE = 10
 
-    def initialize(redirect)
-      @redirect = redirect || []
+    def initialize
+      @redirect = []
       @clexec = true
       @savefd = false
       @original_fd = {}
       @opened_fd = []
     end
 
+    def append(type, dest, src=nil, filename=nil)
+      @redirect <<= [type, dest, src, filename]
+    end
+
     def apply(oneshot=false, &blk)
       @savefd = oneshot
 
-      @redirect.each do |r|
-        filename = Executor.word2str(r.filename)
-        case r.type
-        when :append     then open_and_dup(r.dest, filename, "a")
-        when :close      then close(r.dest)
-        when :copyread   then copy(r.dest, r.src, "r")
-        when :copywrite  then copy(r.dest, r.src, "w")
-        when :read       then open_and_dup(r.dest, filename, "r")
-        when :readwrite  then open_and_dup(r.dest, filename, "a+")
-        when :write      then open_and_dup(r.dest, filename, "w")
+      @redirect.each do |type, dest, src, filename|
+        case type
+        when :append     then open_and_dup(dest, filename, "a")
+        when :close      then close(dest)
+        when :copyread   then copy(dest, src, "r")
+        when :copywrite  then copy(dest, src, "w")
+        when :read       then open_and_dup(dest, filename, "r")
+        when :readwrite  then open_and_dup(dest, filename, "a+")
+        when :write      then open_and_dup(dest, filename, "w")
         end
       end
 

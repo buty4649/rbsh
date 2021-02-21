@@ -6,7 +6,7 @@ module Reddish
     def initialize(opts)
       @opts = opts
       @job = JobControl.new
-      @executor = Executor.new
+      @variable = Variable.new
       @data_home = File.join(File.expand_path(XDG["CONFIG_HOME"]), "reddish")
     end
 
@@ -29,19 +29,17 @@ module Reddish
         exit(Ruby.exec_from_file(script, *@opts["args"]))
       end
 
-      if ENV["REDDISH_PARSER_DEBUG"]
+      if @variable["REDDISH_PARSER_DEBUG"]
         ReddishParser.debug = true
       end
 
-      if ENV["REDDISH_LEXER_DEBUG"]
+      if @variable["REDDISH_LEXER_DEBUG"]
         ReddishParser.lexer_debug = true
       end
 
       unless Dir.exists?(@data_home)
         Dir.mkdir(@data_home)
       end
-
-      BuiltinCommands.define_commands(@executor)
 
       r = reader
       cmdline = []
@@ -89,7 +87,9 @@ module Reddish
       parse_result = ReddishParser.parse(line)
 
       if parse_result
-        @job.run(@executor, parse_result)
+        executor = Executor.new(@variable)
+        BuiltinCommands.define_commands(executor)
+        @job.run(executor, parse_result)
       end
     end
 
