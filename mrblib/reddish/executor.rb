@@ -22,7 +22,7 @@ module Reddish
       return if @breaking.nonzero? || @continuing.nonzero?
       klass = command.class
       if klass == ReddishParser::Element::Command
-        command_exec(command, opts)
+        $? = command_exec(command, opts)
       elsif klass == ReddishParser::Element::Connector
         connector_exec(command, opts)
       elsif klass == ReddishParser::Element::IfStatement
@@ -75,7 +75,9 @@ module Reddish
           end
         end
       elsif cmd =~ /^(break|continue|next)$/
-        return do_break_or_continue(cmd, args)
+        return rc.apply(true) { do_break_or_continue(cmd, args) }
+      elsif cmd == "read"
+        return rc.apply(true) { do_builtin_read(args) }
       elsif c = @defined_command[cmd.to_sym]
         old_env = env&.map do |name, value|
           old_value = ENV[name]
@@ -263,6 +265,28 @@ module Reddish
       elsif cmd == "break"
         @breaking = level
       end
+    end
+
+    def do_builtin_read(args)
+      if args.select{|a| a.length > 0 && a !~ /\A\w+$/ }.size.nonzero?
+        STDERR.puts %|reddish-shell: #{read}: not a valid identifier|
+        return Process::Status.new(nil, 1)
+      end
+
+      ifs = @variable["IFS"] || /[ \t\n]/
+      begin
+        line = STDIN.readline.chomp!&.split(ifs, args.length)
+      rescue EOFError => e
+        # suppress error
+      end
+
+      return Process::Status.new(nil, 1) if line.nil?
+
+      args.each do |name|
+        @variable[name] = line.shift
+      end
+
+      Process::Status.new(nil, 0)
     end
 
     def word2str(word)

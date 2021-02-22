@@ -37,6 +37,8 @@ module Reddish
       raise FileNotFound.new(e.message)
     ensure
       restore if oneshot
+
+      result
     end
 
     def restore

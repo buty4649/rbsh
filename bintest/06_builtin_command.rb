@@ -41,3 +41,11 @@ assert('puts') do
   assert_equal("\e\n", run("puts \e").stdout)
   assert_equal("test\ntest\n", run("puts test test").stdout)
 end
+
+#assert('read') do
+#  assert_stdout("test\n", "echo 'test' | read TEST; echo $TEST")
+#
+#  assert_stdout("foo\n", "echo 'foo bar' | read TEST1 TEST2 TEST3 < #{tp}; echo $TEST1")
+#  assert_stdout("bar\n", "echo 'foo bar' | read TEST1 TEST2 TEST3 < #{tp}; echo $TEST2")
+#  assert_stdout("\n",    "echo 'foo bar' | read TEST1 TEST2 TEST3 < #{tp}; echo $TEST3")
+#end
