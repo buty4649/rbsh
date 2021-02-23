@@ -61,6 +61,24 @@ module Reddish
         else
           while_statement(command, opts)
         end
+      elsif klass == ReddishParser::Element::ForStatement
+        if command.async || opts[:async]
+          pgid = @pgid || 0
+          pid ||= Process.fork do
+            Process.setpgid(0, pgid)
+            for_statement(command, opts)
+          end
+          @pgid ||= pid
+          if command.async || opts[:async]
+            exit_status  = Process::Status.new(pid, nil)
+          else
+            _, exit_status = JobControl.start_sigint_trap(@pgid) { Process.wait2(pid) }
+            reset
+          end
+          exit_status
+        else
+          for_statement(command, opts)
+        end
       end
     end
 
@@ -259,22 +277,23 @@ module Reddish
       end
     end
 
+    def for_statement(statement, opts)
+      unless varname = check_varnames("for", [statement.varname])
+        return Process::Status.new(nil, 1)
+      end
+
+      words = statement.list.map{|w| word2str(w)}.select{|w| w.empty?.! }
+      words.each do |word|
+        @variable[varname.first] = word
+        exec(statement.cmd)
+      end
+    end
+
     def cmd2_exec?(t, r)
       (t == :and && r.success?)   ||
       (t == :or  && r.success?.!) ||
       t == :semicolon ||
       t == :async
-    end
-
-    def split_cmdline(cmdline)
-      return if cmdline.nil?
-
-      list = cmdline.map do |c|
-        next if c.empty?
-        d = c.map{|d| word2str(d)}.flatten.compact
-        d.empty? ? nil : d.join
-      end.compact
-      [list.shift, list]
     end
 
     def do_break_or_continue(cmd, args)
@@ -314,8 +333,7 @@ module Reddish
     end
 
     def do_builtin_read(args)
-      if args.select{|a| a.length > 0 && a !~ /\A\w+$/ }.size.nonzero?
-        STDERR.puts %|reddish-shell: #{read}: not a valid identifier|
+      unless varnames = check_varnames("read", args)
         return Process::Status.new(nil, 1)
       end
 
@@ -328,7 +346,7 @@ module Reddish
 
       return Process::Status.new(nil, 1) if line.nil?
 
-      args.each do |name|
+      varnames.each do |name|
         @variable[name] = line.shift
       end
 
@@ -368,6 +386,31 @@ module Reddish
       end
 
       rc
+    end
+
+    def split_cmdline(cmdline)
+      return if cmdline.nil?
+
+      list = cmdline.map do |c|
+        next if c.empty?
+        d = c.map{|d| word2str(d)}.flatten.compact
+        d.empty? ? nil : d.join
+      end.compact
+      [list.shift, list]
+    end
+
+    def check_varnames(command, wordlist)
+      result = []
+
+      wordlist&.each do |word|
+        if word !~ /^\w+$/
+          STDERR.puts %|reddish-shell: #{command}: not a valid identifier|
+          return
+        end
+        result <<= word
+      end
+
+      result
     end
   end
 end

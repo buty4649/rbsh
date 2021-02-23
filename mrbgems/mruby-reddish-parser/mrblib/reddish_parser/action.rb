@@ -92,6 +92,12 @@ module ReddishParser
       end
     end
 
+    def on_for_stmt(name, wordlist, command)
+      list = wordlist || [[:normal, "$@"]]
+      list.map!{|w| Element::Word.new(w) }
+      Element::ForStatement.new(name.last, list, command)
+    end
+
     def on_error(msg, state)
       if state.first.zero?
         raise ReddishParser::ParserError.new(msg)

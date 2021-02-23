@@ -18,6 +18,7 @@ typedef struct parser_state {
 #define ASYNC(p, c)               ACTION(p, "on_async", 1, c)
 #define COMMAND(p, e)             ACTION(p, "on_command", 1, e)
 #define CONNECTOR(p, t, a, b)     ACTION(p, "on_connector", 3, mrb_symbol_value(mrb_intern_cstr(p->state, t)), a, b)
+#define FOR_STMT(p, n, k, c)      ACTION(p, "on_for_stmt", 3, n, k, c)
 #define IF_STMT(p, s, c, ...)     ACTION(p, "on_if_stmt", (c+2), s, MRB_FALSE, __VA_ARGS__)
 #define PIPELINE(p, a, b, r)      ACTION(p, "on_pipeline", 3, a, b, r)
 #define REDIRECT(p, t, c, ...)    ACTION(p, "on_redirect", (c+1), mrb_symbol_value(mrb_intern_cstr(p->state, t)), __VA_ARGS__)
@@ -45,7 +46,7 @@ static int yyparse(parser_state*);
 
 %token WORD NUMBER MINUS NUMBER_MINUS
 %token IF THEN ELSE ELIF ELSIF FI END UNLESS
-%token WHILE DO DONE UNTIL
+%token WHILE DO DONE UNTIL FOR IN
 %token AND_AND OR_OR OR_AND
 %token GT GT_GT AND_GT GT_AND LT LT_AND LT_GT
 %start inputunit
@@ -90,9 +91,9 @@ list0
 list1
 : list1 AND_AND newline_list pipeline { $$ = CONNECTOR(p, "and", $1, $4); }
 | list1 OR_OR   newline_list pipeline { $$ = CONNECTOR(p, "or",  $1, $4); }
-| list1 '&'     newline_list pipeline { $$ = CONNECTOR(p, "async", $1, $4); }
-| list1 ';'     newline_list pipeline { $$ = CONNECTOR(p, "semicolon", $1, $4); }
-| list1 '\n'    newline_list pipeline { $$ = CONNECTOR(p, "semicolon", $1, $4); }
+| list1 '&'  pipeline                 { $$ = CONNECTOR(p, "async", $1, $3); }
+| list1 ';'  pipeline                 { $$ = CONNECTOR(p, "semicolon", $1, $3); }
+| list1 '\n' pipeline                 { $$ = CONNECTOR(p, "semicolon", $1, $3); }
 | pipeline
 
 newline_list
@@ -109,6 +110,7 @@ shell_command
 | unless_statement
 | while_statement
 | until_statement
+| for_statement
 
 if_statement
 : IF compound_list END                                      { $$ = IF_STMT(p, $2, 0, NIL); }
@@ -152,6 +154,18 @@ until_statement
 : UNTIL compound_list END                   { $$ = UNTIL_STMT(p, $2, NIL); }
 | UNTIL compound_list DO compound_list END  { $$ = UNTIL_STMT(p, $2, $4); }
 
+for_statement
+: FOR WORD newline_list DO compound_list DONE             { $$ = FOR_STMT(p, $2, NIL, $5); }
+| FOR WORD newline_list DO compound_list END              { $$ = FOR_STMT(p, $2, NIL, $5); }
+| FOR WORD newline_list '{' compound_list '}'             { $$ = FOR_STMT(p, $2, NIL, $5); }
+| FOR WORD ';' newline_list DO compound_list DONE         { $$ = FOR_STMT(p, $2, NIL, $6); }
+| FOR WORD ';' newline_list DO compound_list END          { $$ = FOR_STMT(p, $2, NIL, $6); }
+| FOR WORD ';' newline_list '{' compound_list '}'         { $$ = FOR_STMT(p, $2, NIL, $6); }
+| FOR WORD IN word_list list_terminater compound_list END     { $$ = FOR_STMT(p, $2, $4, $6); }
+| FOR WORD IN word_list list_terminater newline_list DO compound_list DONE { $$ = FOR_STMT(p, $2, $4, $8); }
+| FOR WORD IN word_list list_terminater newline_list DO compound_list END  { $$ = FOR_STMT(p, $2, $4, $8); }
+| FOR WORD IN word_list list_terminater newline_list '{' compound_list '}' { $$ = FOR_STMT(p, $2, $4, $8); }
+
 simple_command
 : simple_command_element { $$ = mrb_ary_new_from_values(p->state, 1, &$1); }
 | simple_command simple_command_element { mrb_ary_push(p->state, $1, $2); $$ = $1; }
@@ -163,6 +177,12 @@ simple_command_element
 redirect_list
 : redirect
 | redirect_list redirect { mrb_ary_concat(p->state, $1, $2); $$ = $1; }
+
+word_list
+: WORD { $$ = mrb_ary_new_from_values(p->state, 1, &$1); }
+| word_list WORD { mrb_ary_push(p->state, $1, $2); $$ = $1; }
+
+list_terminater: '\n' | ';' | YYEOF
 
 redirect
 /* <    */: LT WORD                    { $$ = REDIRECT(p, "read",     2, FIXNUM(0), $2); }
@@ -197,6 +217,8 @@ static const struct token_type {
     {";",  ';'},
     {"&",  '&'},
     {"|",  '|'},
+    {"{",  '{'},
+    {"}",  '}'},
     {"&&", AND_AND},
     {"&>", AND_GT},
     {">",  GT},
@@ -223,7 +245,9 @@ static const struct token_type {
     {"do", DO},
     {"done", DONE},
     {"until", UNTIL},
-    {NULL, 0}
+    {"for", FOR},
+    {"in", IN},
+    {NULL, 0},
 };
 
 int sym2tt(const char *sym) {

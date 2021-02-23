@@ -29,6 +29,10 @@ module ReddishParser
               keyword_token   ||
               word_token
 
+      if token.type == :word && @last_token == :for
+        read_separator(false)
+      end
+
       @last_token = token.type
       if [:";", :"\n", :"|", :"|&"].include?(token.type) && @statement.zero?
         @last_token = nil
@@ -41,7 +45,7 @@ module ReddishParser
         elsif type == :word
           type = "word #{token.data.first} '#{token.data.last}'"
         end
-        STDERR.puts "lexer:   Token type: #{type}"
+        STDERR.puts "lexer:   Token type: #{type} line: #{@line}"
       end
 
       token
@@ -84,13 +88,13 @@ module ReddishParser
     def keyword_token
       return if @last_token && @statement.zero?
 
-      if k = @line.slice!(/\A(if|unless|while|until)(?=#{separator_pattern}|\z)/)
+      if k = @line.slice!(/\A(if|unless|while|until|for)(?=#{separator_pattern}|\z)/)
         @statement += 1
         Token.new(k.to_sym)
-      elsif k = @line.slice!(/\A(do(ne)?|then|el(se|s?if))(?=#{separator_pattern})?/)
-        Token.new(k.to_sym)
-      elsif k = @line.slice!(/\A(fi|end)(?=#{separator_pattern})?/)
+      elsif k = @line.slice!(/\A(fi|done|end|})(?=#{separator_pattern})?/)
         @statement -= 1
+        Token.new(k.to_sym)
+      elsif k = @line.slice!(/\A(do|then|el(se|s?if)|in|{)(?=#{separator_pattern})?/)
         Token.new(k.to_sym)
       end
     end

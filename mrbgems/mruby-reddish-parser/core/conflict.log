@@ -1,0 +1,3733 @@
+Terminals unused in grammar
+
+    NUMBER_MINUS
+
+
+Grammar
+
+    0 $accept: inputunit $end
+
+    1 inputunit: simple_list terminator
+    2          | $end
+
+    3 terminator: '\n'
+    4           | $end
+
+    5 simple_list: connector
+    6            | connector '&'
+    7            | connector ';'
+
+    8 connector: connector AND_AND newline_list pipeline
+    9          | connector OR_OR newline_list pipeline
+   10          | connector '&' pipeline
+   11          | connector ';' pipeline
+   12          | pipeline
+
+   13 pipeline: pipeline '|' command
+   14         | pipeline OR_AND command
+   15         | command
+
+   16 compound_list: list
+   17              | newline_list list1
+
+   18 list: newline_list list0
+
+   19 list0: list1 '\n' newline_list
+   20      | list1 '&' newline_list
+   21      | list1 ';' newline_list
+
+   22 list1: list1 AND_AND newline_list pipeline
+   23      | list1 OR_OR newline_list pipeline
+   24      | list1 '&' newline_list pipeline
+   25      | list1 ';' newline_list pipeline
+   26      | list1 '\n' newline_list pipeline
+   27      | pipeline
+
+   28 newline_list: %empty
+   29             | newline_list '\n'
+
+   30 command: simple_command
+   31        | shell_command
+   32        | shell_command redirect_list
+
+   33 shell_command: if_statement
+   34              | unless_statement
+   35              | while_statement
+   36              | until_statement
+   37              | for_statement
+
+   38 if_statement: IF compound_list END
+   39             | IF compound_list ELSE compound_list END
+   40             | IF compound_list elsif_clause END
+   41             | IF compound_list THEN compound_list FI
+   42             | IF compound_list THEN compound_list END
+   43             | IF compound_list THEN compound_list ELSE compound_list FI
+   44             | IF compound_list THEN compound_list ELSE compound_list END
+   45             | IF compound_list THEN compound_list elif_clause FI
+   46             | IF compound_list THEN compound_list elif_clause END
+   47             | IF compound_list THEN compound_list elsif_clause FI
+   48             | IF compound_list THEN compound_list elsif_clause END
+
+   49 elif_clause: ELIF compound_list THEN compound_list
+   50            | ELIF compound_list THEN compound_list ELSE compound_list
+   51            | ELIF compound_list THEN compound_list elif_clause
+   52            | ELIF compound_list THEN compound_list elsif_clause
+
+   53 elsif_clause: ELSIF compound_list
+   54             | ELSIF compound_list ELSE compound_list
+   55             | ELSIF compound_list THEN compound_list
+   56             | ELSIF compound_list THEN compound_list ELSE compound_list
+   57             | ELSIF compound_list THEN compound_list elif_clause
+   58             | ELSIF compound_list THEN compound_list elsif_clause
+
+   59 unless_statement: UNLESS compound_list END
+   60                 | UNLESS compound_list ELSE compound_list END
+   61                 | UNLESS compound_list THEN compound_list END
+   62                 | UNLESS compound_list THEN compound_list ELSE compound_list END
+
+   63 while_statement: WHILE compound_list END
+   64                | WHILE compound_list DO compound_list DONE
+   65                | WHILE compound_list DO compound_list END
+
+   66 until_statement: UNTIL compound_list END
+   67                | UNTIL compound_list DO compound_list END
+
+   68 for_statement: FOR WORD newline_list DO compound_list DONE
+   69              | FOR WORD newline_list DO compound_list END
+   70              | FOR WORD newline_list '{' compound_list '}'
+   71              | FOR WORD ';' newline_list DO compound_list DONE
+   72              | FOR WORD ';' newline_list DO compound_list END
+   73              | FOR WORD ';' newline_list '{' compound_list '}'
+   74              | FOR WORD IN word_list list_terminater compound_list END
+   75              | FOR WORD IN word_list list_terminater newline_list DO compound_list DONE
+   76              | FOR WORD IN word_list list_terminater newline_list DO compound_list END
+   77              | FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'
+
+   78 simple_command: simple_command_element
+   79               | simple_command simple_command_element
+
+   80 simple_command_element: WORD
+   81                       | redirect
+
+   82 redirect_list: redirect
+   83              | redirect_list redirect
+
+   84 word_list: WORD
+   85          | word_list WORD
+
+   86 list_terminater: '\n'
+   87                | ';'
+   88                | $end
+
+   89 redirect: LT WORD
+   90         | NUMBER LT WORD
+   91         | LT_AND MINUS
+   92         | LT_AND NUMBER
+   93         | LT_AND NUMBER MINUS
+   94         | NUMBER LT_AND MINUS
+   95         | NUMBER LT_AND NUMBER
+   96         | NUMBER LT_AND NUMBER MINUS
+   97         | GT WORD
+   98         | NUMBER GT WORD
+   99         | GT_AND MINUS
+  100         | GT_AND NUMBER
+  101         | GT_AND NUMBER MINUS
+  102         | NUMBER GT_AND MINUS
+  103         | NUMBER GT_AND NUMBER
+  104         | NUMBER GT_AND NUMBER MINUS
+  105         | AND_GT WORD
+  106         | GT_AND WORD
+  107         | GT_GT WORD
+  108         | NUMBER GT_GT WORD
+  109         | LT_GT WORD
+  110         | NUMBER LT_GT WORD
+
+
+Terminals, with rules where they appear
+
+    $end (0) 0 2 4 88
+    '\n' (10) 3 19 26 29 86
+    '&' (38) 6 10 20 24
+    ';' (59) 7 11 21 25 71 72 73 87
+    '{' (123) 70 73 77
+    '|' (124) 13
+    '}' (125) 70 73 77
+    error (256)
+    WORD (258) 68 69 70 71 72 73 74 75 76 77 80 84 85 89 90 97 98 105 106 107 108 109 110
+    NUMBER (259) 90 92 93 94 95 96 98 100 101 102 103 104 108 110
+    MINUS (260) 91 93 94 96 99 101 102 104
+    NUMBER_MINUS (261)
+    IF (262) 38 39 40 41 42 43 44 45 46 47 48
+    THEN (263) 41 42 43 44 45 46 47 48 49 50 51 52 55 56 57 58 61 62
+    ELSE (264) 39 43 44 50 54 56 60 62
+    ELIF (265) 49 50 51 52
+    ELSIF (266) 53 54 55 56 57 58
+    FI (267) 41 43 45 47
+    END (268) 38 39 40 42 44 46 48 59 60 61 62 63 65 66 67 69 72 74 76
+    UNLESS (269) 59 60 61 62
+    WHILE (270) 63 64 65
+    DO (271) 64 65 67 68 69 71 72 75 76
+    DONE (272) 64 68 71 75
+    UNTIL (273) 66 67
+    FOR (274) 68 69 70 71 72 73 74 75 76 77
+    IN (275) 74 75 76 77
+    AND_AND (276) 8 22
+    OR_OR (277) 9 23
+    OR_AND (278) 14
+    GT (279) 97 98
+    GT_GT (280) 107 108
+    AND_GT (281) 105
+    GT_AND (282) 99 100 101 102 103 104 106
+    LT (283) 89 90
+    LT_AND (284) 91 92 93 94 95 96
+    LT_GT (285) 109 110
+
+
+Nonterminals, with rules where they appear
+
+    $accept (37)
+        on left: 0
+    inputunit (38)
+        on left: 1 2
+        on right: 0
+    terminator (39)
+        on left: 3 4
+        on right: 1
+    simple_list (40)
+        on left: 5 6 7
+        on right: 1
+    connector (41)
+        on left: 8 9 10 11 12
+        on right: 5 6 7 8 9 10 11
+    pipeline (42)
+        on left: 13 14 15
+        on right: 8 9 10 11 12 13 14 22 23 24 25 26 27
+    compound_list (43)
+        on left: 16 17
+        on right: 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77
+    list (44)
+        on left: 18
+        on right: 16
+    list0 (45)
+        on left: 19 20 21
+        on right: 18
+    list1 (46)
+        on left: 22 23 24 25 26 27
+        on right: 17 19 20 21 22 23 24 25 26
+    newline_list (47)
+        on left: 28 29
+        on right: 8 9 17 18 19 20 21 22 23 24 25 26 29 68 69 70 71 72 73 75 76 77
+    command (48)
+        on left: 30 31 32
+        on right: 13 14 15
+    shell_command (49)
+        on left: 33 34 35 36 37
+        on right: 31 32
+    if_statement (50)
+        on left: 38 39 40 41 42 43 44 45 46 47 48
+        on right: 33
+    elif_clause (51)
+        on left: 49 50 51 52
+        on right: 45 46 51 57
+    elsif_clause (52)
+        on left: 53 54 55 56 57 58
+        on right: 40 47 48 52 58
+    unless_statement (53)
+        on left: 59 60 61 62
+        on right: 34
+    while_statement (54)
+        on left: 63 64 65
+        on right: 35
+    until_statement (55)
+        on left: 66 67
+        on right: 36
+    for_statement (56)
+        on left: 68 69 70 71 72 73 74 75 76 77
+        on right: 37
+    simple_command (57)
+        on left: 78 79
+        on right: 30 79
+    simple_command_element (58)
+        on left: 80 81
+        on right: 78 79
+    redirect_list (59)
+        on left: 82 83
+        on right: 32 83
+    word_list (60)
+        on left: 84 85
+        on right: 74 75 76 77 85
+    list_terminater (61)
+        on left: 86 87 88
+        on right: 74 75 76 77
+    redirect (62)
+        on left: 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110
+        on right: 81 82 83
+
+
+State 0
+
+    0 $accept: . inputunit $end
+    1 inputunit: . simple_list terminator
+    2          | . $end
+    5 simple_list: . connector
+    6            | . connector '&'
+    7            | . connector ';'
+    8 connector: . connector AND_AND newline_list pipeline
+    9          | . connector OR_OR newline_list pipeline
+   10          | . connector '&' pipeline
+   11          | . connector ';' pipeline
+   12          | . pipeline
+   13 pipeline: . pipeline '|' command
+   14         | . pipeline OR_AND command
+   15         | . command
+   30 command: . simple_command
+   31        | . shell_command
+   32        | . shell_command redirect_list
+   33 shell_command: . if_statement
+   34              | . unless_statement
+   35              | . while_statement
+   36              | . until_statement
+   37              | . for_statement
+   38 if_statement: . IF compound_list END
+   39             | . IF compound_list ELSE compound_list END
+   40             | . IF compound_list elsif_clause END
+   41             | . IF compound_list THEN compound_list FI
+   42             | . IF compound_list THEN compound_list END
+   43             | . IF compound_list THEN compound_list ELSE compound_list FI
+   44             | . IF compound_list THEN compound_list ELSE compound_list END
+   45             | . IF compound_list THEN compound_list elif_clause FI
+   46             | . IF compound_list THEN compound_list elif_clause END
+   47             | . IF compound_list THEN compound_list elsif_clause FI
+   48             | . IF compound_list THEN compound_list elsif_clause END
+   59 unless_statement: . UNLESS compound_list END
+   60                 | . UNLESS compound_list ELSE compound_list END
+   61                 | . UNLESS compound_list THEN compound_list END
+   62                 | . UNLESS compound_list THEN compound_list ELSE compound_list END
+   63 while_statement: . WHILE compound_list END
+   64                | . WHILE compound_list DO compound_list DONE
+   65                | . WHILE compound_list DO compound_list END
+   66 until_statement: . UNTIL compound_list END
+   67                | . UNTIL compound_list DO compound_list END
+   68 for_statement: . FOR WORD newline_list DO compound_list DONE
+   69              | . FOR WORD newline_list DO compound_list END
+   70              | . FOR WORD newline_list '{' compound_list '}'
+   71              | . FOR WORD ';' newline_list DO compound_list DONE
+   72              | . FOR WORD ';' newline_list DO compound_list END
+   73              | . FOR WORD ';' newline_list '{' compound_list '}'
+   74              | . FOR WORD IN word_list list_terminater compound_list END
+   75              | . FOR WORD IN word_list list_terminater newline_list DO compound_list DONE
+   76              | . FOR WORD IN word_list list_terminater newline_list DO compound_list END
+   77              | . FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'
+   78 simple_command: . simple_command_element
+   79               | . simple_command simple_command_element
+   80 simple_command_element: . WORD
+   81                       | . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    $end    shift, and go to state 1
+    WORD    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    IF      shift, and go to state 4
+    UNLESS  shift, and go to state 5
+    WHILE   shift, and go to state 6
+    UNTIL   shift, and go to state 7
+    FOR     shift, and go to state 8
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+
+    inputunit               go to state 16
+    simple_list             go to state 17
+    connector               go to state 18
+    pipeline                go to state 19
+    command                 go to state 20
+    shell_command           go to state 21
+    if_statement            go to state 22
+    unless_statement        go to state 23
+    while_statement         go to state 24
+    until_statement         go to state 25
+    for_statement           go to state 26
+    simple_command          go to state 27
+    simple_command_element  go to state 28
+    redirect                go to state 29
+
+
+State 1
+
+    2 inputunit: $end .
+
+    $default  reduce using rule 2 (inputunit)
+
+
+State 2
+
+   80 simple_command_element: WORD .
+
+    $default  reduce using rule 80 (simple_command_element)
+
+
+State 3
+
+   90 redirect: NUMBER . LT WORD
+   94         | NUMBER . LT_AND MINUS
+   95         | NUMBER . LT_AND NUMBER
+   96         | NUMBER . LT_AND NUMBER MINUS
+   98         | NUMBER . GT WORD
+  102         | NUMBER . GT_AND MINUS
+  103         | NUMBER . GT_AND NUMBER
+  104         | NUMBER . GT_AND NUMBER MINUS
+  108         | NUMBER . GT_GT WORD
+  110         | NUMBER . LT_GT WORD
+
+    GT      shift, and go to state 30
+    GT_GT   shift, and go to state 31
+    GT_AND  shift, and go to state 32
+    LT      shift, and go to state 33
+    LT_AND  shift, and go to state 34
+    LT_GT   shift, and go to state 35
+
+
+State 4
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   38 if_statement: IF . compound_list END
+   39             | IF . compound_list ELSE compound_list END
+   40             | IF . compound_list elsif_clause END
+   41             | IF . compound_list THEN compound_list FI
+   42             | IF . compound_list THEN compound_list END
+   43             | IF . compound_list THEN compound_list ELSE compound_list FI
+   44             | IF . compound_list THEN compound_list ELSE compound_list END
+   45             | IF . compound_list THEN compound_list elif_clause FI
+   46             | IF . compound_list THEN compound_list elif_clause END
+   47             | IF . compound_list THEN compound_list elsif_clause FI
+   48             | IF . compound_list THEN compound_list elsif_clause END
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 36
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 5
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   59 unless_statement: UNLESS . compound_list END
+   60                 | UNLESS . compound_list ELSE compound_list END
+   61                 | UNLESS . compound_list THEN compound_list END
+   62                 | UNLESS . compound_list THEN compound_list ELSE compound_list END
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 39
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 6
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   63 while_statement: WHILE . compound_list END
+   64                | WHILE . compound_list DO compound_list DONE
+   65                | WHILE . compound_list DO compound_list END
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 40
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 7
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   66 until_statement: UNTIL . compound_list END
+   67                | UNTIL . compound_list DO compound_list END
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 41
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 8
+
+   68 for_statement: FOR . WORD newline_list DO compound_list DONE
+   69              | FOR . WORD newline_list DO compound_list END
+   70              | FOR . WORD newline_list '{' compound_list '}'
+   71              | FOR . WORD ';' newline_list DO compound_list DONE
+   72              | FOR . WORD ';' newline_list DO compound_list END
+   73              | FOR . WORD ';' newline_list '{' compound_list '}'
+   74              | FOR . WORD IN word_list list_terminater compound_list END
+   75              | FOR . WORD IN word_list list_terminater newline_list DO compound_list DONE
+   76              | FOR . WORD IN word_list list_terminater newline_list DO compound_list END
+   77              | FOR . WORD IN word_list list_terminater newline_list '{' compound_list '}'
+
+    WORD  shift, and go to state 42
+
+
+State 9
+
+   97 redirect: GT . WORD
+
+    WORD  shift, and go to state 43
+
+
+State 10
+
+  107 redirect: GT_GT . WORD
+
+    WORD  shift, and go to state 44
+
+
+State 11
+
+  105 redirect: AND_GT . WORD
+
+    WORD  shift, and go to state 45
+
+
+State 12
+
+   99 redirect: GT_AND . MINUS
+  100         | GT_AND . NUMBER
+  101         | GT_AND . NUMBER MINUS
+  106         | GT_AND . WORD
+
+    WORD    shift, and go to state 46
+    NUMBER  shift, and go to state 47
+    MINUS   shift, and go to state 48
+
+
+State 13
+
+   89 redirect: LT . WORD
+
+    WORD  shift, and go to state 49
+
+
+State 14
+
+   91 redirect: LT_AND . MINUS
+   92         | LT_AND . NUMBER
+   93         | LT_AND . NUMBER MINUS
+
+    NUMBER  shift, and go to state 50
+    MINUS   shift, and go to state 51
+
+
+State 15
+
+  109 redirect: LT_GT . WORD
+
+    WORD  shift, and go to state 52
+
+
+State 16
+
+    0 $accept: inputunit . $end
+
+    $end  shift, and go to state 53
+
+
+State 17
+
+    1 inputunit: simple_list . terminator
+    3 terminator: . '\n'
+    4           | . $end
+
+    $end  shift, and go to state 54
+    '\n'  shift, and go to state 55
+
+    terminator  go to state 56
+
+
+State 18
+
+    5 simple_list: connector .  [$end, '\n']
+    6            | connector . '&'
+    7            | connector . ';'
+    8 connector: connector . AND_AND newline_list pipeline
+    9          | connector . OR_OR newline_list pipeline
+   10          | connector . '&' pipeline
+   11          | connector . ';' pipeline
+
+    AND_AND  shift, and go to state 57
+    OR_OR    shift, and go to state 58
+    '&'      shift, and go to state 59
+    ';'      shift, and go to state 60
+
+    $default  reduce using rule 5 (simple_list)
+
+
+State 19
+
+   12 connector: pipeline .  [$end, AND_AND, OR_OR, '\n', '&', ';']
+   13 pipeline: pipeline . '|' command
+   14         | pipeline . OR_AND command
+
+    OR_AND  shift, and go to state 61
+    '|'     shift, and go to state 62
+
+    $default  reduce using rule 12 (connector)
+
+
+State 20
+
+   15 pipeline: command .
+
+    $default  reduce using rule 15 (pipeline)
+
+
+State 21
+
+   31 command: shell_command .  [$end, THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, AND_AND, OR_OR, OR_AND, '\n', '&', ';', '|', '}']
+   32        | shell_command . redirect_list
+   82 redirect_list: . redirect
+   83              | . redirect_list redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    NUMBER  shift, and go to state 3
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+
+    $default  reduce using rule 31 (command)
+
+    redirect_list  go to state 63
+    redirect       go to state 64
+
+
+State 22
+
+   33 shell_command: if_statement .
+
+    $default  reduce using rule 33 (shell_command)
+
+
+State 23
+
+   34 shell_command: unless_statement .
+
+    $default  reduce using rule 34 (shell_command)
+
+
+State 24
+
+   35 shell_command: while_statement .
+
+    $default  reduce using rule 35 (shell_command)
+
+
+State 25
+
+   36 shell_command: until_statement .
+
+    $default  reduce using rule 36 (shell_command)
+
+
+State 26
+
+   37 shell_command: for_statement .
+
+    $default  reduce using rule 37 (shell_command)
+
+
+State 27
+
+   30 command: simple_command .  [$end, THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, AND_AND, OR_OR, OR_AND, '\n', '&', ';', '|', '}']
+   79 simple_command: simple_command . simple_command_element
+   80 simple_command_element: . WORD
+   81                       | . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    WORD    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+
+    $default  reduce using rule 30 (command)
+
+    simple_command_element  go to state 65
+    redirect                go to state 29
+
+
+State 28
+
+   78 simple_command: simple_command_element .
+
+    $default  reduce using rule 78 (simple_command)
+
+
+State 29
+
+   81 simple_command_element: redirect .
+
+    $default  reduce using rule 81 (simple_command_element)
+
+
+State 30
+
+   98 redirect: NUMBER GT . WORD
+
+    WORD  shift, and go to state 66
+
+
+State 31
+
+  108 redirect: NUMBER GT_GT . WORD
+
+    WORD  shift, and go to state 67
+
+
+State 32
+
+  102 redirect: NUMBER GT_AND . MINUS
+  103         | NUMBER GT_AND . NUMBER
+  104         | NUMBER GT_AND . NUMBER MINUS
+
+    NUMBER  shift, and go to state 68
+    MINUS   shift, and go to state 69
+
+
+State 33
+
+   90 redirect: NUMBER LT . WORD
+
+    WORD  shift, and go to state 70
+
+
+State 34
+
+   94 redirect: NUMBER LT_AND . MINUS
+   95         | NUMBER LT_AND . NUMBER
+   96         | NUMBER LT_AND . NUMBER MINUS
+
+    NUMBER  shift, and go to state 71
+    MINUS   shift, and go to state 72
+
+
+State 35
+
+  110 redirect: NUMBER LT_GT . WORD
+
+    WORD  shift, and go to state 73
+
+
+State 36
+
+   38 if_statement: IF compound_list . END
+   39             | IF compound_list . ELSE compound_list END
+   40             | IF compound_list . elsif_clause END
+   41             | IF compound_list . THEN compound_list FI
+   42             | IF compound_list . THEN compound_list END
+   43             | IF compound_list . THEN compound_list ELSE compound_list FI
+   44             | IF compound_list . THEN compound_list ELSE compound_list END
+   45             | IF compound_list . THEN compound_list elif_clause FI
+   46             | IF compound_list . THEN compound_list elif_clause END
+   47             | IF compound_list . THEN compound_list elsif_clause FI
+   48             | IF compound_list . THEN compound_list elsif_clause END
+   53 elsif_clause: . ELSIF compound_list
+   54             | . ELSIF compound_list ELSE compound_list
+   55             | . ELSIF compound_list THEN compound_list
+   56             | . ELSIF compound_list THEN compound_list ELSE compound_list
+   57             | . ELSIF compound_list THEN compound_list elif_clause
+   58             | . ELSIF compound_list THEN compound_list elsif_clause
+
+    THEN   shift, and go to state 74
+    ELSE   shift, and go to state 75
+    ELSIF  shift, and go to state 76
+    END    shift, and go to state 77
+
+    elsif_clause  go to state 78
+
+
+State 37
+
+   16 compound_list: list .
+
+    $default  reduce using rule 16 (compound_list)
+
+
+State 38
+
+   13 pipeline: . pipeline '|' command
+   14         | . pipeline OR_AND command
+   15         | . command
+   17 compound_list: newline_list . list1
+   18 list: newline_list . list0
+   19 list0: . list1 '\n' newline_list
+   20      | . list1 '&' newline_list
+   21      | . list1 ';' newline_list
+   22 list1: . list1 AND_AND newline_list pipeline
+   23      | . list1 OR_OR newline_list pipeline
+   24      | . list1 '&' newline_list pipeline
+   25      | . list1 ';' newline_list pipeline
+   26      | . list1 '\n' newline_list pipeline
+   27      | . pipeline
+   29 newline_list: newline_list . '\n'
+   30 command: . simple_command
+   31        | . shell_command
+   32        | . shell_command redirect_list
+   33 shell_command: . if_statement
+   34              | . unless_statement
+   35              | . while_statement
+   36              | . until_statement
+   37              | . for_statement
+   38 if_statement: . IF compound_list END
+   39             | . IF compound_list ELSE compound_list END
+   40             | . IF compound_list elsif_clause END
+   41             | . IF compound_list THEN compound_list FI
+   42             | . IF compound_list THEN compound_list END
+   43             | . IF compound_list THEN compound_list ELSE compound_list FI
+   44             | . IF compound_list THEN compound_list ELSE compound_list END
+   45             | . IF compound_list THEN compound_list elif_clause FI
+   46             | . IF compound_list THEN compound_list elif_clause END
+   47             | . IF compound_list THEN compound_list elsif_clause FI
+   48             | . IF compound_list THEN compound_list elsif_clause END
+   59 unless_statement: . UNLESS compound_list END
+   60                 | . UNLESS compound_list ELSE compound_list END
+   61                 | . UNLESS compound_list THEN compound_list END
+   62                 | . UNLESS compound_list THEN compound_list ELSE compound_list END
+   63 while_statement: . WHILE compound_list END
+   64                | . WHILE compound_list DO compound_list DONE
+   65                | . WHILE compound_list DO compound_list END
+   66 until_statement: . UNTIL compound_list END
+   67                | . UNTIL compound_list DO compound_list END
+   68 for_statement: . FOR WORD newline_list DO compound_list DONE
+   69              | . FOR WORD newline_list DO compound_list END
+   70              | . FOR WORD newline_list '{' compound_list '}'
+   71              | . FOR WORD ';' newline_list DO compound_list DONE
+   72              | . FOR WORD ';' newline_list DO compound_list END
+   73              | . FOR WORD ';' newline_list '{' compound_list '}'
+   74              | . FOR WORD IN word_list list_terminater compound_list END
+   75              | . FOR WORD IN word_list list_terminater newline_list DO compound_list DONE
+   76              | . FOR WORD IN word_list list_terminater newline_list DO compound_list END
+   77              | . FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'
+   78 simple_command: . simple_command_element
+   79               | . simple_command simple_command_element
+   80 simple_command_element: . WORD
+   81                       | . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    WORD    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    IF      shift, and go to state 4
+    UNLESS  shift, and go to state 5
+    WHILE   shift, and go to state 6
+    UNTIL   shift, and go to state 7
+    FOR     shift, and go to state 8
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+    '\n'    shift, and go to state 79
+
+    pipeline                go to state 80
+    list0                   go to state 81
+    list1                   go to state 82
+    command                 go to state 20
+    shell_command           go to state 21
+    if_statement            go to state 22
+    unless_statement        go to state 23
+    while_statement         go to state 24
+    until_statement         go to state 25
+    for_statement           go to state 26
+    simple_command          go to state 27
+    simple_command_element  go to state 28
+    redirect                go to state 29
+
+
+State 39
+
+   59 unless_statement: UNLESS compound_list . END
+   60                 | UNLESS compound_list . ELSE compound_list END
+   61                 | UNLESS compound_list . THEN compound_list END
+   62                 | UNLESS compound_list . THEN compound_list ELSE compound_list END
+
+    THEN  shift, and go to state 83
+    ELSE  shift, and go to state 84
+    END   shift, and go to state 85
+
+
+State 40
+
+   63 while_statement: WHILE compound_list . END
+   64                | WHILE compound_list . DO compound_list DONE
+   65                | WHILE compound_list . DO compound_list END
+
+    END  shift, and go to state 86
+    DO   shift, and go to state 87
+
+
+State 41
+
+   66 until_statement: UNTIL compound_list . END
+   67                | UNTIL compound_list . DO compound_list END
+
+    END  shift, and go to state 88
+    DO   shift, and go to state 89
+
+
+State 42
+
+   28 newline_list: . %empty  [DO, '\n', '{']
+   29             | . newline_list '\n'
+   68 for_statement: FOR WORD . newline_list DO compound_list DONE
+   69              | FOR WORD . newline_list DO compound_list END
+   70              | FOR WORD . newline_list '{' compound_list '}'
+   71              | FOR WORD . ';' newline_list DO compound_list DONE
+   72              | FOR WORD . ';' newline_list DO compound_list END
+   73              | FOR WORD . ';' newline_list '{' compound_list '}'
+   74              | FOR WORD . IN word_list list_terminater compound_list END
+   75              | FOR WORD . IN word_list list_terminater newline_list DO compound_list DONE
+   76              | FOR WORD . IN word_list list_terminater newline_list DO compound_list END
+   77              | FOR WORD . IN word_list list_terminater newline_list '{' compound_list '}'
+
+    IN   shift, and go to state 90
+    ';'  shift, and go to state 91
+
+    $default  reduce using rule 28 (newline_list)
+
+    newline_list  go to state 92
+
+
+State 43
+
+   97 redirect: GT WORD .
+
+    $default  reduce using rule 97 (redirect)
+
+
+State 44
+
+  107 redirect: GT_GT WORD .
+
+    $default  reduce using rule 107 (redirect)
+
+
+State 45
+
+  105 redirect: AND_GT WORD .
+
+    $default  reduce using rule 105 (redirect)
+
+
+State 46
+
+  106 redirect: GT_AND WORD .
+
+    $default  reduce using rule 106 (redirect)
+
+
+State 47
+
+  100 redirect: GT_AND NUMBER .  [$end, WORD, NUMBER, THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, AND_AND, OR_OR, OR_AND, GT, GT_GT, AND_GT, GT_AND, LT, LT_AND, LT_GT, '\n', '&', ';', '|', '}']
+  101         | GT_AND NUMBER . MINUS
+
+    MINUS  shift, and go to state 93
+
+    $default  reduce using rule 100 (redirect)
+
+
+State 48
+
+   99 redirect: GT_AND MINUS .
+
+    $default  reduce using rule 99 (redirect)
+
+
+State 49
+
+   89 redirect: LT WORD .
+
+    $default  reduce using rule 89 (redirect)
+
+
+State 50
+
+   92 redirect: LT_AND NUMBER .  [$end, WORD, NUMBER, THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, AND_AND, OR_OR, OR_AND, GT, GT_GT, AND_GT, GT_AND, LT, LT_AND, LT_GT, '\n', '&', ';', '|', '}']
+   93         | LT_AND NUMBER . MINUS
+
+    MINUS  shift, and go to state 94
+
+    $default  reduce using rule 92 (redirect)
+
+
+State 51
+
+   91 redirect: LT_AND MINUS .
+
+    $default  reduce using rule 91 (redirect)
+
+
+State 52
+
+  109 redirect: LT_GT WORD .
+
+    $default  reduce using rule 109 (redirect)
+
+
+State 53
+
+    0 $accept: inputunit $end .
+
+    $default  accept
+
+
+State 54
+
+    4 terminator: $end .
+
+    $default  reduce using rule 4 (terminator)
+
+
+State 55
+
+    3 terminator: '\n' .
+
+    $default  reduce using rule 3 (terminator)
+
+
+State 56
+
+    1 inputunit: simple_list terminator .
+
+    $default  reduce using rule 1 (inputunit)
+
+
+State 57
+
+    8 connector: connector AND_AND . newline_list pipeline
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+
+    $default  reduce using rule 28 (newline_list)
+
+    newline_list  go to state 95
+
+
+State 58
+
+    9 connector: connector OR_OR . newline_list pipeline
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+
+    $default  reduce using rule 28 (newline_list)
+
+    newline_list  go to state 96
+
+
+State 59
+
+    6 simple_list: connector '&' .  [$end, '\n']
+   10 connector: connector '&' . pipeline
+   13 pipeline: . pipeline '|' command
+   14         | . pipeline OR_AND command
+   15         | . command
+   30 command: . simple_command
+   31        | . shell_command
+   32        | . shell_command redirect_list
+   33 shell_command: . if_statement
+   34              | . unless_statement
+   35              | . while_statement
+   36              | . until_statement
+   37              | . for_statement
+   38 if_statement: . IF compound_list END
+   39             | . IF compound_list ELSE compound_list END
+   40             | . IF compound_list elsif_clause END
+   41             | . IF compound_list THEN compound_list FI
+   42             | . IF compound_list THEN compound_list END
+   43             | . IF compound_list THEN compound_list ELSE compound_list FI
+   44             | . IF compound_list THEN compound_list ELSE compound_list END
+   45             | . IF compound_list THEN compound_list elif_clause FI
+   46             | . IF compound_list THEN compound_list elif_clause END
+   47             | . IF compound_list THEN compound_list elsif_clause FI
+   48             | . IF compound_list THEN compound_list elsif_clause END
+   59 unless_statement: . UNLESS compound_list END
+   60                 | . UNLESS compound_list ELSE compound_list END
+   61                 | . UNLESS compound_list THEN compound_list END
+   62                 | . UNLESS compound_list THEN compound_list ELSE compound_list END
+   63 while_statement: . WHILE compound_list END
+   64                | . WHILE compound_list DO compound_list DONE
+   65                | . WHILE compound_list DO compound_list END
+   66 until_statement: . UNTIL compound_list END
+   67                | . UNTIL compound_list DO compound_list END
+   68 for_statement: . FOR WORD newline_list DO compound_list DONE
+   69              | . FOR WORD newline_list DO compound_list END
+   70              | . FOR WORD newline_list '{' compound_list '}'
+   71              | . FOR WORD ';' newline_list DO compound_list DONE
+   72              | . FOR WORD ';' newline_list DO compound_list END
+   73              | . FOR WORD ';' newline_list '{' compound_list '}'
+   74              | . FOR WORD IN word_list list_terminater compound_list END
+   75              | . FOR WORD IN word_list list_terminater newline_list DO compound_list DONE
+   76              | . FOR WORD IN word_list list_terminater newline_list DO compound_list END
+   77              | . FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'
+   78 simple_command: . simple_command_element
+   79               | . simple_command simple_command_element
+   80 simple_command_element: . WORD
+   81                       | . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    WORD    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    IF      shift, and go to state 4
+    UNLESS  shift, and go to state 5
+    WHILE   shift, and go to state 6
+    UNTIL   shift, and go to state 7
+    FOR     shift, and go to state 8
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+
+    $default  reduce using rule 6 (simple_list)
+
+    pipeline                go to state 97
+    command                 go to state 20
+    shell_command           go to state 21
+    if_statement            go to state 22
+    unless_statement        go to state 23
+    while_statement         go to state 24
+    until_statement         go to state 25
+    for_statement           go to state 26
+    simple_command          go to state 27
+    simple_command_element  go to state 28
+    redirect                go to state 29
+
+
+State 60
+
+    7 simple_list: connector ';' .  [$end, '\n']
+   11 connector: connector ';' . pipeline
+   13 pipeline: . pipeline '|' command
+   14         | . pipeline OR_AND command
+   15         | . command
+   30 command: . simple_command
+   31        | . shell_command
+   32        | . shell_command redirect_list
+   33 shell_command: . if_statement
+   34              | . unless_statement
+   35              | . while_statement
+   36              | . until_statement
+   37              | . for_statement
+   38 if_statement: . IF compound_list END
+   39             | . IF compound_list ELSE compound_list END
+   40             | . IF compound_list elsif_clause END
+   41             | . IF compound_list THEN compound_list FI
+   42             | . IF compound_list THEN compound_list END
+   43             | . IF compound_list THEN compound_list ELSE compound_list FI
+   44             | . IF compound_list THEN compound_list ELSE compound_list END
+   45             | . IF compound_list THEN compound_list elif_clause FI
+   46             | . IF compound_list THEN compound_list elif_clause END
+   47             | . IF compound_list THEN compound_list elsif_clause FI
+   48             | . IF compound_list THEN compound_list elsif_clause END
+   59 unless_statement: . UNLESS compound_list END
+   60                 | . UNLESS compound_list ELSE compound_list END
+   61                 | . UNLESS compound_list THEN compound_list END
+   62                 | . UNLESS compound_list THEN compound_list ELSE compound_list END
+   63 while_statement: . WHILE compound_list END
+   64                | . WHILE compound_list DO compound_list DONE
+   65                | . WHILE compound_list DO compound_list END
+   66 until_statement: . UNTIL compound_list END
+   67                | . UNTIL compound_list DO compound_list END
+   68 for_statement: . FOR WORD newline_list DO compound_list DONE
+   69              | . FOR WORD newline_list DO compound_list END
+   70              | . FOR WORD newline_list '{' compound_list '}'
+   71              | . FOR WORD ';' newline_list DO compound_list DONE
+   72              | . FOR WORD ';' newline_list DO compound_list END
+   73              | . FOR WORD ';' newline_list '{' compound_list '}'
+   74              | . FOR WORD IN word_list list_terminater compound_list END
+   75              | . FOR WORD IN word_list list_terminater newline_list DO compound_list DONE
+   76              | . FOR WORD IN word_list list_terminater newline_list DO compound_list END
+   77              | . FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'
+   78 simple_command: . simple_command_element
+   79               | . simple_command simple_command_element
+   80 simple_command_element: . WORD
+   81                       | . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    WORD    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    IF      shift, and go to state 4
+    UNLESS  shift, and go to state 5
+    WHILE   shift, and go to state 6
+    UNTIL   shift, and go to state 7
+    FOR     shift, and go to state 8
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+
+    $default  reduce using rule 7 (simple_list)
+
+    pipeline                go to state 98
+    command                 go to state 20
+    shell_command           go to state 21
+    if_statement            go to state 22
+    unless_statement        go to state 23
+    while_statement         go to state 24
+    until_statement         go to state 25
+    for_statement           go to state 26
+    simple_command          go to state 27
+    simple_command_element  go to state 28
+    redirect                go to state 29
+
+
+State 61
+
+   14 pipeline: pipeline OR_AND . command
+   30 command: . simple_command
+   31        | . shell_command
+   32        | . shell_command redirect_list
+   33 shell_command: . if_statement
+   34              | . unless_statement
+   35              | . while_statement
+   36              | . until_statement
+   37              | . for_statement
+   38 if_statement: . IF compound_list END
+   39             | . IF compound_list ELSE compound_list END
+   40             | . IF compound_list elsif_clause END
+   41             | . IF compound_list THEN compound_list FI
+   42             | . IF compound_list THEN compound_list END
+   43             | . IF compound_list THEN compound_list ELSE compound_list FI
+   44             | . IF compound_list THEN compound_list ELSE compound_list END
+   45             | . IF compound_list THEN compound_list elif_clause FI
+   46             | . IF compound_list THEN compound_list elif_clause END
+   47             | . IF compound_list THEN compound_list elsif_clause FI
+   48             | . IF compound_list THEN compound_list elsif_clause END
+   59 unless_statement: . UNLESS compound_list END
+   60                 | . UNLESS compound_list ELSE compound_list END
+   61                 | . UNLESS compound_list THEN compound_list END
+   62                 | . UNLESS compound_list THEN compound_list ELSE compound_list END
+   63 while_statement: . WHILE compound_list END
+   64                | . WHILE compound_list DO compound_list DONE
+   65                | . WHILE compound_list DO compound_list END
+   66 until_statement: . UNTIL compound_list END
+   67                | . UNTIL compound_list DO compound_list END
+   68 for_statement: . FOR WORD newline_list DO compound_list DONE
+   69              | . FOR WORD newline_list DO compound_list END
+   70              | . FOR WORD newline_list '{' compound_list '}'
+   71              | . FOR WORD ';' newline_list DO compound_list DONE
+   72              | . FOR WORD ';' newline_list DO compound_list END
+   73              | . FOR WORD ';' newline_list '{' compound_list '}'
+   74              | . FOR WORD IN word_list list_terminater compound_list END
+   75              | . FOR WORD IN word_list list_terminater newline_list DO compound_list DONE
+   76              | . FOR WORD IN word_list list_terminater newline_list DO compound_list END
+   77              | . FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'
+   78 simple_command: . simple_command_element
+   79               | . simple_command simple_command_element
+   80 simple_command_element: . WORD
+   81                       | . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    WORD    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    IF      shift, and go to state 4
+    UNLESS  shift, and go to state 5
+    WHILE   shift, and go to state 6
+    UNTIL   shift, and go to state 7
+    FOR     shift, and go to state 8
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+
+    command                 go to state 99
+    shell_command           go to state 21
+    if_statement            go to state 22
+    unless_statement        go to state 23
+    while_statement         go to state 24
+    until_statement         go to state 25
+    for_statement           go to state 26
+    simple_command          go to state 27
+    simple_command_element  go to state 28
+    redirect                go to state 29
+
+
+State 62
+
+   13 pipeline: pipeline '|' . command
+   30 command: . simple_command
+   31        | . shell_command
+   32        | . shell_command redirect_list
+   33 shell_command: . if_statement
+   34              | . unless_statement
+   35              | . while_statement
+   36              | . until_statement
+   37              | . for_statement
+   38 if_statement: . IF compound_list END
+   39             | . IF compound_list ELSE compound_list END
+   40             | . IF compound_list elsif_clause END
+   41             | . IF compound_list THEN compound_list FI
+   42             | . IF compound_list THEN compound_list END
+   43             | . IF compound_list THEN compound_list ELSE compound_list FI
+   44             | . IF compound_list THEN compound_list ELSE compound_list END
+   45             | . IF compound_list THEN compound_list elif_clause FI
+   46             | . IF compound_list THEN compound_list elif_clause END
+   47             | . IF compound_list THEN compound_list elsif_clause FI
+   48             | . IF compound_list THEN compound_list elsif_clause END
+   59 unless_statement: . UNLESS compound_list END
+   60                 | . UNLESS compound_list ELSE compound_list END
+   61                 | . UNLESS compound_list THEN compound_list END
+   62                 | . UNLESS compound_list THEN compound_list ELSE compound_list END
+   63 while_statement: . WHILE compound_list END
+   64                | . WHILE compound_list DO compound_list DONE
+   65                | . WHILE compound_list DO compound_list END
+   66 until_statement: . UNTIL compound_list END
+   67                | . UNTIL compound_list DO compound_list END
+   68 for_statement: . FOR WORD newline_list DO compound_list DONE
+   69              | . FOR WORD newline_list DO compound_list END
+   70              | . FOR WORD newline_list '{' compound_list '}'
+   71              | . FOR WORD ';' newline_list DO compound_list DONE
+   72              | . FOR WORD ';' newline_list DO compound_list END
+   73              | . FOR WORD ';' newline_list '{' compound_list '}'
+   74              | . FOR WORD IN word_list list_terminater compound_list END
+   75              | . FOR WORD IN word_list list_terminater newline_list DO compound_list DONE
+   76              | . FOR WORD IN word_list list_terminater newline_list DO compound_list END
+   77              | . FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'
+   78 simple_command: . simple_command_element
+   79               | . simple_command simple_command_element
+   80 simple_command_element: . WORD
+   81                       | . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    WORD    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    IF      shift, and go to state 4
+    UNLESS  shift, and go to state 5
+    WHILE   shift, and go to state 6
+    UNTIL   shift, and go to state 7
+    FOR     shift, and go to state 8
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+
+    command                 go to state 100
+    shell_command           go to state 21
+    if_statement            go to state 22
+    unless_statement        go to state 23
+    while_statement         go to state 24
+    until_statement         go to state 25
+    for_statement           go to state 26
+    simple_command          go to state 27
+    simple_command_element  go to state 28
+    redirect                go to state 29
+
+
+State 63
+
+   32 command: shell_command redirect_list .  [$end, THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, AND_AND, OR_OR, OR_AND, '\n', '&', ';', '|', '}']
+   83 redirect_list: redirect_list . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    NUMBER  shift, and go to state 3
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+
+    $default  reduce using rule 32 (command)
+
+    redirect  go to state 101
+
+
+State 64
+
+   82 redirect_list: redirect .
+
+    $default  reduce using rule 82 (redirect_list)
+
+
+State 65
+
+   79 simple_command: simple_command simple_command_element .
+
+    $default  reduce using rule 79 (simple_command)
+
+
+State 66
+
+   98 redirect: NUMBER GT WORD .
+
+    $default  reduce using rule 98 (redirect)
+
+
+State 67
+
+  108 redirect: NUMBER GT_GT WORD .
+
+    $default  reduce using rule 108 (redirect)
+
+
+State 68
+
+  103 redirect: NUMBER GT_AND NUMBER .  [$end, WORD, NUMBER, THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, AND_AND, OR_OR, OR_AND, GT, GT_GT, AND_GT, GT_AND, LT, LT_AND, LT_GT, '\n', '&', ';', '|', '}']
+  104         | NUMBER GT_AND NUMBER . MINUS
+
+    MINUS  shift, and go to state 102
+
+    $default  reduce using rule 103 (redirect)
+
+
+State 69
+
+  102 redirect: NUMBER GT_AND MINUS .
+
+    $default  reduce using rule 102 (redirect)
+
+
+State 70
+
+   90 redirect: NUMBER LT WORD .
+
+    $default  reduce using rule 90 (redirect)
+
+
+State 71
+
+   95 redirect: NUMBER LT_AND NUMBER .  [$end, WORD, NUMBER, THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, AND_AND, OR_OR, OR_AND, GT, GT_GT, AND_GT, GT_AND, LT, LT_AND, LT_GT, '\n', '&', ';', '|', '}']
+   96         | NUMBER LT_AND NUMBER . MINUS
+
+    MINUS  shift, and go to state 103
+
+    $default  reduce using rule 95 (redirect)
+
+
+State 72
+
+   94 redirect: NUMBER LT_AND MINUS .
+
+    $default  reduce using rule 94 (redirect)
+
+
+State 73
+
+  110 redirect: NUMBER LT_GT WORD .
+
+    $default  reduce using rule 110 (redirect)
+
+
+State 74
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   41 if_statement: IF compound_list THEN . compound_list FI
+   42             | IF compound_list THEN . compound_list END
+   43             | IF compound_list THEN . compound_list ELSE compound_list FI
+   44             | IF compound_list THEN . compound_list ELSE compound_list END
+   45             | IF compound_list THEN . compound_list elif_clause FI
+   46             | IF compound_list THEN . compound_list elif_clause END
+   47             | IF compound_list THEN . compound_list elsif_clause FI
+   48             | IF compound_list THEN . compound_list elsif_clause END
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 104
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 75
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   39 if_statement: IF compound_list ELSE . compound_list END
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 105
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 76
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   53 elsif_clause: ELSIF . compound_list
+   54             | ELSIF . compound_list ELSE compound_list
+   55             | ELSIF . compound_list THEN compound_list
+   56             | ELSIF . compound_list THEN compound_list ELSE compound_list
+   57             | ELSIF . compound_list THEN compound_list elif_clause
+   58             | ELSIF . compound_list THEN compound_list elsif_clause
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 106
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 77
+
+   38 if_statement: IF compound_list END .
+
+    $default  reduce using rule 38 (if_statement)
+
+
+State 78
+
+   40 if_statement: IF compound_list elsif_clause . END
+
+    END  shift, and go to state 107
+
+
+State 79
+
+   29 newline_list: newline_list '\n' .
+
+    $default  reduce using rule 29 (newline_list)
+
+
+State 80
+
+   13 pipeline: pipeline . '|' command
+   14         | pipeline . OR_AND command
+   27 list1: pipeline .  [THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, AND_AND, OR_OR, '\n', '&', ';', '}']
+
+    OR_AND  shift, and go to state 61
+    '|'     shift, and go to state 62
+
+    $default  reduce using rule 27 (list1)
+
+
+State 81
+
+   18 list: newline_list list0 .
+
+    $default  reduce using rule 18 (list)
+
+
+State 82
+
+   17 compound_list: newline_list list1 .  [THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, '}']
+   19 list0: list1 . '\n' newline_list
+   20      | list1 . '&' newline_list
+   21      | list1 . ';' newline_list
+   22 list1: list1 . AND_AND newline_list pipeline
+   23      | list1 . OR_OR newline_list pipeline
+   24      | list1 . '&' newline_list pipeline
+   25      | list1 . ';' newline_list pipeline
+   26      | list1 . '\n' newline_list pipeline
+
+    AND_AND  shift, and go to state 108
+    OR_OR    shift, and go to state 109
+    '\n'     shift, and go to state 110
+    '&'      shift, and go to state 111
+    ';'      shift, and go to state 112
+
+    $default  reduce using rule 17 (compound_list)
+
+
+State 83
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   61 unless_statement: UNLESS compound_list THEN . compound_list END
+   62                 | UNLESS compound_list THEN . compound_list ELSE compound_list END
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 113
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 84
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   60 unless_statement: UNLESS compound_list ELSE . compound_list END
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 114
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 85
+
+   59 unless_statement: UNLESS compound_list END .
+
+    $default  reduce using rule 59 (unless_statement)
+
+
+State 86
+
+   63 while_statement: WHILE compound_list END .
+
+    $default  reduce using rule 63 (while_statement)
+
+
+State 87
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   64 while_statement: WHILE compound_list DO . compound_list DONE
+   65                | WHILE compound_list DO . compound_list END
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 115
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 88
+
+   66 until_statement: UNTIL compound_list END .
+
+    $default  reduce using rule 66 (until_statement)
+
+
+State 89
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   67 until_statement: UNTIL compound_list DO . compound_list END
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 116
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 90
+
+   74 for_statement: FOR WORD IN . word_list list_terminater compound_list END
+   75              | FOR WORD IN . word_list list_terminater newline_list DO compound_list DONE
+   76              | FOR WORD IN . word_list list_terminater newline_list DO compound_list END
+   77              | FOR WORD IN . word_list list_terminater newline_list '{' compound_list '}'
+   84 word_list: . WORD
+   85          | . word_list WORD
+
+    WORD  shift, and go to state 117
+
+    word_list  go to state 118
+
+
+State 91
+
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   71 for_statement: FOR WORD ';' . newline_list DO compound_list DONE
+   72              | FOR WORD ';' . newline_list DO compound_list END
+   73              | FOR WORD ';' . newline_list '{' compound_list '}'
+
+    $default  reduce using rule 28 (newline_list)
+
+    newline_list  go to state 119
+
+
+State 92
+
+   29 newline_list: newline_list . '\n'
+   68 for_statement: FOR WORD newline_list . DO compound_list DONE
+   69              | FOR WORD newline_list . DO compound_list END
+   70              | FOR WORD newline_list . '{' compound_list '}'
+
+    DO    shift, and go to state 120
+    '\n'  shift, and go to state 79
+    '{'   shift, and go to state 121
+
+
+State 93
+
+  101 redirect: GT_AND NUMBER MINUS .
+
+    $default  reduce using rule 101 (redirect)
+
+
+State 94
+
+   93 redirect: LT_AND NUMBER MINUS .
+
+    $default  reduce using rule 93 (redirect)
+
+
+State 95
+
+    8 connector: connector AND_AND newline_list . pipeline
+   13 pipeline: . pipeline '|' command
+   14         | . pipeline OR_AND command
+   15         | . command
+   29 newline_list: newline_list . '\n'
+   30 command: . simple_command
+   31        | . shell_command
+   32        | . shell_command redirect_list
+   33 shell_command: . if_statement
+   34              | . unless_statement
+   35              | . while_statement
+   36              | . until_statement
+   37              | . for_statement
+   38 if_statement: . IF compound_list END
+   39             | . IF compound_list ELSE compound_list END
+   40             | . IF compound_list elsif_clause END
+   41             | . IF compound_list THEN compound_list FI
+   42             | . IF compound_list THEN compound_list END
+   43             | . IF compound_list THEN compound_list ELSE compound_list FI
+   44             | . IF compound_list THEN compound_list ELSE compound_list END
+   45             | . IF compound_list THEN compound_list elif_clause FI
+   46             | . IF compound_list THEN compound_list elif_clause END
+   47             | . IF compound_list THEN compound_list elsif_clause FI
+   48             | . IF compound_list THEN compound_list elsif_clause END
+   59 unless_statement: . UNLESS compound_list END
+   60                 | . UNLESS compound_list ELSE compound_list END
+   61                 | . UNLESS compound_list THEN compound_list END
+   62                 | . UNLESS compound_list THEN compound_list ELSE compound_list END
+   63 while_statement: . WHILE compound_list END
+   64                | . WHILE compound_list DO compound_list DONE
+   65                | . WHILE compound_list DO compound_list END
+   66 until_statement: . UNTIL compound_list END
+   67                | . UNTIL compound_list DO compound_list END
+   68 for_statement: . FOR WORD newline_list DO compound_list DONE
+   69              | . FOR WORD newline_list DO compound_list END
+   70              | . FOR WORD newline_list '{' compound_list '}'
+   71              | . FOR WORD ';' newline_list DO compound_list DONE
+   72              | . FOR WORD ';' newline_list DO compound_list END
+   73              | . FOR WORD ';' newline_list '{' compound_list '}'
+   74              | . FOR WORD IN word_list list_terminater compound_list END
+   75              | . FOR WORD IN word_list list_terminater newline_list DO compound_list DONE
+   76              | . FOR WORD IN word_list list_terminater newline_list DO compound_list END
+   77              | . FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'
+   78 simple_command: . simple_command_element
+   79               | . simple_command simple_command_element
+   80 simple_command_element: . WORD
+   81                       | . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    WORD    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    IF      shift, and go to state 4
+    UNLESS  shift, and go to state 5
+    WHILE   shift, and go to state 6
+    UNTIL   shift, and go to state 7
+    FOR     shift, and go to state 8
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+    '\n'    shift, and go to state 79
+
+    pipeline                go to state 122
+    command                 go to state 20
+    shell_command           go to state 21
+    if_statement            go to state 22
+    unless_statement        go to state 23
+    while_statement         go to state 24
+    until_statement         go to state 25
+    for_statement           go to state 26
+    simple_command          go to state 27
+    simple_command_element  go to state 28
+    redirect                go to state 29
+
+
+State 96
+
+    9 connector: connector OR_OR newline_list . pipeline
+   13 pipeline: . pipeline '|' command
+   14         | . pipeline OR_AND command
+   15         | . command
+   29 newline_list: newline_list . '\n'
+   30 command: . simple_command
+   31        | . shell_command
+   32        | . shell_command redirect_list
+   33 shell_command: . if_statement
+   34              | . unless_statement
+   35              | . while_statement
+   36              | . until_statement
+   37              | . for_statement
+   38 if_statement: . IF compound_list END
+   39             | . IF compound_list ELSE compound_list END
+   40             | . IF compound_list elsif_clause END
+   41             | . IF compound_list THEN compound_list FI
+   42             | . IF compound_list THEN compound_list END
+   43             | . IF compound_list THEN compound_list ELSE compound_list FI
+   44             | . IF compound_list THEN compound_list ELSE compound_list END
+   45             | . IF compound_list THEN compound_list elif_clause FI
+   46             | . IF compound_list THEN compound_list elif_clause END
+   47             | . IF compound_list THEN compound_list elsif_clause FI
+   48             | . IF compound_list THEN compound_list elsif_clause END
+   59 unless_statement: . UNLESS compound_list END
+   60                 | . UNLESS compound_list ELSE compound_list END
+   61                 | . UNLESS compound_list THEN compound_list END
+   62                 | . UNLESS compound_list THEN compound_list ELSE compound_list END
+   63 while_statement: . WHILE compound_list END
+   64                | . WHILE compound_list DO compound_list DONE
+   65                | . WHILE compound_list DO compound_list END
+   66 until_statement: . UNTIL compound_list END
+   67                | . UNTIL compound_list DO compound_list END
+   68 for_statement: . FOR WORD newline_list DO compound_list DONE
+   69              | . FOR WORD newline_list DO compound_list END
+   70              | . FOR WORD newline_list '{' compound_list '}'
+   71              | . FOR WORD ';' newline_list DO compound_list DONE
+   72              | . FOR WORD ';' newline_list DO compound_list END
+   73              | . FOR WORD ';' newline_list '{' compound_list '}'
+   74              | . FOR WORD IN word_list list_terminater compound_list END
+   75              | . FOR WORD IN word_list list_terminater newline_list DO compound_list DONE
+   76              | . FOR WORD IN word_list list_terminater newline_list DO compound_list END
+   77              | . FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'
+   78 simple_command: . simple_command_element
+   79               | . simple_command simple_command_element
+   80 simple_command_element: . WORD
+   81                       | . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    WORD    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    IF      shift, and go to state 4
+    UNLESS  shift, and go to state 5
+    WHILE   shift, and go to state 6
+    UNTIL   shift, and go to state 7
+    FOR     shift, and go to state 8
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+    '\n'    shift, and go to state 79
+
+    pipeline                go to state 123
+    command                 go to state 20
+    shell_command           go to state 21
+    if_statement            go to state 22
+    unless_statement        go to state 23
+    while_statement         go to state 24
+    until_statement         go to state 25
+    for_statement           go to state 26
+    simple_command          go to state 27
+    simple_command_element  go to state 28
+    redirect                go to state 29
+
+
+State 97
+
+   10 connector: connector '&' pipeline .  [$end, AND_AND, OR_OR, '\n', '&', ';']
+   13 pipeline: pipeline . '|' command
+   14         | pipeline . OR_AND command
+
+    OR_AND  shift, and go to state 61
+    '|'     shift, and go to state 62
+
+    $default  reduce using rule 10 (connector)
+
+
+State 98
+
+   11 connector: connector ';' pipeline .  [$end, AND_AND, OR_OR, '\n', '&', ';']
+   13 pipeline: pipeline . '|' command
+   14         | pipeline . OR_AND command
+
+    OR_AND  shift, and go to state 61
+    '|'     shift, and go to state 62
+
+    $default  reduce using rule 11 (connector)
+
+
+State 99
+
+   14 pipeline: pipeline OR_AND command .
+
+    $default  reduce using rule 14 (pipeline)
+
+
+State 100
+
+   13 pipeline: pipeline '|' command .
+
+    $default  reduce using rule 13 (pipeline)
+
+
+State 101
+
+   83 redirect_list: redirect_list redirect .
+
+    $default  reduce using rule 83 (redirect_list)
+
+
+State 102
+
+  104 redirect: NUMBER GT_AND NUMBER MINUS .
+
+    $default  reduce using rule 104 (redirect)
+
+
+State 103
+
+   96 redirect: NUMBER LT_AND NUMBER MINUS .
+
+    $default  reduce using rule 96 (redirect)
+
+
+State 104
+
+   41 if_statement: IF compound_list THEN compound_list . FI
+   42             | IF compound_list THEN compound_list . END
+   43             | IF compound_list THEN compound_list . ELSE compound_list FI
+   44             | IF compound_list THEN compound_list . ELSE compound_list END
+   45             | IF compound_list THEN compound_list . elif_clause FI
+   46             | IF compound_list THEN compound_list . elif_clause END
+   47             | IF compound_list THEN compound_list . elsif_clause FI
+   48             | IF compound_list THEN compound_list . elsif_clause END
+   49 elif_clause: . ELIF compound_list THEN compound_list
+   50            | . ELIF compound_list THEN compound_list ELSE compound_list
+   51            | . ELIF compound_list THEN compound_list elif_clause
+   52            | . ELIF compound_list THEN compound_list elsif_clause
+   53 elsif_clause: . ELSIF compound_list
+   54             | . ELSIF compound_list ELSE compound_list
+   55             | . ELSIF compound_list THEN compound_list
+   56             | . ELSIF compound_list THEN compound_list ELSE compound_list
+   57             | . ELSIF compound_list THEN compound_list elif_clause
+   58             | . ELSIF compound_list THEN compound_list elsif_clause
+
+    ELSE   shift, and go to state 124
+    ELIF   shift, and go to state 125
+    ELSIF  shift, and go to state 76
+    FI     shift, and go to state 126
+    END    shift, and go to state 127
+
+    elif_clause   go to state 128
+    elsif_clause  go to state 129
+
+
+State 105
+
+   39 if_statement: IF compound_list ELSE compound_list . END
+
+    END  shift, and go to state 130
+
+
+State 106
+
+   53 elsif_clause: ELSIF compound_list .  [FI, END]
+   54             | ELSIF compound_list . ELSE compound_list
+   55             | ELSIF compound_list . THEN compound_list
+   56             | ELSIF compound_list . THEN compound_list ELSE compound_list
+   57             | ELSIF compound_list . THEN compound_list elif_clause
+   58             | ELSIF compound_list . THEN compound_list elsif_clause
+
+    THEN  shift, and go to state 131
+    ELSE  shift, and go to state 132
+
+    $default  reduce using rule 53 (elsif_clause)
+
+
+State 107
+
+   40 if_statement: IF compound_list elsif_clause END .
+
+    $default  reduce using rule 40 (if_statement)
+
+
+State 108
+
+   22 list1: list1 AND_AND . newline_list pipeline
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+
+    $default  reduce using rule 28 (newline_list)
+
+    newline_list  go to state 133
+
+
+State 109
+
+   23 list1: list1 OR_OR . newline_list pipeline
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+
+    $default  reduce using rule 28 (newline_list)
+
+    newline_list  go to state 134
+
+
+State 110
+
+   19 list0: list1 '\n' . newline_list
+   26 list1: list1 '\n' . newline_list pipeline
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+
+    $default  reduce using rule 28 (newline_list)
+
+    newline_list  go to state 135
+
+
+State 111
+
+   20 list0: list1 '&' . newline_list
+   24 list1: list1 '&' . newline_list pipeline
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+
+    $default  reduce using rule 28 (newline_list)
+
+    newline_list  go to state 136
+
+
+State 112
+
+   21 list0: list1 ';' . newline_list
+   25 list1: list1 ';' . newline_list pipeline
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+
+    $default  reduce using rule 28 (newline_list)
+
+    newline_list  go to state 137
+
+
+State 113
+
+   61 unless_statement: UNLESS compound_list THEN compound_list . END
+   62                 | UNLESS compound_list THEN compound_list . ELSE compound_list END
+
+    ELSE  shift, and go to state 138
+    END   shift, and go to state 139
+
+
+State 114
+
+   60 unless_statement: UNLESS compound_list ELSE compound_list . END
+
+    END  shift, and go to state 140
+
+
+State 115
+
+   64 while_statement: WHILE compound_list DO compound_list . DONE
+   65                | WHILE compound_list DO compound_list . END
+
+    END   shift, and go to state 141
+    DONE  shift, and go to state 142
+
+
+State 116
+
+   67 until_statement: UNTIL compound_list DO compound_list . END
+
+    END  shift, and go to state 143
+
+
+State 117
+
+   84 word_list: WORD .
+
+    $default  reduce using rule 84 (word_list)
+
+
+State 118
+
+   74 for_statement: FOR WORD IN word_list . list_terminater compound_list END
+   75              | FOR WORD IN word_list . list_terminater newline_list DO compound_list DONE
+   76              | FOR WORD IN word_list . list_terminater newline_list DO compound_list END
+   77              | FOR WORD IN word_list . list_terminater newline_list '{' compound_list '}'
+   85 word_list: word_list . WORD
+   86 list_terminater: . '\n'
+   87                | . ';'
+   88                | . $end
+
+    $end  shift, and go to state 144
+    WORD  shift, and go to state 145
+    '\n'  shift, and go to state 146
+    ';'   shift, and go to state 147
+
+    list_terminater  go to state 148
+
+
+State 119
+
+   29 newline_list: newline_list . '\n'
+   71 for_statement: FOR WORD ';' newline_list . DO compound_list DONE
+   72              | FOR WORD ';' newline_list . DO compound_list END
+   73              | FOR WORD ';' newline_list . '{' compound_list '}'
+
+    DO    shift, and go to state 149
+    '\n'  shift, and go to state 79
+    '{'   shift, and go to state 150
+
+
+State 120
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   68 for_statement: FOR WORD newline_list DO . compound_list DONE
+   69              | FOR WORD newline_list DO . compound_list END
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 151
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 121
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   70 for_statement: FOR WORD newline_list '{' . compound_list '}'
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 152
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 122
+
+    8 connector: connector AND_AND newline_list pipeline .  [$end, AND_AND, OR_OR, '\n', '&', ';']
+   13 pipeline: pipeline . '|' command
+   14         | pipeline . OR_AND command
+
+    OR_AND  shift, and go to state 61
+    '|'     shift, and go to state 62
+
+    $default  reduce using rule 8 (connector)
+
+
+State 123
+
+    9 connector: connector OR_OR newline_list pipeline .  [$end, AND_AND, OR_OR, '\n', '&', ';']
+   13 pipeline: pipeline . '|' command
+   14         | pipeline . OR_AND command
+
+    OR_AND  shift, and go to state 61
+    '|'     shift, and go to state 62
+
+    $default  reduce using rule 9 (connector)
+
+
+State 124
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   43 if_statement: IF compound_list THEN compound_list ELSE . compound_list FI
+   44             | IF compound_list THEN compound_list ELSE . compound_list END
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 153
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 125
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   49 elif_clause: ELIF . compound_list THEN compound_list
+   50            | ELIF . compound_list THEN compound_list ELSE compound_list
+   51            | ELIF . compound_list THEN compound_list elif_clause
+   52            | ELIF . compound_list THEN compound_list elsif_clause
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 154
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 126
+
+   41 if_statement: IF compound_list THEN compound_list FI .
+
+    $default  reduce using rule 41 (if_statement)
+
+
+State 127
+
+   42 if_statement: IF compound_list THEN compound_list END .
+
+    $default  reduce using rule 42 (if_statement)
+
+
+State 128
+
+   45 if_statement: IF compound_list THEN compound_list elif_clause . FI
+   46             | IF compound_list THEN compound_list elif_clause . END
+
+    FI   shift, and go to state 155
+    END  shift, and go to state 156
+
+
+State 129
+
+   47 if_statement: IF compound_list THEN compound_list elsif_clause . FI
+   48             | IF compound_list THEN compound_list elsif_clause . END
+
+    FI   shift, and go to state 157
+    END  shift, and go to state 158
+
+
+State 130
+
+   39 if_statement: IF compound_list ELSE compound_list END .
+
+    $default  reduce using rule 39 (if_statement)
+
+
+State 131
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   55 elsif_clause: ELSIF compound_list THEN . compound_list
+   56             | ELSIF compound_list THEN . compound_list ELSE compound_list
+   57             | ELSIF compound_list THEN . compound_list elif_clause
+   58             | ELSIF compound_list THEN . compound_list elsif_clause
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 159
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 132
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   54 elsif_clause: ELSIF compound_list ELSE . compound_list
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 160
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 133
+
+   13 pipeline: . pipeline '|' command
+   14         | . pipeline OR_AND command
+   15         | . command
+   22 list1: list1 AND_AND newline_list . pipeline
+   29 newline_list: newline_list . '\n'
+   30 command: . simple_command
+   31        | . shell_command
+   32        | . shell_command redirect_list
+   33 shell_command: . if_statement
+   34              | . unless_statement
+   35              | . while_statement
+   36              | . until_statement
+   37              | . for_statement
+   38 if_statement: . IF compound_list END
+   39             | . IF compound_list ELSE compound_list END
+   40             | . IF compound_list elsif_clause END
+   41             | . IF compound_list THEN compound_list FI
+   42             | . IF compound_list THEN compound_list END
+   43             | . IF compound_list THEN compound_list ELSE compound_list FI
+   44             | . IF compound_list THEN compound_list ELSE compound_list END
+   45             | . IF compound_list THEN compound_list elif_clause FI
+   46             | . IF compound_list THEN compound_list elif_clause END
+   47             | . IF compound_list THEN compound_list elsif_clause FI
+   48             | . IF compound_list THEN compound_list elsif_clause END
+   59 unless_statement: . UNLESS compound_list END
+   60                 | . UNLESS compound_list ELSE compound_list END
+   61                 | . UNLESS compound_list THEN compound_list END
+   62                 | . UNLESS compound_list THEN compound_list ELSE compound_list END
+   63 while_statement: . WHILE compound_list END
+   64                | . WHILE compound_list DO compound_list DONE
+   65                | . WHILE compound_list DO compound_list END
+   66 until_statement: . UNTIL compound_list END
+   67                | . UNTIL compound_list DO compound_list END
+   68 for_statement: . FOR WORD newline_list DO compound_list DONE
+   69              | . FOR WORD newline_list DO compound_list END
+   70              | . FOR WORD newline_list '{' compound_list '}'
+   71              | . FOR WORD ';' newline_list DO compound_list DONE
+   72              | . FOR WORD ';' newline_list DO compound_list END
+   73              | . FOR WORD ';' newline_list '{' compound_list '}'
+   74              | . FOR WORD IN word_list list_terminater compound_list END
+   75              | . FOR WORD IN word_list list_terminater newline_list DO compound_list DONE
+   76              | . FOR WORD IN word_list list_terminater newline_list DO compound_list END
+   77              | . FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'
+   78 simple_command: . simple_command_element
+   79               | . simple_command simple_command_element
+   80 simple_command_element: . WORD
+   81                       | . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    WORD    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    IF      shift, and go to state 4
+    UNLESS  shift, and go to state 5
+    WHILE   shift, and go to state 6
+    UNTIL   shift, and go to state 7
+    FOR     shift, and go to state 8
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+    '\n'    shift, and go to state 79
+
+    pipeline                go to state 161
+    command                 go to state 20
+    shell_command           go to state 21
+    if_statement            go to state 22
+    unless_statement        go to state 23
+    while_statement         go to state 24
+    until_statement         go to state 25
+    for_statement           go to state 26
+    simple_command          go to state 27
+    simple_command_element  go to state 28
+    redirect                go to state 29
+
+
+State 134
+
+   13 pipeline: . pipeline '|' command
+   14         | . pipeline OR_AND command
+   15         | . command
+   23 list1: list1 OR_OR newline_list . pipeline
+   29 newline_list: newline_list . '\n'
+   30 command: . simple_command
+   31        | . shell_command
+   32        | . shell_command redirect_list
+   33 shell_command: . if_statement
+   34              | . unless_statement
+   35              | . while_statement
+   36              | . until_statement
+   37              | . for_statement
+   38 if_statement: . IF compound_list END
+   39             | . IF compound_list ELSE compound_list END
+   40             | . IF compound_list elsif_clause END
+   41             | . IF compound_list THEN compound_list FI
+   42             | . IF compound_list THEN compound_list END
+   43             | . IF compound_list THEN compound_list ELSE compound_list FI
+   44             | . IF compound_list THEN compound_list ELSE compound_list END
+   45             | . IF compound_list THEN compound_list elif_clause FI
+   46             | . IF compound_list THEN compound_list elif_clause END
+   47             | . IF compound_list THEN compound_list elsif_clause FI
+   48             | . IF compound_list THEN compound_list elsif_clause END
+   59 unless_statement: . UNLESS compound_list END
+   60                 | . UNLESS compound_list ELSE compound_list END
+   61                 | . UNLESS compound_list THEN compound_list END
+   62                 | . UNLESS compound_list THEN compound_list ELSE compound_list END
+   63 while_statement: . WHILE compound_list END
+   64                | . WHILE compound_list DO compound_list DONE
+   65                | . WHILE compound_list DO compound_list END
+   66 until_statement: . UNTIL compound_list END
+   67                | . UNTIL compound_list DO compound_list END
+   68 for_statement: . FOR WORD newline_list DO compound_list DONE
+   69              | . FOR WORD newline_list DO compound_list END
+   70              | . FOR WORD newline_list '{' compound_list '}'
+   71              | . FOR WORD ';' newline_list DO compound_list DONE
+   72              | . FOR WORD ';' newline_list DO compound_list END
+   73              | . FOR WORD ';' newline_list '{' compound_list '}'
+   74              | . FOR WORD IN word_list list_terminater compound_list END
+   75              | . FOR WORD IN word_list list_terminater newline_list DO compound_list DONE
+   76              | . FOR WORD IN word_list list_terminater newline_list DO compound_list END
+   77              | . FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'
+   78 simple_command: . simple_command_element
+   79               | . simple_command simple_command_element
+   80 simple_command_element: . WORD
+   81                       | . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    WORD    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    IF      shift, and go to state 4
+    UNLESS  shift, and go to state 5
+    WHILE   shift, and go to state 6
+    UNTIL   shift, and go to state 7
+    FOR     shift, and go to state 8
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+    '\n'    shift, and go to state 79
+
+    pipeline                go to state 162
+    command                 go to state 20
+    shell_command           go to state 21
+    if_statement            go to state 22
+    unless_statement        go to state 23
+    while_statement         go to state 24
+    until_statement         go to state 25
+    for_statement           go to state 26
+    simple_command          go to state 27
+    simple_command_element  go to state 28
+    redirect                go to state 29
+
+
+State 135
+
+   13 pipeline: . pipeline '|' command
+   14         | . pipeline OR_AND command
+   15         | . command
+   19 list0: list1 '\n' newline_list .  [THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, '}']
+   26 list1: list1 '\n' newline_list . pipeline
+   29 newline_list: newline_list . '\n'
+   30 command: . simple_command
+   31        | . shell_command
+   32        | . shell_command redirect_list
+   33 shell_command: . if_statement
+   34              | . unless_statement
+   35              | . while_statement
+   36              | . until_statement
+   37              | . for_statement
+   38 if_statement: . IF compound_list END
+   39             | . IF compound_list ELSE compound_list END
+   40             | . IF compound_list elsif_clause END
+   41             | . IF compound_list THEN compound_list FI
+   42             | . IF compound_list THEN compound_list END
+   43             | . IF compound_list THEN compound_list ELSE compound_list FI
+   44             | . IF compound_list THEN compound_list ELSE compound_list END
+   45             | . IF compound_list THEN compound_list elif_clause FI
+   46             | . IF compound_list THEN compound_list elif_clause END
+   47             | . IF compound_list THEN compound_list elsif_clause FI
+   48             | . IF compound_list THEN compound_list elsif_clause END
+   59 unless_statement: . UNLESS compound_list END
+   60                 | . UNLESS compound_list ELSE compound_list END
+   61                 | . UNLESS compound_list THEN compound_list END
+   62                 | . UNLESS compound_list THEN compound_list ELSE compound_list END
+   63 while_statement: . WHILE compound_list END
+   64                | . WHILE compound_list DO compound_list DONE
+   65                | . WHILE compound_list DO compound_list END
+   66 until_statement: . UNTIL compound_list END
+   67                | . UNTIL compound_list DO compound_list END
+   68 for_statement: . FOR WORD newline_list DO compound_list DONE
+   69              | . FOR WORD newline_list DO compound_list END
+   70              | . FOR WORD newline_list '{' compound_list '}'
+   71              | . FOR WORD ';' newline_list DO compound_list DONE
+   72              | . FOR WORD ';' newline_list DO compound_list END
+   73              | . FOR WORD ';' newline_list '{' compound_list '}'
+   74              | . FOR WORD IN word_list list_terminater compound_list END
+   75              | . FOR WORD IN word_list list_terminater newline_list DO compound_list DONE
+   76              | . FOR WORD IN word_list list_terminater newline_list DO compound_list END
+   77              | . FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'
+   78 simple_command: . simple_command_element
+   79               | . simple_command simple_command_element
+   80 simple_command_element: . WORD
+   81                       | . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    WORD    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    IF      shift, and go to state 4
+    UNLESS  shift, and go to state 5
+    WHILE   shift, and go to state 6
+    UNTIL   shift, and go to state 7
+    FOR     shift, and go to state 8
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+    '\n'    shift, and go to state 79
+
+    $default  reduce using rule 19 (list0)
+
+    pipeline                go to state 163
+    command                 go to state 20
+    shell_command           go to state 21
+    if_statement            go to state 22
+    unless_statement        go to state 23
+    while_statement         go to state 24
+    until_statement         go to state 25
+    for_statement           go to state 26
+    simple_command          go to state 27
+    simple_command_element  go to state 28
+    redirect                go to state 29
+
+
+State 136
+
+   13 pipeline: . pipeline '|' command
+   14         | . pipeline OR_AND command
+   15         | . command
+   20 list0: list1 '&' newline_list .  [THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, '}']
+   24 list1: list1 '&' newline_list . pipeline
+   29 newline_list: newline_list . '\n'
+   30 command: . simple_command
+   31        | . shell_command
+   32        | . shell_command redirect_list
+   33 shell_command: . if_statement
+   34              | . unless_statement
+   35              | . while_statement
+   36              | . until_statement
+   37              | . for_statement
+   38 if_statement: . IF compound_list END
+   39             | . IF compound_list ELSE compound_list END
+   40             | . IF compound_list elsif_clause END
+   41             | . IF compound_list THEN compound_list FI
+   42             | . IF compound_list THEN compound_list END
+   43             | . IF compound_list THEN compound_list ELSE compound_list FI
+   44             | . IF compound_list THEN compound_list ELSE compound_list END
+   45             | . IF compound_list THEN compound_list elif_clause FI
+   46             | . IF compound_list THEN compound_list elif_clause END
+   47             | . IF compound_list THEN compound_list elsif_clause FI
+   48             | . IF compound_list THEN compound_list elsif_clause END
+   59 unless_statement: . UNLESS compound_list END
+   60                 | . UNLESS compound_list ELSE compound_list END
+   61                 | . UNLESS compound_list THEN compound_list END
+   62                 | . UNLESS compound_list THEN compound_list ELSE compound_list END
+   63 while_statement: . WHILE compound_list END
+   64                | . WHILE compound_list DO compound_list DONE
+   65                | . WHILE compound_list DO compound_list END
+   66 until_statement: . UNTIL compound_list END
+   67                | . UNTIL compound_list DO compound_list END
+   68 for_statement: . FOR WORD newline_list DO compound_list DONE
+   69              | . FOR WORD newline_list DO compound_list END
+   70              | . FOR WORD newline_list '{' compound_list '}'
+   71              | . FOR WORD ';' newline_list DO compound_list DONE
+   72              | . FOR WORD ';' newline_list DO compound_list END
+   73              | . FOR WORD ';' newline_list '{' compound_list '}'
+   74              | . FOR WORD IN word_list list_terminater compound_list END
+   75              | . FOR WORD IN word_list list_terminater newline_list DO compound_list DONE
+   76              | . FOR WORD IN word_list list_terminater newline_list DO compound_list END
+   77              | . FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'
+   78 simple_command: . simple_command_element
+   79               | . simple_command simple_command_element
+   80 simple_command_element: . WORD
+   81                       | . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    WORD    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    IF      shift, and go to state 4
+    UNLESS  shift, and go to state 5
+    WHILE   shift, and go to state 6
+    UNTIL   shift, and go to state 7
+    FOR     shift, and go to state 8
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+    '\n'    shift, and go to state 79
+
+    $default  reduce using rule 20 (list0)
+
+    pipeline                go to state 164
+    command                 go to state 20
+    shell_command           go to state 21
+    if_statement            go to state 22
+    unless_statement        go to state 23
+    while_statement         go to state 24
+    until_statement         go to state 25
+    for_statement           go to state 26
+    simple_command          go to state 27
+    simple_command_element  go to state 28
+    redirect                go to state 29
+
+
+State 137
+
+   13 pipeline: . pipeline '|' command
+   14         | . pipeline OR_AND command
+   15         | . command
+   21 list0: list1 ';' newline_list .  [THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, '}']
+   25 list1: list1 ';' newline_list . pipeline
+   29 newline_list: newline_list . '\n'
+   30 command: . simple_command
+   31        | . shell_command
+   32        | . shell_command redirect_list
+   33 shell_command: . if_statement
+   34              | . unless_statement
+   35              | . while_statement
+   36              | . until_statement
+   37              | . for_statement
+   38 if_statement: . IF compound_list END
+   39             | . IF compound_list ELSE compound_list END
+   40             | . IF compound_list elsif_clause END
+   41             | . IF compound_list THEN compound_list FI
+   42             | . IF compound_list THEN compound_list END
+   43             | . IF compound_list THEN compound_list ELSE compound_list FI
+   44             | . IF compound_list THEN compound_list ELSE compound_list END
+   45             | . IF compound_list THEN compound_list elif_clause FI
+   46             | . IF compound_list THEN compound_list elif_clause END
+   47             | . IF compound_list THEN compound_list elsif_clause FI
+   48             | . IF compound_list THEN compound_list elsif_clause END
+   59 unless_statement: . UNLESS compound_list END
+   60                 | . UNLESS compound_list ELSE compound_list END
+   61                 | . UNLESS compound_list THEN compound_list END
+   62                 | . UNLESS compound_list THEN compound_list ELSE compound_list END
+   63 while_statement: . WHILE compound_list END
+   64                | . WHILE compound_list DO compound_list DONE
+   65                | . WHILE compound_list DO compound_list END
+   66 until_statement: . UNTIL compound_list END
+   67                | . UNTIL compound_list DO compound_list END
+   68 for_statement: . FOR WORD newline_list DO compound_list DONE
+   69              | . FOR WORD newline_list DO compound_list END
+   70              | . FOR WORD newline_list '{' compound_list '}'
+   71              | . FOR WORD ';' newline_list DO compound_list DONE
+   72              | . FOR WORD ';' newline_list DO compound_list END
+   73              | . FOR WORD ';' newline_list '{' compound_list '}'
+   74              | . FOR WORD IN word_list list_terminater compound_list END
+   75              | . FOR WORD IN word_list list_terminater newline_list DO compound_list DONE
+   76              | . FOR WORD IN word_list list_terminater newline_list DO compound_list END
+   77              | . FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'
+   78 simple_command: . simple_command_element
+   79               | . simple_command simple_command_element
+   80 simple_command_element: . WORD
+   81                       | . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    WORD    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    IF      shift, and go to state 4
+    UNLESS  shift, and go to state 5
+    WHILE   shift, and go to state 6
+    UNTIL   shift, and go to state 7
+    FOR     shift, and go to state 8
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+    '\n'    shift, and go to state 79
+
+    $default  reduce using rule 21 (list0)
+
+    pipeline                go to state 165
+    command                 go to state 20
+    shell_command           go to state 21
+    if_statement            go to state 22
+    unless_statement        go to state 23
+    while_statement         go to state 24
+    until_statement         go to state 25
+    for_statement           go to state 26
+    simple_command          go to state 27
+    simple_command_element  go to state 28
+    redirect                go to state 29
+
+
+State 138
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   62 unless_statement: UNLESS compound_list THEN compound_list ELSE . compound_list END
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 166
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 139
+
+   61 unless_statement: UNLESS compound_list THEN compound_list END .
+
+    $default  reduce using rule 61 (unless_statement)
+
+
+State 140
+
+   60 unless_statement: UNLESS compound_list ELSE compound_list END .
+
+    $default  reduce using rule 60 (unless_statement)
+
+
+State 141
+
+   65 while_statement: WHILE compound_list DO compound_list END .
+
+    $default  reduce using rule 65 (while_statement)
+
+
+State 142
+
+   64 while_statement: WHILE compound_list DO compound_list DONE .
+
+    $default  reduce using rule 64 (while_statement)
+
+
+State 143
+
+   67 until_statement: UNTIL compound_list DO compound_list END .
+
+    $default  reduce using rule 67 (until_statement)
+
+
+State 144
+
+   88 list_terminater: $end .
+
+    $default  reduce using rule 88 (list_terminater)
+
+
+State 145
+
+   85 word_list: word_list WORD .
+
+    $default  reduce using rule 85 (word_list)
+
+
+State 146
+
+   86 list_terminater: '\n' .
+
+    $default  reduce using rule 86 (list_terminater)
+
+
+State 147
+
+   87 list_terminater: ';' .
+
+    $default  reduce using rule 87 (list_terminater)
+
+
+State 148
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   74 for_statement: FOR WORD IN word_list list_terminater . compound_list END
+   75              | FOR WORD IN word_list list_terminater . newline_list DO compound_list DONE
+   76              | FOR WORD IN word_list list_terminater . newline_list DO compound_list END
+   77              | FOR WORD IN word_list list_terminater . newline_list '{' compound_list '}'
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 167
+    list           go to state 37
+    newline_list   go to state 168
+
+
+State 149
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   71 for_statement: FOR WORD ';' newline_list DO . compound_list DONE
+   72              | FOR WORD ';' newline_list DO . compound_list END
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 169
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 150
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   73 for_statement: FOR WORD ';' newline_list '{' . compound_list '}'
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 170
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 151
+
+   68 for_statement: FOR WORD newline_list DO compound_list . DONE
+   69              | FOR WORD newline_list DO compound_list . END
+
+    END   shift, and go to state 171
+    DONE  shift, and go to state 172
+
+
+State 152
+
+   70 for_statement: FOR WORD newline_list '{' compound_list . '}'
+
+    '}'  shift, and go to state 173
+
+
+State 153
+
+   43 if_statement: IF compound_list THEN compound_list ELSE compound_list . FI
+   44             | IF compound_list THEN compound_list ELSE compound_list . END
+
+    FI   shift, and go to state 174
+    END  shift, and go to state 175
+
+
+State 154
+
+   49 elif_clause: ELIF compound_list . THEN compound_list
+   50            | ELIF compound_list . THEN compound_list ELSE compound_list
+   51            | ELIF compound_list . THEN compound_list elif_clause
+   52            | ELIF compound_list . THEN compound_list elsif_clause
+
+    THEN  shift, and go to state 176
+
+
+State 155
+
+   45 if_statement: IF compound_list THEN compound_list elif_clause FI .
+
+    $default  reduce using rule 45 (if_statement)
+
+
+State 156
+
+   46 if_statement: IF compound_list THEN compound_list elif_clause END .
+
+    $default  reduce using rule 46 (if_statement)
+
+
+State 157
+
+   47 if_statement: IF compound_list THEN compound_list elsif_clause FI .
+
+    $default  reduce using rule 47 (if_statement)
+
+
+State 158
+
+   48 if_statement: IF compound_list THEN compound_list elsif_clause END .
+
+    $default  reduce using rule 48 (if_statement)
+
+
+State 159
+
+   49 elif_clause: . ELIF compound_list THEN compound_list
+   50            | . ELIF compound_list THEN compound_list ELSE compound_list
+   51            | . ELIF compound_list THEN compound_list elif_clause
+   52            | . ELIF compound_list THEN compound_list elsif_clause
+   53 elsif_clause: . ELSIF compound_list
+   54             | . ELSIF compound_list ELSE compound_list
+   55             | . ELSIF compound_list THEN compound_list
+   55             | ELSIF compound_list THEN compound_list .  [FI, END]
+   56             | . ELSIF compound_list THEN compound_list ELSE compound_list
+   56             | ELSIF compound_list THEN compound_list . ELSE compound_list
+   57             | . ELSIF compound_list THEN compound_list elif_clause
+   57             | ELSIF compound_list THEN compound_list . elif_clause
+   58             | . ELSIF compound_list THEN compound_list elsif_clause
+   58             | ELSIF compound_list THEN compound_list . elsif_clause
+
+    ELSE   shift, and go to state 177
+    ELIF   shift, and go to state 125
+    ELSIF  shift, and go to state 76
+
+    $default  reduce using rule 55 (elsif_clause)
+
+    elif_clause   go to state 178
+    elsif_clause  go to state 179
+
+
+State 160
+
+   54 elsif_clause: ELSIF compound_list ELSE compound_list .
+
+    $default  reduce using rule 54 (elsif_clause)
+
+
+State 161
+
+   13 pipeline: pipeline . '|' command
+   14         | pipeline . OR_AND command
+   22 list1: list1 AND_AND newline_list pipeline .  [THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, AND_AND, OR_OR, '\n', '&', ';', '}']
+
+    OR_AND  shift, and go to state 61
+    '|'     shift, and go to state 62
+
+    $default  reduce using rule 22 (list1)
+
+
+State 162
+
+   13 pipeline: pipeline . '|' command
+   14         | pipeline . OR_AND command
+   23 list1: list1 OR_OR newline_list pipeline .  [THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, AND_AND, OR_OR, '\n', '&', ';', '}']
+
+    OR_AND  shift, and go to state 61
+    '|'     shift, and go to state 62
+
+    $default  reduce using rule 23 (list1)
+
+
+State 163
+
+   13 pipeline: pipeline . '|' command
+   14         | pipeline . OR_AND command
+   26 list1: list1 '\n' newline_list pipeline .  [THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, AND_AND, OR_OR, '\n', '&', ';', '}']
+
+    OR_AND  shift, and go to state 61
+    '|'     shift, and go to state 62
+
+    $default  reduce using rule 26 (list1)
+
+
+State 164
+
+   13 pipeline: pipeline . '|' command
+   14         | pipeline . OR_AND command
+   24 list1: list1 '&' newline_list pipeline .  [THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, AND_AND, OR_OR, '\n', '&', ';', '}']
+
+    OR_AND  shift, and go to state 61
+    '|'     shift, and go to state 62
+
+    $default  reduce using rule 24 (list1)
+
+
+State 165
+
+   13 pipeline: pipeline . '|' command
+   14         | pipeline . OR_AND command
+   25 list1: list1 ';' newline_list pipeline .  [THEN, ELSE, ELIF, ELSIF, FI, END, DO, DONE, AND_AND, OR_OR, '\n', '&', ';', '}']
+
+    OR_AND  shift, and go to state 61
+    '|'     shift, and go to state 62
+
+    $default  reduce using rule 25 (list1)
+
+
+State 166
+
+   62 unless_statement: UNLESS compound_list THEN compound_list ELSE compound_list . END
+
+    END  shift, and go to state 180
+
+
+State 167
+
+   74 for_statement: FOR WORD IN word_list list_terminater compound_list . END
+
+    END  shift, and go to state 181
+
+
+State 168
+
+   13 pipeline: . pipeline '|' command
+   14         | . pipeline OR_AND command
+   15         | . command
+   17 compound_list: newline_list . list1
+   18 list: newline_list . list0
+   19 list0: . list1 '\n' newline_list
+   20      | . list1 '&' newline_list
+   21      | . list1 ';' newline_list
+   22 list1: . list1 AND_AND newline_list pipeline
+   23      | . list1 OR_OR newline_list pipeline
+   24      | . list1 '&' newline_list pipeline
+   25      | . list1 ';' newline_list pipeline
+   26      | . list1 '\n' newline_list pipeline
+   27      | . pipeline
+   29 newline_list: newline_list . '\n'
+   30 command: . simple_command
+   31        | . shell_command
+   32        | . shell_command redirect_list
+   33 shell_command: . if_statement
+   34              | . unless_statement
+   35              | . while_statement
+   36              | . until_statement
+   37              | . for_statement
+   38 if_statement: . IF compound_list END
+   39             | . IF compound_list ELSE compound_list END
+   40             | . IF compound_list elsif_clause END
+   41             | . IF compound_list THEN compound_list FI
+   42             | . IF compound_list THEN compound_list END
+   43             | . IF compound_list THEN compound_list ELSE compound_list FI
+   44             | . IF compound_list THEN compound_list ELSE compound_list END
+   45             | . IF compound_list THEN compound_list elif_clause FI
+   46             | . IF compound_list THEN compound_list elif_clause END
+   47             | . IF compound_list THEN compound_list elsif_clause FI
+   48             | . IF compound_list THEN compound_list elsif_clause END
+   59 unless_statement: . UNLESS compound_list END
+   60                 | . UNLESS compound_list ELSE compound_list END
+   61                 | . UNLESS compound_list THEN compound_list END
+   62                 | . UNLESS compound_list THEN compound_list ELSE compound_list END
+   63 while_statement: . WHILE compound_list END
+   64                | . WHILE compound_list DO compound_list DONE
+   65                | . WHILE compound_list DO compound_list END
+   66 until_statement: . UNTIL compound_list END
+   67                | . UNTIL compound_list DO compound_list END
+   68 for_statement: . FOR WORD newline_list DO compound_list DONE
+   69              | . FOR WORD newline_list DO compound_list END
+   70              | . FOR WORD newline_list '{' compound_list '}'
+   71              | . FOR WORD ';' newline_list DO compound_list DONE
+   72              | . FOR WORD ';' newline_list DO compound_list END
+   73              | . FOR WORD ';' newline_list '{' compound_list '}'
+   74              | . FOR WORD IN word_list list_terminater compound_list END
+   75              | . FOR WORD IN word_list list_terminater newline_list DO compound_list DONE
+   75              | FOR WORD IN word_list list_terminater newline_list . DO compound_list DONE
+   76              | . FOR WORD IN word_list list_terminater newline_list DO compound_list END
+   76              | FOR WORD IN word_list list_terminater newline_list . DO compound_list END
+   77              | . FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'
+   77              | FOR WORD IN word_list list_terminater newline_list . '{' compound_list '}'
+   78 simple_command: . simple_command_element
+   79               | . simple_command simple_command_element
+   80 simple_command_element: . WORD
+   81                       | . redirect
+   89 redirect: . LT WORD
+   90         | . NUMBER LT WORD
+   91         | . LT_AND MINUS
+   92         | . LT_AND NUMBER
+   93         | . LT_AND NUMBER MINUS
+   94         | . NUMBER LT_AND MINUS
+   95         | . NUMBER LT_AND NUMBER
+   96         | . NUMBER LT_AND NUMBER MINUS
+   97         | . GT WORD
+   98         | . NUMBER GT WORD
+   99         | . GT_AND MINUS
+  100         | . GT_AND NUMBER
+  101         | . GT_AND NUMBER MINUS
+  102         | . NUMBER GT_AND MINUS
+  103         | . NUMBER GT_AND NUMBER
+  104         | . NUMBER GT_AND NUMBER MINUS
+  105         | . AND_GT WORD
+  106         | . GT_AND WORD
+  107         | . GT_GT WORD
+  108         | . NUMBER GT_GT WORD
+  109         | . LT_GT WORD
+  110         | . NUMBER LT_GT WORD
+
+    WORD    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    IF      shift, and go to state 4
+    UNLESS  shift, and go to state 5
+    WHILE   shift, and go to state 6
+    DO      shift, and go to state 182
+    UNTIL   shift, and go to state 7
+    FOR     shift, and go to state 8
+    GT      shift, and go to state 9
+    GT_GT   shift, and go to state 10
+    AND_GT  shift, and go to state 11
+    GT_AND  shift, and go to state 12
+    LT      shift, and go to state 13
+    LT_AND  shift, and go to state 14
+    LT_GT   shift, and go to state 15
+    '\n'    shift, and go to state 79
+    '{'     shift, and go to state 183
+
+    pipeline                go to state 80
+    list0                   go to state 81
+    list1                   go to state 82
+    command                 go to state 20
+    shell_command           go to state 21
+    if_statement            go to state 22
+    unless_statement        go to state 23
+    while_statement         go to state 24
+    until_statement         go to state 25
+    for_statement           go to state 26
+    simple_command          go to state 27
+    simple_command_element  go to state 28
+    redirect                go to state 29
+
+
+State 169
+
+   71 for_statement: FOR WORD ';' newline_list DO compound_list . DONE
+   72              | FOR WORD ';' newline_list DO compound_list . END
+
+    END   shift, and go to state 184
+    DONE  shift, and go to state 185
+
+
+State 170
+
+   73 for_statement: FOR WORD ';' newline_list '{' compound_list . '}'
+
+    '}'  shift, and go to state 186
+
+
+State 171
+
+   69 for_statement: FOR WORD newline_list DO compound_list END .
+
+    $default  reduce using rule 69 (for_statement)
+
+
+State 172
+
+   68 for_statement: FOR WORD newline_list DO compound_list DONE .
+
+    $default  reduce using rule 68 (for_statement)
+
+
+State 173
+
+   70 for_statement: FOR WORD newline_list '{' compound_list '}' .
+
+    $default  reduce using rule 70 (for_statement)
+
+
+State 174
+
+   43 if_statement: IF compound_list THEN compound_list ELSE compound_list FI .
+
+    $default  reduce using rule 43 (if_statement)
+
+
+State 175
+
+   44 if_statement: IF compound_list THEN compound_list ELSE compound_list END .
+
+    $default  reduce using rule 44 (if_statement)
+
+
+State 176
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   49 elif_clause: ELIF compound_list THEN . compound_list
+   50            | ELIF compound_list THEN . compound_list ELSE compound_list
+   51            | ELIF compound_list THEN . compound_list elif_clause
+   52            | ELIF compound_list THEN . compound_list elsif_clause
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 187
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 177
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   56 elsif_clause: ELSIF compound_list THEN compound_list ELSE . compound_list
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 188
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 178
+
+   57 elsif_clause: ELSIF compound_list THEN compound_list elif_clause .
+
+    $default  reduce using rule 57 (elsif_clause)
+
+
+State 179
+
+   58 elsif_clause: ELSIF compound_list THEN compound_list elsif_clause .
+
+    $default  reduce using rule 58 (elsif_clause)
+
+
+State 180
+
+   62 unless_statement: UNLESS compound_list THEN compound_list ELSE compound_list END .
+
+    $default  reduce using rule 62 (unless_statement)
+
+
+State 181
+
+   74 for_statement: FOR WORD IN word_list list_terminater compound_list END .
+
+    $default  reduce using rule 74 (for_statement)
+
+
+State 182
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   75 for_statement: FOR WORD IN word_list list_terminater newline_list DO . compound_list DONE
+   76              | FOR WORD IN word_list list_terminater newline_list DO . compound_list END
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 189
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 183
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   77 for_statement: FOR WORD IN word_list list_terminater newline_list '{' . compound_list '}'
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 190
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 184
+
+   72 for_statement: FOR WORD ';' newline_list DO compound_list END .
+
+    $default  reduce using rule 72 (for_statement)
+
+
+State 185
+
+   71 for_statement: FOR WORD ';' newline_list DO compound_list DONE .
+
+    $default  reduce using rule 71 (for_statement)
+
+
+State 186
+
+   73 for_statement: FOR WORD ';' newline_list '{' compound_list '}' .
+
+    $default  reduce using rule 73 (for_statement)
+
+
+State 187
+
+   49 elif_clause: . ELIF compound_list THEN compound_list
+   49            | ELIF compound_list THEN compound_list .  [FI, END]
+   50            | . ELIF compound_list THEN compound_list ELSE compound_list
+   50            | ELIF compound_list THEN compound_list . ELSE compound_list
+   51            | . ELIF compound_list THEN compound_list elif_clause
+   51            | ELIF compound_list THEN compound_list . elif_clause
+   52            | . ELIF compound_list THEN compound_list elsif_clause
+   52            | ELIF compound_list THEN compound_list . elsif_clause
+   53 elsif_clause: . ELSIF compound_list
+   54             | . ELSIF compound_list ELSE compound_list
+   55             | . ELSIF compound_list THEN compound_list
+   56             | . ELSIF compound_list THEN compound_list ELSE compound_list
+   57             | . ELSIF compound_list THEN compound_list elif_clause
+   58             | . ELSIF compound_list THEN compound_list elsif_clause
+
+    ELSE   shift, and go to state 191
+    ELIF   shift, and go to state 125
+    ELSIF  shift, and go to state 76
+
+    $default  reduce using rule 49 (elif_clause)
+
+    elif_clause   go to state 192
+    elsif_clause  go to state 193
+
+
+State 188
+
+   56 elsif_clause: ELSIF compound_list THEN compound_list ELSE compound_list .
+
+    $default  reduce using rule 56 (elsif_clause)
+
+
+State 189
+
+   75 for_statement: FOR WORD IN word_list list_terminater newline_list DO compound_list . DONE
+   76              | FOR WORD IN word_list list_terminater newline_list DO compound_list . END
+
+    END   shift, and go to state 194
+    DONE  shift, and go to state 195
+
+
+State 190
+
+   77 for_statement: FOR WORD IN word_list list_terminater newline_list '{' compound_list . '}'
+
+    '}'  shift, and go to state 196
+
+
+State 191
+
+   16 compound_list: . list
+   17              | . newline_list list1
+   18 list: . newline_list list0
+   28 newline_list: . %empty
+   29             | . newline_list '\n'
+   50 elif_clause: ELIF compound_list THEN compound_list ELSE . compound_list
+
+    $default  reduce using rule 28 (newline_list)
+
+    compound_list  go to state 197
+    list           go to state 37
+    newline_list   go to state 38
+
+
+State 192
+
+   51 elif_clause: ELIF compound_list THEN compound_list elif_clause .
+
+    $default  reduce using rule 51 (elif_clause)
+
+
+State 193
+
+   52 elif_clause: ELIF compound_list THEN compound_list elsif_clause .
+
+    $default  reduce using rule 52 (elif_clause)
+
+
+State 194
+
+   76 for_statement: FOR WORD IN word_list list_terminater newline_list DO compound_list END .
+
+    $default  reduce using rule 76 (for_statement)
+
+
+State 195
+
+   75 for_statement: FOR WORD IN word_list list_terminater newline_list DO compound_list DONE .
+
+    $default  reduce using rule 75 (for_statement)
+
+
+State 196
+
+   77 for_statement: FOR WORD IN word_list list_terminater newline_list '{' compound_list '}' .
+
+    $default  reduce using rule 77 (for_statement)
+
+
+State 197
+
+   50 elif_clause: ELIF compound_list THEN compound_list ELSE compound_list .
+
+    $default  reduce using rule 50 (elif_clause)
