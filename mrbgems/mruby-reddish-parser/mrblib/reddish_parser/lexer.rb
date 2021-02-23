@@ -30,7 +30,7 @@ module ReddishParser
               word_token
 
       @last_token = token.type
-      if [:";", :"\n"].include?(token.type) && @statement.zero?
+      if [:";", :"\n", :"|", :"|&"].include?(token.type) && @statement.zero?
         @last_token = nil
       end
 

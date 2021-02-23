@@ -12,7 +12,7 @@ def run(command)
     else
       command.each {|cmd| stdin.puts(cmd) }
     end
-    stdin.puts("exit")
+    stdin.close
     [stdout.read, stderr.read]
   end
   Struct.new(:stdout, :stderr).new(o, e)

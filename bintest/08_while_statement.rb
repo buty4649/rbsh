@@ -30,6 +30,7 @@ assert("while_statement") do
 
   ENV['TEST'] = "0"
   assert_stdout(expect_output,  "while [ $TEST -ne 10 ]; echo $TEST; TEST=`expr $TEST + 1`; end | cat")
+  assert_stdout("OK\n",  "echo OK | while read TEST; echo $TEST; end")
 
   ENV['TEST'] = "0"
   assert_stdout(expect_output,  ["while [ $TEST -ne 10 ]", "echo $TEST", "TEST=`expr $TEST + 1`", "end"])

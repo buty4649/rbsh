@@ -63,7 +63,6 @@ simple_list
 | connector '&' { $$ = ASYNC(p, $1); }
 | connector ';'
 
-
 connector
 : connector AND_AND newline_list pipeline { $$ = CONNECTOR(p, "and", $1, $4); }
 | connector OR_OR   newline_list pipeline { $$ = CONNECTOR(p, "or",  $1, $4); }
@@ -95,7 +94,6 @@ list1
 | list1 ';'     newline_list pipeline { $$ = CONNECTOR(p, "semicolon", $1, $4); }
 | list1 '\n'    newline_list pipeline { $$ = CONNECTOR(p, "semicolon", $1, $4); }
 | pipeline
-
 
 newline_list
 : %empty

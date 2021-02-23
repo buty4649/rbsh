@@ -26,24 +26,40 @@ module Reddish
       elsif klass == ReddishParser::Element::Connector
         connector_exec(command, opts)
       elsif klass == ReddishParser::Element::IfStatement
-        if command.async
-          Process.fork do
-            Process.setpgid(0, 0)
-            @pgid = $$
-            if_statement(command)
+        if command.async || opts[:async]
+          pgid = @pgid || 0
+          pid ||= Process.fork do
+            Process.setpgid(0, pgid)
+            if_statement(command, opts)
           end
+          @pgid ||= pid
+          if command.async || opts[:async]
+            exit_status  = Process::Status.new(pid, nil)
+          else
+            _, exit_status = JobControl.start_sigint_trap(@pgid) { Process.wait2(pid) }
+            reset
+          end
+          exit_status
         else
-          if_statement(command)
+          if_statement(command, opts)
         end
       elsif klass == ReddishParser::Element::WhileStatement
-        if command.async
-          Process.fork do
-            Process.setpgid(0, 0)
-            @pgid = $$
-            while_statement(command)
+        if command.async || opts[:async]
+          pgid = @pgid || 0
+          pid ||= Process.fork do
+            Process.setpgid(0, pgid)
+            while_statement(command, opts)
           end
+          @pgid ||= pid
+          if command.async || opts[:async]
+            exit_status  = Process::Status.new(pid, nil)
+          else
+            _, exit_status = JobControl.start_sigint_trap(@pgid) { Process.wait2(pid) }
+            reset
+          end
+          exit_status
         else
-          while_statement(command)
+          while_statement(command, opts)
         end
       end
     end
@@ -77,7 +93,17 @@ module Reddish
       elsif cmd =~ /^(break|continue|next)$/
         return rc.apply(true) { do_break_or_continue(cmd, args) }
       elsif cmd == "read"
-        return rc.apply(true) { do_builtin_read(args) }
+        if command.async || opts[:async]
+          pgid = @pgid || 0
+          pid = Process.fork do
+            Process.setpgid(0, pgid)
+            rc.apply(true) { do_builtin_read(args) }
+          end
+          @pgid ||= pid
+          return Process::Status.new(pid, nil)
+        else
+          return rc.apply(true) { do_builtin_read(args) }
+        end
       elsif c = @defined_command[cmd.to_sym]
         old_env = env&.map do |name, value|
           old_value = ENV[name]
@@ -166,8 +192,18 @@ module Reddish
       return result || command
     end
 
-    def if_statement(statement)
-      setup_redirect_control(statement.redirect).apply(true) do
+    def if_statement(statement, opts)
+      rc = setup_redirect_control(statement.redirect)
+      if fd = opts[:stdout]
+        rc.append(:copywrite, 1, fd)
+        rc.append(:close, fd)
+      end
+      if fd = opts[:stdin]
+        rc.append(:copyread, 0, fd)
+        rc.append(:close, fd)
+      end
+
+      rc.apply(true) do
         exec(statement.condition)
         state = statement.reverse ? $?.success?.! : $?.success?
         if state
@@ -181,8 +217,18 @@ module Reddish
       end
     end
 
-    def while_statement(statement)
-      setup_redirect_control(statement.redirect).apply(true) do
+    def while_statement(statement, opts)
+      rc = setup_redirect_control(statement.redirect)
+      if fd = opts[:stdout]
+        rc.append(:copywrite, 1, fd)
+        rc.append(:close, fd)
+      end
+      if fd = opts[:stdin]
+        rc.append(:copyread, 0, fd)
+        rc.append(:close, fd)
+      end
+
+      rc.apply(true) do
         @loop_level += 1
         loop do
           exec(statement.condition)

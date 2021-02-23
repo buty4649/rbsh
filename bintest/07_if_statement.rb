@@ -63,6 +63,7 @@ assert("if_statement") do
 
   assert_stdout("OK\n",  "if false; then echo NG; fi || echo OK")
   assert_stdout("OK\n",  "if true; then echo OK; fi | cat")
+  assert_stdout("OK\n", "echo OK | if read FOO; echo $FOO; end")
 
   assert_stdout("OK\n",  ["if", "true", "echo OK", "end"])
 end
