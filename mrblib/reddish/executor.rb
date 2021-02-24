@@ -143,6 +143,7 @@ module Reddish
         pgid = @pgid || 0
         pid = Process.fork do
           Process.setpgid(0, pgid)
+          SignalTrap.ignore_tty_signals
           rc.clexec = false
           e = ENV.to_hash.merge(env || {})
           begin
@@ -161,7 +162,9 @@ module Reddish
         if command.async || opts[:async]
           exit_status  = Process::Status.new(pid, nil)
         else
-          _, exit_status = JobControl.start_sigint_trap(@pgid) { Process.wait2(pid) }
+          SignalTrap.tcsetpgrp(0, @pgid) {
+            _, exit_status = JobControl.start_sigint_trap(@pgid) { Process.wait2(pid) }
+          }
           reset
         end
 

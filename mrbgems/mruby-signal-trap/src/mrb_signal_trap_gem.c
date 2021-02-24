@@ -1,10 +1,12 @@
 #include <signal.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include "mruby.h"
 #include "mruby/array.h"
 #include "mruby/class.h"
 #include "mruby/data.h"
+#include "mruby/error.h"
 
 typedef struct {
     int signal;
@@ -86,6 +88,8 @@ mrb_value mrb_start_sigint_trap(mrb_state* mrb, mrb_value self) {
 
     sigemptyset(&mask);
     sigaddset(&mask, SIGINT);
+    sigaddset(&mask, SIGTTIN);
+    sigaddset(&mask, SIGTTOU);
     if (pthread_sigmask(SIG_BLOCK, &mask, NULL) != 0) {
         mrb_raise(mrb, E_RUNTIME_ERROR, "pthread_sigmask error");
     }
@@ -101,6 +105,52 @@ mrb_value mrb_start_sigint_trap(mrb_state* mrb, mrb_value self) {
 mrb_value mrb_stop_trap(mrb_state* mrb, mrb_value self) {
     mrb_sigtrap_context* ctxt = (mrb_sigtrap_context*)DATA_PTR(self);
     thread_cancel(ctxt);
+    return mrb_nil_value();
+}
+
+mrb_value mrb_ignore_tty_signals(mrb_state* mrb, mrb_value self) {
+    struct sigaction act;
+
+    act.sa_handler = SIG_IGN;
+    act.sa_flags = 0;
+    sigemptyset(&act.sa_mask);
+    sigaction(SIGTTIN, &act, NULL);
+
+    sigemptyset(&act.sa_mask);
+    sigaction(SIGTTOU, &act, NULL);
+
+    sigemptyset(&act.sa_mask);
+    sigaction(SIGTSTP, &act, NULL);
+
+    return mrb_true_value();
+}
+
+mrb_value mrb_tcsetpgrp(mrb_state* mrb, mrb_value self) {
+    mrb_int fd, pgrp;
+    mrb_value block;
+    pid_t old;
+
+    mrb_get_args(mrb, "ii&", &fd, &pgrp, &block);
+
+    old = tcgetpgrp(fd);
+    if (old == -1) {
+        mrb_sys_fail(mrb, "tcgetpgrp");
+        return mrb_nil_value();
+    }
+
+    if (tcsetpgrp(fd, (pid_t)pgrp) == -1) {
+        mrb_sys_fail(mrb, "tcsetpgrp");
+        return mrb_nil_value();
+    }
+
+    mrb_yield_argv(mrb, block, 0, NULL);
+
+    if (tcsetpgrp(fd, old) == -1) {
+        mrb_sys_fail(mrb, "tcsetpgrp");
+        return mrb_nil_value();
+    }
+
+    return mrb_true_value();
 }
 
 void mrb_mruby_signal_trap_gem_init(mrb_state* mrb) {
@@ -112,6 +162,9 @@ void mrb_mruby_signal_trap_gem_init(mrb_state* mrb) {
     mrb_define_method(mrb, st, "initialize_copy", mrb_initialize_copy, MRB_ARGS_NONE());
     mrb_define_method(mrb, st, "start_sigint_trap", mrb_start_sigint_trap, MRB_ARGS_REQ(1));
     mrb_define_method(mrb, st, "stop_trap", mrb_stop_trap, MRB_ARGS_NONE());
+
+    mrb_define_class_method(mrb, st, "ignore_tty_signals", mrb_ignore_tty_signals, MRB_ARGS_NONE());
+    mrb_define_class_method(mrb, st, "tcsetpgrp", mrb_tcsetpgrp, MRB_ARGS_REQ(2) | MRB_ARGS_BLOCK());
 }
 
 void mrb_mruby_signal_trap_gem_final(mrb_state* mrb) {
