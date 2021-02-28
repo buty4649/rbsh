@@ -8,21 +8,21 @@ def gem_config(conf)
   conf.gem 'mrbgems/mruby-io-dup2'
   conf.gem 'mrbgems/mruby-io-fcntl'
   conf.gem 'mrbgems/mruby-process-pgrp'
-  conf.gem 'mrbgems/mruby-signal-trap'
+  conf.gem 'mrbgems/mruby-signal-handler'
   conf.gem 'mrbgems/mruby-reddish-parser'
   conf.gem 'mrbgems/mruby-ruby-exec'
   conf.gem mgem: 'mruby-dir'
   conf.gem mgem: 'mruby-dir-glob'
   conf.gem mgem: 'mruby-file-stat'
   conf.gem mgem: 'mruby-env'
+  conf.gem mgem: 'mruby-require'
+  conf.gem mgem: 'mruby-process2'
   conf.gem mgem: 'mruby-onig-regexp' do |c|
     c.cc.flags << '-std=gnu99 -Wno-declaration-after-statement'
   end
-  conf.gem github: 'buty4649/mruby-process', branch: 'improve-process-exec'
   conf.gem github: 'buty4649/mruby-getopts', branch: 'add-prog-name'
   conf.gem github: 'buty4649/mruby-linenoise', branch: 'raise-ctrl-c'
   conf.gem github: 'haconiwa/mruby-exec'
-  conf.gem github: 'ij/mruby-require'
 
   conf.gem github: "kou/mruby-pp"
 end

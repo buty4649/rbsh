@@ -9,25 +9,45 @@ builds:
       branch: HEAD
       commit: 89dceefa1250fb1ae868d4cb52498e9e24293cd1
       version: 0.0.0
+    https://github.com/gromnitsky/mruby-dir-glob.git:
+      url: https://github.com/gromnitsky/mruby-dir-glob.git
+      branch: HEAD
+      commit: 334c040a2e2c4c2689f8c3440168011f64d57ada
+      version: 0.0.1
+    https://github.com/ksss/mruby-file-stat.git:
+      url: https://github.com/ksss/mruby-file-stat.git
+      branch: HEAD
+      commit: b81bc71a6f2ddd424fd5e544d2cccd289d4d7545
+      version: 0.0.0
     https://github.com/iij/mruby-env.git:
       url: https://github.com/iij/mruby-env.git
       branch: HEAD
       commit: 056ae324451ef16a50c7887e117f0ea30921b71b
+      version: 0.0.0
+    https://github.com/mattn/mruby-require.git:
+      url: https://github.com/mattn/mruby-require.git
+      branch: HEAD
+      commit: 0e50d9bf70e4f23f47179e30f3544d5d1c193f86
+      version: 0.0.0
+    https://github.com/katzer/mruby-process.git:
+      url: https://github.com/katzer/mruby-process.git
+      branch: HEAD
+      commit: 22f3032bc2bb06255973d1d2075a04b2f06788eb
       version: 0.0.0
     https://github.com/mattn/mruby-onig-regexp.git:
       url: https://github.com/mattn/mruby-onig-regexp.git
       branch: HEAD
       commit: 76087d150d12f167e95ae10d326099b352cf3d18
       version: 0.0.0
-    https://github.com/buty4649/mruby-process.git:
-      url: https://github.com/buty4649/mruby-process.git
-      branch: HEAD
-      commit: 8f6da98a984706468c63dc525edbcfeb7156833c
-      version: 0.0.0
     https://github.com/buty4649/mruby-getopts.git:
       url: https://github.com/buty4649/mruby-getopts.git
       branch: HEAD
       commit: b8b8b252d9a60b8f38c230be750821e2bb07276e
+      version: 0.0.0
+    https://github.com/buty4649/mruby-linenoise.git:
+      url: https://github.com/buty4649/mruby-linenoise.git
+      branch: HEAD
+      commit: 7cdc0e7b2a71f66de1d62578a51b8eba8f9d21af
       version: 0.0.0
     https://github.com/haconiwa/mruby-exec.git:
       url: https://github.com/haconiwa/mruby-exec.git
@@ -44,45 +64,20 @@ builds:
       branch: HEAD
       commit: 34a477d249b0d21671058be33aa75d04c3e981ba
       version: 0.0.0
-    https://github.com/katzer/mruby-os.git:
-      url: https://github.com/katzer/mruby-os.git
-      branch: HEAD
-      commit: 89523f3a2a4e800c394165695e12b3d92d5775a1
-      version: 0.0.0
     https://github.com/iij/mruby-errno.git:
       url: https://github.com/iij/mruby-errno.git
       branch: HEAD
       commit: b4415207ff6ea62360619c89a1cff83259dc4db0
-      version: 0.0.0
-    https://github.com/buty4649/mruby-linenoise.git:
-      url: https://github.com/buty4649/mruby-linenoise.git
-      branch: HEAD
-      commit: 7cdc0e7b2a71f66de1d62578a51b8eba8f9d21af
-      version: 0.0.0
-    https://github.com/gromnitsky/mruby-dir-glob.git:
-      url: https://github.com/gromnitsky/mruby-dir-glob.git
-      branch: HEAD
-      commit: 334c040a2e2c4c2689f8c3440168011f64d57ada
-      version: 0.0.1
-    https://github.com/ksss/mruby-file-stat.git:
-      url: https://github.com/ksss/mruby-file-stat.git
-      branch: HEAD
-      commit: 66cf135ff9642d96a6127a79b307f6314e606deb
-      version: 0.0.0
-    https://github.com/iij/mruby-require.git:
-      url: https://github.com/iij/mruby-require.git
-      branch: HEAD
-      commit: 0e50d9bf70e4f23f47179e30f3544d5d1c193f86
       version: 0.0.0
     https://github.com/iij/mruby-tempfile.git:
       url: https://github.com/iij/mruby-tempfile.git
       branch: HEAD
       commit: b8e4fb65ecce9f0cc3584480d93b53a60cc6dd36
       version: 0.0.0
-    https://github.com/ij/mruby-require.git:
-      url: https://github.com/ij/mruby-require.git
+    https://github.com/katzer/mruby-os.git:
+      url: https://github.com/katzer/mruby-os.git
       branch: HEAD
-      commit: 0e50d9bf70e4f23f47179e30f3544d5d1c193f86
+      commit: 89523f3a2a4e800c394165695e12b3d92d5775a1
       version: 0.0.0
   fdtest:
     https://github.com/gromnitsky/mruby-dir-glob.git:
@@ -118,7 +113,7 @@ builds:
     https://github.com/ksss/mruby-file-stat.git:
       url: https://github.com/ksss/mruby-file-stat.git
       branch: HEAD
-      commit: 66cf135ff9642d96a6127a79b307f6314e606deb
+      commit: b81bc71a6f2ddd424fd5e544d2cccd289d4d7545
       version: 0.0.0
   sigtest:
     https://github.com/iij/mruby-io.git:

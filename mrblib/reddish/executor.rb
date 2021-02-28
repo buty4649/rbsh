@@ -8,6 +8,7 @@ module Reddish
       @breaking = 0
       @continuing = 0
       @variable = variable
+      @my_pgid = Process.getpgid(0)
     end
 
     def define_command(name, code)
@@ -20,6 +21,7 @@ module Reddish
 
     def exec(command, opts={})
       return if @breaking.nonzero? || @continuing.nonzero?
+
       klass = command.class
       if klass == ReddishParser::Element::Command
         $? = command_exec(command, opts)
@@ -140,12 +142,23 @@ module Reddish
         progname = cmd
         assume_command = search_command(cmd)
 
-        pgid = @pgid || 0
+        pipe_read, pipe_write = IO.pipe
+
         pid = Process.fork do
-          Process.setpgid(0, pgid)
-          SignalTrap.ignore_tty_signals
+          Process.setpgid(0, @pgid || 0)
+          SignalHandler.ignore_tty_signals
+          SignalHandler.reset_signal_handlers
           rc.clexec = false
           e = ENV.to_hash.merge(env || {})
+
+          pipe_write.close
+          # sync process
+          begin
+            pipe_read.read
+          rescue Errno::EINTR
+            # close by parent process
+          end
+
           begin
             rc.apply
             Exec.execve_override_procname(e, progname, assume_command, *args)
@@ -157,14 +170,23 @@ module Reddish
             Process.exit(1)
           end
         end
+
         @pgid ||= pid
+        Process.setpgid(pid, @pgid)
+        pipe_read.close
+        SignalHandler.ignore_tty_signals
+
+        if STDIN.tty? && SignalHandler.tcgetpgrp(0) != @pgid
+          SignalHandler.tcsetpgrp(0, @pgid)
+        end
+        pipe_write.close
 
         if command.async || opts[:async]
           exit_status  = Process::Status.new(pid, nil)
         else
-          SignalTrap.tcsetpgrp(0, @pgid) {
-            _, exit_status = JobControl.start_sigint_trap(@pgid) { Process.wait2(pid) }
-          }
+          exit_status = SignalHandler.wait_pgid(@pgid).last
+          SignalHandler.tcsetpgrp(0, @my_pgid) if STDIN.tty?
+          SignalHandler.restore_tty_signals
           reset
         end
 
@@ -197,11 +219,11 @@ module Reddish
 
       return if opts[:async]
 
-      # Array<Array<pid, Process::Status>>
-      result = JobControl.start_sigint_trap(@pgid) { Process.waitall }
+      result = SignalHandler.wait_pgid(@pgid).last
+      SignalHandler.tcsetpgrp(0, @my_pgid) if STDIN.tty?
+      SignalHandler.restore_tty_signals
 
-      # Process:Status of cmd2
-      result.last.last
+      result
     end
 
     def search_command(command)
@@ -252,9 +274,11 @@ module Reddish
       rc.apply(true) do
         @loop_level += 1
         loop do
+          break if SignalHandler.interrupt?
+
           exec(statement.condition)
           state = statement.reverse ? $?.success?.! : $?.success?
-          unless state
+          if !state || SignalHandler.interrupt?
             @breaking -= 1 if @breaking.nonzero?
             @continuing -= 1 if @continuing.nonzero?
             break
@@ -284,9 +308,11 @@ module Reddish
       unless varname = check_varnames("for", [statement.varname])
         return Process::Status.new(nil, 1)
       end
+      break if SignalHandler.interrupt?
 
       words = statement.list.map{|w| word2str(w)}.select{|w| w.empty?.! }
       words.each do |word|
+        break if SignalHandler.interrupt?
         @variable[varname.first] = word
         exec(statement.cmd)
       end
@@ -343,7 +369,7 @@ module Reddish
       ifs = @variable["IFS"] || /[ \t\n]/
       begin
         line = STDIN.readline.chomp!&.split(ifs, args.length)
-      rescue EOFError => e
+      rescue EOFError, Errno::EINTR => e
         # suppress error
       end
 
@@ -364,7 +390,7 @@ module Reddish
 
       str = str.gsub(/(?<!\\)\${(\w+)}/) { @variable[$1] || "" }
                 .gsub(/(?<!\\)\$(\w+)/)   { @variable[$1] || "" }
-                .gsub(/(?<!\\)\$\?/)      { $?.nil? ? 0 : $? >> 8 }
+                .gsub(/(?<!\\)\$\?/)      { $?.nil? ? 0 : $?.to_i }
                 .gsub(/\\\$/, "$")
 
       return str if word.type != :execute

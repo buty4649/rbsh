@@ -44,6 +44,7 @@ module Reddish
       r = reader
       cmdline = []
       need_next_list = false
+      SignalHandler.start_signal_handlers
 
       loop do
         line = r.readline(need_next_list ? PS2 : PS1)
@@ -66,7 +67,7 @@ module Reddish
           need_next_list = true
         end
       rescue Errno::EAGAIN, Errno::EWOULDBLOCK => e
-        # reset command line
+        # reset command lin
         need_next_list = false
       rescue => e
         need_next_list = false
@@ -89,6 +90,7 @@ module Reddish
       if parse_result
         executor = Executor.new(@variable)
         BuiltinCommands.define_commands(executor)
+        SignalHandler.reset_interrupt_state
         @job.run(executor, parse_result)
       end
     end
