@@ -48,7 +48,7 @@ assert("while_statement") do
   assert_stdout("0\n",  <<-EOS)
   while [ $TEST -ne 10 ]
     echo $TEST
-    while true;
+    while true
       break 2
       TEST=`expr $TEST + 1`
     end

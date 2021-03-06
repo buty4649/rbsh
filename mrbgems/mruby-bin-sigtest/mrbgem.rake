@@ -5,6 +5,6 @@ MRuby::Gem::Specification.new('mruby-bin-fdtest') do |spec|
   spec.bins = %w(sigtest)
 
   spec.add_dependency 'mruby-io'
-  spec.add_dependency 'mruby-signal-thread'
   spec.add_dependency 'mruby-process'
+  spec.add_dependency 'mruby-signal'
 end

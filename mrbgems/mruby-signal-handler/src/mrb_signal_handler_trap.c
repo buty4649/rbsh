@@ -9,7 +9,7 @@
 #include <mruby/error.h>
 
 volatile sig_atomic_t interrupt_state = 0;
-int wait_pgid = 0;
+pid_t wait_pgid = 0;
 
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
     switch(sig) {
@@ -60,6 +60,7 @@ mrb_value mrb_reset_signal_handlers(mrb_state* mrb, mrb_value self) {
 }
 
 mrb_value mrb_wait_pgid(mrb_state* mrb, mrb_value self) {
+    mrb_int pid;
     struct sigaction sa, oa;
     mrb_value result;
     struct RClass* st;
@@ -67,7 +68,8 @@ mrb_value mrb_wait_pgid(mrb_state* mrb, mrb_value self) {
     mrb_value o[2], ps;
     int exit_status;
 
-    mrb_get_args(mrb, "i", &wait_pgid);
+    mrb_get_args(mrb, "i", &pid);
+    wait_pgid = (pid_t)pid;
 
     sa.sa_flags = SA_SIGINFO;
     sa.sa_handler = SIG_DFL;
@@ -144,6 +146,28 @@ mrb_value mrb_ignore_tty_signals(mrb_state* mrb, mrb_value self) {
 mrb_value mrb_restore_tty_signals(mrb_state* mrb, mrb_value self) {
     mask_tty_signals(SIG_UNBLOCK);
     return mrb_nil_value();
+}
+
+mrb_value mrb_wait_child_process(mrb_state* mrb, mrb_value self) {
+    pid_t pid;
+    int result;
+    siginfo_t si;
+
+    mrb_get_args(mrb, "i", &pid);
+
+    for(;;) {
+        result = waitid(P_PID, pid, &si, WEXITED | WNOHANG | WNOWAIT);
+        if (result >= 0) break;
+
+        if (errno == ECHILD) {
+            continue;
+        }
+
+        mrb_sys_fail(mrb, "waitid");
+        return mrb_nil_value();
+    }
+
+    return mrb_true_value();
 }
 
 void mrb_mruby_signal_handler_gem_init(mrb_state* mrb) {

@@ -1,60 +1,36 @@
-def gem_config(conf)
-
-  Dir.glob("#{root}/mrbgems/mruby-*/mrbgem.rake") do |x|
-    g = File.basename File.dirname x
-    conf.gem :core => g unless g =~ /^mruby-(bin-.+|test)$/
-  end
-
-  conf.gem 'mrbgems/mruby-io-dup2'
-  conf.gem 'mrbgems/mruby-io-fcntl'
-  conf.gem 'mrbgems/mruby-process-pgrp'
-  conf.gem 'mrbgems/mruby-signal-handler'
-  conf.gem 'mrbgems/mruby-reddish-parser'
-  conf.gem 'mrbgems/mruby-ruby-exec'
-  conf.gem mgem: 'mruby-dir'
-  conf.gem mgem: 'mruby-dir-glob'
-  conf.gem mgem: 'mruby-file-stat'
-  conf.gem mgem: 'mruby-env'
-  conf.gem mgem: 'mruby-require'
-  conf.gem mgem: 'mruby-process2'
-  conf.gem mgem: 'mruby-onig-regexp' do |c|
-    c.cc.flags << '-std=gnu99 -Wno-declaration-after-statement'
-  end
-  conf.gem github: 'buty4649/mruby-getopts', branch: 'add-prog-name'
-  conf.gem github: 'buty4649/mruby-linenoise', branch: 'raise-ctrl-c'
-  conf.gem github: 'haconiwa/mruby-exec'
-
-  conf.gem github: "kou/mruby-pp"
-end
-
 MRuby::Build.new do |conf|
   toolchain :gcc
 
+  conf.build_mrbc_exec
   conf.enable_bintest
   conf.enable_debug
   #conf.enable_test
+  conf.disable_presym
 
   # be sure to include this gem (the cli app)
-  conf.gem File.expand_path(File.dirname(__FILE__))
+  dir = File.expand_path(File.dirname(__FILE__))
+  conf.gem dir
 
-  gem_config(conf)
+  conf.gembox "stdlib"
+  conf.gembox "stdlib-ext"
+  conf.gembox "stdlib-io"
+  conf.gembox "math"
+  conf.gem core: "mruby-eval"
+  conf.gem core: "mruby-metaprog"
+  conf.gem core: "mruby-method"
+  conf.gem core: 'mruby-catch'
 end
 
 MRuby::Build.new('fdtest') do |conf|
   toolchain :gcc
+  conf.disable_presym
 
   conf.gem 'mrbgems/mruby-bin-fdtest'
-  conf.gem mgem: 'mruby-dir-glob'
-  conf.gem mgem: 'mruby-onig-regexp' do |c|
-    c.cc.flags << '-std=gnu99 -Wno-declaration-after-statement -Wdiscarded-qualifiers'
-  end
 end
 
 MRuby::Build.new('sigtest') do |conf|
   toolchain :gcc
+  conf.disable_presym
 
   conf.gem 'mrbgems/mruby-bin-sigtest'
-  conf.gem mgem: 'mruby-io'
-  conf.gem mgem: 'mruby-process'
-  conf.gem github: 'buty4649/mruby-signal-thread', branch: 'reset-sigmask'
 end
