@@ -91,8 +91,8 @@ list0
 list1
 : list1 AND_AND newline_list pipeline { $$ = CONNECTOR(p, "and", $1, $4); }
 | list1 OR_OR   newline_list pipeline { $$ = CONNECTOR(p, "or",  $1, $4); }
-| list1 '&'  pipeline                 { $$ = CONNECTOR(p, "async", $1, $3); }
-| list1 ';'  pipeline                 { $$ = CONNECTOR(p, "semicolon", $1, $3); }
+| list1 '&' newline_list pipeline     { $$ = CONNECTOR(p, "async", $1, $4); }
+| list1 ';' newline_list pipeline     { $$ = CONNECTOR(p, "semicolon", $1, $4); }
 | list1 '\n' pipeline                 { $$ = CONNECTOR(p, "semicolon", $1, $3); }
 | pipeline
 
