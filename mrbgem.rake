@@ -25,5 +25,5 @@ MRuby::Gem::Specification.new('reddish') do |spec|
   spec.add_dependency 'mruby-io-dup2',   github: 'buty4649/mruby-io-dup2', branch: 'main'
   spec.add_dependency 'mruby-io-fcntl',  github: 'buty4649/mruby-io-fcntl', branch: 'main'
   spec.add_dependency 'mruby-pp',        github: 'kou/mruby-pp'
-  spec.add_dependency 'mruby-process-pgrp', github: 'buty4649/mruby-process-pgrp', branch: 'main'
+  spec.add_dependency 'mruby-process-pgrp', '>= 1.0.1', github: 'buty4649/mruby-process-pgrp', branch: 'main'
 end
