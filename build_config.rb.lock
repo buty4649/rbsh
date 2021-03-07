@@ -54,11 +54,6 @@ builds:
       branch: HEAD
       commit: 0e71c1adabf1197a8291690ab1d21caa6551752d
       version: 1.0.4
-    https://github.com/buty4649/mruby-process-pgrp.git:
-      url: https://github.com/buty4649/mruby-process-pgrp.git
-      branch: HEAD
-      commit: 0ff0a69693cde0f42ee9eb8084bb40104943de22
-      version: 1.0.0
     https://github.com/iij/mruby-errno.git:
       url: https://github.com/iij/mruby-errno.git
       branch: HEAD
@@ -89,6 +84,11 @@ builds:
       branch: HEAD
       commit: c5e730c30090d3cddae258f57ab9508edb3e9fce
       version: 0.0.0
+    https://github.com/buty4649/mruby-process-pgrp.git:
+      url: https://github.com/buty4649/mruby-process-pgrp.git
+      branch: main
+      commit: 4e857d49d3bb36e032609d2c163b183d15f59868
+      version: 1.0.1
   fdtest:
     https://github.com/gromnitsky/mruby-dir-glob.git:
       url: https://github.com/gromnitsky/mruby-dir-glob.git

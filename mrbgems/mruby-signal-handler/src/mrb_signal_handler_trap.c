@@ -148,28 +148,6 @@ mrb_value mrb_restore_tty_signals(mrb_state* mrb, mrb_value self) {
     return mrb_nil_value();
 }
 
-mrb_value mrb_wait_child_process(mrb_state* mrb, mrb_value self) {
-    pid_t pid;
-    int result;
-    siginfo_t si;
-
-    mrb_get_args(mrb, "i", &pid);
-
-    for(;;) {
-        result = waitid(P_PID, pid, &si, WEXITED | WNOHANG | WNOWAIT);
-        if (result >= 0) break;
-
-        if (errno == ECHILD) {
-            continue;
-        }
-
-        mrb_sys_fail(mrb, "waitid");
-        return mrb_nil_value();
-    }
-
-    return mrb_true_value();
-}
-
 void mrb_mruby_signal_handler_gem_init(mrb_state* mrb) {
     struct RClass* sh;
 

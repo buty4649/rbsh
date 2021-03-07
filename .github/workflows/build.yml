@@ -1,0 +1,13 @@
+name: Build & Test
+
+on: [push]
+
+jobs:
+  Ubuntu-2004:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build tools version
+        run: ruby -v ; gcc --version ; bison --version
+      - name: Build and Test
+        run: rake test:bintest
