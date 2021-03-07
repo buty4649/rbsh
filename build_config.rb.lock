@@ -86,7 +86,7 @@ builds:
       version: 0.0.0
     https://github.com/buty4649/mruby-process-pgrp.git:
       url: https://github.com/buty4649/mruby-process-pgrp.git
-      branch: main
+      branch: HEAD
       commit: 4e857d49d3bb36e032609d2c163b183d15f59868
       version: 1.0.1
   fdtest:

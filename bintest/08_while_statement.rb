@@ -87,5 +87,10 @@ assert("while_statement") do
   end
   EOS
 
+  assert_stdout("OK\n",  ["while true;", "echo OK", "break", "end"])
+  assert_stdout("OK\n",  ["while true", "echo OK", "break", "end"])
+  assert_stdout("OK\n",  ["while true;", "", "", "echo OK", "break", "end"])
+  assert_stdout("OK\n",  ["while true", "", "", "echo OK", "break", "end"])
+
   ENV.delete("TEST")
 end
