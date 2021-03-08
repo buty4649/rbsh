@@ -9,7 +9,6 @@
 #include <mruby/error.h>
 
 volatile sig_atomic_t interrupt_state = 0;
-pid_t wait_pgid = 0;
 
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
     switch(sig) {
@@ -17,10 +16,6 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             interrupt_state = 1;
             break;
     }
-}
-
-void sigint_handler(int sig, siginfo_t* info, void* ctx) {
-    if (wait_pgid) killpg(wait_pgid, SIGINT);
 }
 
 void mask_tty_signals(int how) {
@@ -60,29 +55,28 @@ mrb_value mrb_reset_signal_handlers(mrb_state* mrb, mrb_value self) {
 }
 
 mrb_value mrb_wait_pgid(mrb_state* mrb, mrb_value self) {
-    mrb_int pid;
-    struct sigaction sa, oa;
+    mrb_int pgid;
     mrb_value result;
-    struct RClass* st;
     siginfo_t info;
+    struct RClass* st;
     mrb_value o[2], ps;
     int exit_status;
 
-    mrb_get_args(mrb, "i", &pid);
-    wait_pgid = (pid_t)pid;
-
-    sa.sa_flags = SA_SIGINFO;
-    sa.sa_handler = SIG_DFL;
-    sa.sa_sigaction = sigint_handler;
-    sigemptyset(&sa.sa_mask);
-    sigaction(SIGINT, &sa, &oa);
+    mrb_get_args(mrb, "i", &pgid);
 
     st = mrb_class_get_under(mrb, mrb_module_get(mrb, "Process"), "Status");
     result = mrb_ary_new(mrb);
+    interrupt_state = 0;
 
     for (;;) {
-        if (waitid(P_PGID, wait_pgid, &info, WEXITED) == -1) {
-            if (errno == EINTR) continue;
+        if (waitid(P_PGID, (pid_t)pgid, &info, WEXITED) == -1) {
+            if (errno == EINTR) {
+                // interuput from SIGINT
+                if (interrupt_state) {
+                    killpg((pid_t)pgid, SIGINT);
+                }
+                continue;
+            }
             break;
         }
 
@@ -98,9 +92,6 @@ mrb_value mrb_wait_pgid(mrb_state* mrb, mrb_value self) {
         ps = mrb_obj_new(mrb, st, 2, o);
         mrb_ary_push(mrb, result, ps);
     }
-
-    sigaction(SIGINT, &oa, NULL);
-    wait_pgid = 0;
 
     return result;
 }
