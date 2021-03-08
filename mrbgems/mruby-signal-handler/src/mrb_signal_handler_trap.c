@@ -83,7 +83,7 @@ mrb_value mrb_wait_pgid(mrb_state* mrb, mrb_value self) {
         exit_status = info.si_status;
         if (info.si_code != CLD_EXITED) {
             exit_status += 128;
-            if (info.si_code == SIGINT) {
+            if (info.si_status == SIGINT) {
                 interrupt_state = 1;
             }
         }
