@@ -20,6 +20,8 @@ module ReddishParser
         [Element::Redirect.new(:copywrite, dest, src), Element::Redirect.new(:close, src)]
       when :copystdoutstderr
         [Element::Redirect.new(:write, 1, nil, filename), Element::Redirect.new(:copywrite, 2, 1)]
+      when :copyappend
+        [Element::Redirect.new(:append, 1, nil, filename), Element::Redirect.new(:copywrite, 2, 1)]
       else
         [Element::Redirect.new(type, dest, src, filename)]
       end

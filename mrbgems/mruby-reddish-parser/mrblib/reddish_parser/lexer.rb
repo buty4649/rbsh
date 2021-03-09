@@ -1,8 +1,8 @@
 module ReddishParser
   class Lexer
 
-    # '<', '<>', '<&', '>', '>>', '>&', '&', '&&', '&>', '|', '||', '|&', ';'
-    SIMPLE_TOKEN_PATTERN = '([<>&][>&]?|\|[|&]?|;)'
+    # '<', '<>', '<&', '>', '>>', '>&', '&', '&&', '&>', '&>>', '>>&', '|', '||', '|&', ';'
+    SIMPLE_TOKEN_PATTERN = '(&>>|>>&|[<>&][>&]?|\|[|&]?|;)'
     QUOTE_WORD_PATTERN = %Q!["'`]!
     PERCENT_WORD_PATTERN = '(%(!|[qQ]\W))'
 
