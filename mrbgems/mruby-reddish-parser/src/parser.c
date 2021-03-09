@@ -173,10 +173,12 @@ extern int yydebug;
     GT = 279,                      /* GT  */
     GT_GT = 280,                   /* GT_GT  */
     AND_GT = 281,                  /* AND_GT  */
-    GT_AND = 282,                  /* GT_AND  */
-    LT = 283,                      /* LT  */
-    LT_AND = 284,                  /* LT_AND  */
-    LT_GT = 285                    /* LT_GT  */
+    AND_GT_GT = 282,               /* AND_GT_GT  */
+    GT_AND = 283,                  /* GT_AND  */
+    GT_GT_AND = 284,               /* GT_GT_AND  */
+    LT = 285,                      /* LT  */
+    LT_AND = 286,                  /* LT_AND  */
+    LT_GT = 287                    /* LT_GT  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -224,42 +226,44 @@ enum yysymbol_kind_t
   YYSYMBOL_GT = 24,                        /* GT  */
   YYSYMBOL_GT_GT = 25,                     /* GT_GT  */
   YYSYMBOL_AND_GT = 26,                    /* AND_GT  */
-  YYSYMBOL_GT_AND = 27,                    /* GT_AND  */
-  YYSYMBOL_LT = 28,                        /* LT  */
-  YYSYMBOL_LT_AND = 29,                    /* LT_AND  */
-  YYSYMBOL_LT_GT = 30,                     /* LT_GT  */
-  YYSYMBOL_31_n_ = 31,                     /* '\n'  */
-  YYSYMBOL_32_ = 32,                       /* '&'  */
-  YYSYMBOL_33_ = 33,                       /* ';'  */
-  YYSYMBOL_34_ = 34,                       /* '|'  */
-  YYSYMBOL_35_ = 35,                       /* '{'  */
-  YYSYMBOL_36_ = 36,                       /* '}'  */
-  YYSYMBOL_YYACCEPT = 37,                  /* $accept  */
-  YYSYMBOL_inputunit = 38,                 /* inputunit  */
-  YYSYMBOL_terminator = 39,                /* terminator  */
-  YYSYMBOL_simple_list = 40,               /* simple_list  */
-  YYSYMBOL_connector = 41,                 /* connector  */
-  YYSYMBOL_pipeline = 42,                  /* pipeline  */
-  YYSYMBOL_compound_list = 43,             /* compound_list  */
-  YYSYMBOL_list = 44,                      /* list  */
-  YYSYMBOL_list0 = 45,                     /* list0  */
-  YYSYMBOL_list1 = 46,                     /* list1  */
-  YYSYMBOL_newline_list = 47,              /* newline_list  */
-  YYSYMBOL_command = 48,                   /* command  */
-  YYSYMBOL_shell_command = 49,             /* shell_command  */
-  YYSYMBOL_if_statement = 50,              /* if_statement  */
-  YYSYMBOL_elif_clause = 51,               /* elif_clause  */
-  YYSYMBOL_elsif_clause = 52,              /* elsif_clause  */
-  YYSYMBOL_unless_statement = 53,          /* unless_statement  */
-  YYSYMBOL_while_statement = 54,           /* while_statement  */
-  YYSYMBOL_until_statement = 55,           /* until_statement  */
-  YYSYMBOL_for_statement = 56,             /* for_statement  */
-  YYSYMBOL_simple_command = 57,            /* simple_command  */
-  YYSYMBOL_simple_command_element = 58,    /* simple_command_element  */
-  YYSYMBOL_redirect_list = 59,             /* redirect_list  */
-  YYSYMBOL_word_list = 60,                 /* word_list  */
-  YYSYMBOL_list_terminater = 61,           /* list_terminater  */
-  YYSYMBOL_redirect = 62                   /* redirect  */
+  YYSYMBOL_AND_GT_GT = 27,                 /* AND_GT_GT  */
+  YYSYMBOL_GT_AND = 28,                    /* GT_AND  */
+  YYSYMBOL_GT_GT_AND = 29,                 /* GT_GT_AND  */
+  YYSYMBOL_LT = 30,                        /* LT  */
+  YYSYMBOL_LT_AND = 31,                    /* LT_AND  */
+  YYSYMBOL_LT_GT = 32,                     /* LT_GT  */
+  YYSYMBOL_33_n_ = 33,                     /* '\n'  */
+  YYSYMBOL_34_ = 34,                       /* '&'  */
+  YYSYMBOL_35_ = 35,                       /* ';'  */
+  YYSYMBOL_36_ = 36,                       /* '|'  */
+  YYSYMBOL_37_ = 37,                       /* '{'  */
+  YYSYMBOL_38_ = 38,                       /* '}'  */
+  YYSYMBOL_YYACCEPT = 39,                  /* $accept  */
+  YYSYMBOL_inputunit = 40,                 /* inputunit  */
+  YYSYMBOL_terminator = 41,                /* terminator  */
+  YYSYMBOL_simple_list = 42,               /* simple_list  */
+  YYSYMBOL_connector = 43,                 /* connector  */
+  YYSYMBOL_pipeline = 44,                  /* pipeline  */
+  YYSYMBOL_compound_list = 45,             /* compound_list  */
+  YYSYMBOL_list = 46,                      /* list  */
+  YYSYMBOL_list0 = 47,                     /* list0  */
+  YYSYMBOL_list1 = 48,                     /* list1  */
+  YYSYMBOL_newline_list = 49,              /* newline_list  */
+  YYSYMBOL_command = 50,                   /* command  */
+  YYSYMBOL_shell_command = 51,             /* shell_command  */
+  YYSYMBOL_if_statement = 52,              /* if_statement  */
+  YYSYMBOL_elif_clause = 53,               /* elif_clause  */
+  YYSYMBOL_elsif_clause = 54,              /* elsif_clause  */
+  YYSYMBOL_unless_statement = 55,          /* unless_statement  */
+  YYSYMBOL_while_statement = 56,           /* while_statement  */
+  YYSYMBOL_until_statement = 57,           /* until_statement  */
+  YYSYMBOL_for_statement = 58,             /* for_statement  */
+  YYSYMBOL_simple_command = 59,            /* simple_command  */
+  YYSYMBOL_simple_command_element = 60,    /* simple_command_element  */
+  YYSYMBOL_redirect_list = 61,             /* redirect_list  */
+  YYSYMBOL_word_list = 62,                 /* word_list  */
+  YYSYMBOL_list_terminater = 63,           /* list_terminater  */
+  YYSYMBOL_redirect = 64                   /* redirect  */
 };
 typedef enum yysymbol_kind_t yysymbol_kind_t;
 
@@ -567,21 +571,21 @@ union yyalloc
 #endif /* !YYCOPY_NEEDED */
 
 /* YYFINAL -- State number of the termination state.  */
-#define YYFINAL  53
+#define YYFINAL  57
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   242
+#define YYLAST   253
 
 /* YYNTOKENS -- Number of terminals.  */
-#define YYNTOKENS  37
+#define YYNTOKENS  39
 /* YYNNTS -- Number of nonterminals.  */
 #define YYNNTS  26
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  111
+#define YYNRULES  113
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  198
+#define YYNSTATES  202
 
 /* YYMAXUTOK -- Last valid token kind.  */
-#define YYMAXUTOK   285
+#define YYMAXUTOK   287
 
 
 /* YYTRANSLATE(TOKEN-NUM) -- Symbol number corresponding to TOKEN-NUM
@@ -596,18 +600,18 @@ union yyalloc
 static const yytype_int8 yytranslate[] =
 {
        0,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-      31,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+      33,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,    32,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,    34,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,    33,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,    35,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,    35,    34,    36,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,    37,    36,    38,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -623,7 +627,7 @@ static const yytype_int8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     1,     2,     3,     4,
        5,     6,     7,     8,     9,    10,    11,    12,    13,    14,
       15,    16,    17,    18,    19,    20,    21,    22,    23,    24,
-      25,    26,    27,    28,    29,    30
+      25,    26,    27,    28,    29,    30,    31,    32
 };
 
 #if YYDEBUG
@@ -641,7 +645,7 @@ static const yytype_uint8 yyrline[] =
      171,   174,   175,   178,   179,   182,   183,   185,   185,   185,
      188,   189,   190,   191,   192,   193,   194,   195,   196,   197,
      198,   199,   200,   201,   202,   203,   204,   205,   206,   207,
-     208,   209
+     208,   209,   210,   211
 };
 #endif
 
@@ -660,14 +664,15 @@ static const char *const yytname[] =
   "\"end of file\"", "error", "\"invalid token\"", "WORD", "NUMBER",
   "MINUS", "NUMBER_MINUS", "IF", "THEN", "ELSE", "ELIF", "ELSIF", "FI",
   "END", "UNLESS", "WHILE", "DO", "DONE", "UNTIL", "FOR", "IN", "AND_AND",
-  "OR_OR", "OR_AND", "GT", "GT_GT", "AND_GT", "GT_AND", "LT", "LT_AND",
-  "LT_GT", "'\\n'", "'&'", "';'", "'|'", "'{'", "'}'", "$accept",
-  "inputunit", "terminator", "simple_list", "connector", "pipeline",
-  "compound_list", "list", "list0", "list1", "newline_list", "command",
-  "shell_command", "if_statement", "elif_clause", "elsif_clause",
-  "unless_statement", "while_statement", "until_statement",
-  "for_statement", "simple_command", "simple_command_element",
-  "redirect_list", "word_list", "list_terminater", "redirect", YY_NULLPTR
+  "OR_OR", "OR_AND", "GT", "GT_GT", "AND_GT", "AND_GT_GT", "GT_AND",
+  "GT_GT_AND", "LT", "LT_AND", "LT_GT", "'\\n'", "'&'", "';'", "'|'",
+  "'{'", "'}'", "$accept", "inputunit", "terminator", "simple_list",
+  "connector", "pipeline", "compound_list", "list", "list0", "list1",
+  "newline_list", "command", "shell_command", "if_statement",
+  "elif_clause", "elsif_clause", "unless_statement", "while_statement",
+  "until_statement", "for_statement", "simple_command",
+  "simple_command_element", "redirect_list", "word_list",
+  "list_terminater", "redirect", YY_NULLPTR
 };
 
 static const char *
@@ -685,7 +690,7 @@ static const yytype_int16 yytoknum[] =
        0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
      265,   266,   267,   268,   269,   270,   271,   272,   273,   274,
      275,   276,   277,   278,   279,   280,   281,   282,   283,   284,
-     285,    10,    38,    59,   124,   123,   125
+     285,   286,   287,    10,    38,    59,   124,   123,   125
 };
 #endif
 
@@ -703,26 +708,27 @@ static const yytype_int16 yytoknum[] =
      STATE-NUM.  */
 static const yytype_int16 yypact[] =
 {
-     176,  -153,  -153,   185,  -153,  -153,  -153,  -153,    15,    35,
-      37,    55,    62,    69,    21,    80,    88,    10,    72,    -3,
-    -153,   212,  -153,  -153,  -153,  -153,  -153,    24,  -153,  -153,
-      92,   127,    98,   130,   119,   132,     8,  -153,   204,   109,
-     115,   116,    -9,  -153,  -153,  -153,  -153,   138,  -153,  -153,
-     147,  -153,  -153,  -153,  -153,  -153,  -153,  -153,  -153,    82,
-      82,    82,    82,   212,  -153,  -153,  -153,  -153,   153,  -153,
-    -153,   170,  -153,  -153,  -153,  -153,  -153,  -153,   174,  -153,
-      -3,  -153,    59,  -153,  -153,  -153,  -153,  -153,  -153,  -153,
-     186,  -153,    -2,  -153,  -153,   204,   204,    -3,    -3,  -153,
-    -153,  -153,  -153,  -153,    33,   175,     4,  -153,  -153,  -153,
-      82,  -153,  -153,    23,   179,    42,   180,  -153,     6,    -1,
-    -153,  -153,    -3,    -3,  -153,  -153,  -153,  -153,   161,   169,
-    -153,  -153,  -153,   204,   204,    -3,   165,   204,   204,  -153,
+     139,  -153,  -153,   211,  -153,  -153,  -153,  -153,    20,    22,
+      32,    34,    68,    96,    82,    84,    45,   149,    11,    10,
+      94,    -3,  -153,    80,  -153,  -153,  -153,  -153,  -153,    66,
+    -153,  -153,   153,   169,   117,   184,   174,   203,     8,  -153,
+     201,    55,    31,   167,    -6,  -153,  -153,  -153,  -153,  -153,
+     132,  -153,  -153,  -153,   204,  -153,  -153,  -153,  -153,  -153,
+    -153,  -153,  -153,    27,    27,    27,    27,    80,  -153,  -153,
+    -153,  -153,   232,  -153,  -153,   233,  -153,  -153,  -153,  -153,
+    -153,  -153,     0,  -153,    -3,  -153,    92,  -153,  -153,  -153,
+    -153,  -153,  -153,  -153,   237,  -153,    -9,  -153,  -153,   201,
+     201,    -3,    -3,  -153,  -153,  -153,  -153,  -153,   123,   231,
+     202,  -153,  -153,  -153,    27,  -153,  -153,     9,   234,    48,
+     235,  -153,     5,    -1,  -153,  -153,    -3,    -3,  -153,  -153,
+    -153,  -153,   200,   205,  -153,  -153,  -153,   201,   201,    -3,
+     181,   201,   201,  -153,  -153,  -153,  -153,  -153,  -153,  -153,
+    -153,  -153,  -153,  -153,  -153,  -153,    59,   207,   209,   238,
+    -153,  -153,  -153,  -153,   151,  -153,    -3,    -3,    -3,    -3,
+     236,   239,   170,   134,   212,  -153,  -153,  -153,  -153,  -153,
     -153,  -153,  -153,  -153,  -153,  -153,  -153,  -153,  -153,  -153,
-    -153,  -153,    44,   162,   172,   189,  -153,  -153,  -153,  -153,
-     146,  -153,    -3,    -3,    -3,    -3,   207,   208,   135,    51,
-     163,  -153,  -153,  -153,  -153,  -153,  -153,  -153,  -153,  -153,
-    -153,  -153,  -153,  -153,  -153,  -153,  -153,   158,  -153,   108,
-     181,  -153,  -153,  -153,  -153,  -153,  -153,  -153
+    -153,   182,  -153,   142,   213,  -153,  -153,  -153,  -153,  -153,
+    -153,  -153
 };
 
   /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -731,41 +737,42 @@ static const yytype_int16 yypact[] =
 static const yytype_int8 yydefact[] =
 {
        0,     3,    81,     0,    29,    29,    29,    29,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     6,    13,
-      16,    32,    34,    35,    36,    37,    38,    31,    79,    82,
-       0,     0,     0,     0,     0,     0,     0,    17,     0,     0,
-       0,     0,    29,    98,   108,   106,   107,   101,   100,    90,
-      93,    92,   110,     1,     5,     4,     2,    29,    29,     7,
-       8,     0,     0,    33,    83,    80,    99,   109,   104,   103,
-      91,    96,    95,   111,    29,    29,    29,    39,     0,    30,
-      28,    19,    18,    29,    29,    60,    64,    29,    67,    29,
-       0,    29,     0,   102,    94,     0,     0,    11,    12,    15,
-      14,    84,   105,    97,     0,     0,    54,    41,    29,    29,
-      29,    29,    29,     0,     0,     0,     0,    85,     0,     0,
-      29,    29,     9,    10,    29,    29,    42,    43,     0,     0,
-      40,    29,    29,     0,     0,    27,    20,    21,    22,    29,
-      62,    61,    66,    65,    68,    89,    86,    87,    88,    29,
-      29,    29,     0,     0,     0,     0,    46,    47,    48,    49,
-      56,    55,    23,    24,    25,    26,     0,     0,     0,     0,
-       0,    70,    69,    71,    44,    45,    29,    29,    58,    59,
-      63,    75,    29,    29,    73,    72,    74,    50,    57,     0,
-       0,    29,    52,    53,    77,    76,    78,    51
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       6,    13,    16,    32,    34,    35,    36,    37,    38,    31,
+      79,    82,     0,     0,     0,     0,     0,     0,     0,    17,
+       0,     0,     0,     0,    29,    98,   108,   106,   110,   107,
+     101,   100,   111,    90,    93,    92,   112,     1,     5,     4,
+       2,    29,    29,     7,     8,     0,     0,    33,    83,    80,
+      99,   109,   104,   103,    91,    96,    95,   113,    29,    29,
+      29,    39,     0,    30,    28,    19,    18,    29,    29,    60,
+      64,    29,    67,    29,     0,    29,     0,   102,    94,     0,
+       0,    11,    12,    15,    14,    84,   105,    97,     0,     0,
+      54,    41,    29,    29,    29,    29,    29,     0,     0,     0,
+       0,    85,     0,     0,    29,    29,     9,    10,    29,    29,
+      42,    43,     0,     0,    40,    29,    29,     0,     0,    27,
+      20,    21,    22,    29,    62,    61,    66,    65,    68,    89,
+      86,    87,    88,    29,    29,    29,     0,     0,     0,     0,
+      46,    47,    48,    49,    56,    55,    23,    24,    25,    26,
+       0,     0,     0,     0,     0,    70,    69,    71,    44,    45,
+      29,    29,    58,    59,    63,    75,    29,    29,    73,    72,
+      74,    50,    57,     0,     0,    29,    52,    53,    77,    76,
+      78,    51
 };
 
   /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int16 yypgoto[] =
 {
     -153,  -153,  -153,  -153,  -153,     3,    -5,  -153,  -153,  -153,
-     -35,    86,  -153,  -153,  -152,  -100,  -153,  -153,  -153,  -153,
-    -153,   197,  -153,  -153,  -153,   -16
+     -35,   158,  -153,  -153,  -152,  -102,  -153,  -153,  -153,  -153,
+    -153,   224,  -153,  -153,  -153,   -19
 };
 
   /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int16 yydefgoto[] =
 {
-      -1,    16,    56,    17,    18,    80,    36,    37,    81,    82,
-      38,    20,    21,    22,   128,    78,    23,    24,    25,    26,
-      27,    28,    63,   118,   149,    29
+      -1,    18,    60,    19,    20,    84,    38,    39,    85,    86,
+      40,    22,    23,    24,   132,    82,    25,    26,    27,    28,
+      29,    30,    67,   122,   153,    31
 };
 
   /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
@@ -773,60 +780,62 @@ static const yytype_int16 yydefgoto[] =
      number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_uint8 yytable[] =
 {
-      39,    40,    41,    19,   129,    64,   145,    92,   178,   146,
-      54,    90,   131,   132,   120,   150,    74,    75,    42,    76,
-      61,    77,    95,    96,    91,    50,    51,     2,     3,    79,
-      79,    62,   139,   121,   151,   192,   140,   147,    43,   148,
-      44,    55,   124,   125,    76,   126,   127,   101,     9,    10,
-      11,    12,    13,    14,    15,   142,   119,   171,    45,   143,
-     179,   172,    97,    98,   184,    46,    47,    48,   185,   104,
-     105,   106,    49,   133,   134,   136,   137,   138,   113,   114,
-     108,   109,   115,    52,   116,     2,     3,   193,    53,     4,
-     110,   111,   112,    57,    58,    66,     5,     6,   122,   123,
-       7,     8,    68,    69,    59,    60,     9,    10,    11,    12,
-      13,    14,    15,   135,   168,   152,   153,    83,    84,   154,
-     155,   194,    85,    71,    72,   195,   160,   161,    86,    88,
-      67,    87,    89,    70,   166,    73,   162,   163,     2,     3,
-     164,   165,     4,    93,   167,   169,   170,    99,   100,     5,
-       6,   182,    94,     7,     8,   177,   125,    76,   102,     9,
-      10,    11,    12,    13,    14,    15,    79,   191,   125,    76,
-     183,   187,   188,   156,   157,   103,     1,   189,   190,     2,
-       3,   158,   159,     4,   174,   175,   197,   107,   130,   117,
-       5,     6,   141,   144,     7,     8,    79,   176,   173,   186,
-       9,    10,    11,    12,    13,    14,    15,     2,     3,    30,
-      31,     4,    32,    33,    34,    35,     3,   196,     5,     6,
-     180,   181,     7,     8,    65,     0,     0,     0,     9,    10,
-      11,    12,    13,    14,    15,    79,     9,    10,    11,    12,
-      13,    14,    15
+      41,    42,    43,    21,    68,   149,   133,   124,   150,    96,
+      58,    57,   182,   111,    94,   154,    78,    79,   143,    80,
+      65,    81,   144,    44,    83,    45,    99,   100,   125,    95,
+       2,     3,    83,    66,     4,    46,   155,    47,   151,   196,
+     152,     5,     6,    59,    90,     7,     8,    91,   105,    54,
+      55,     9,    10,    11,    12,    13,    14,    15,    16,    17,
+     123,   146,   183,    87,    88,   147,   101,   102,    89,     2,
+       3,    48,   175,   108,   109,   110,   176,   137,   138,   140,
+     141,   142,   117,   118,     3,    52,   119,    53,   120,   197,
+       9,    10,    11,    12,    13,    14,    15,    16,    17,    49,
+      50,    51,   126,   127,     9,    10,    11,    12,    13,    14,
+      15,    16,    17,   112,   113,    61,    62,   139,   172,   156,
+     157,    72,    73,   158,   159,   114,   115,   116,    63,    64,
+     164,   165,   128,   129,    80,   130,   131,    97,   170,     1,
+     166,   167,     2,     3,   168,   169,     4,   188,   171,   173,
+     174,   189,    56,     5,     6,   198,    70,     7,     8,   199,
+     181,   129,    80,     9,    10,    11,    12,    13,    14,    15,
+      16,    17,    71,     2,     3,   191,   192,     4,    75,    76,
+      92,   193,   194,    93,     5,     6,   186,    74,     7,     8,
+     201,   195,   129,    80,     9,    10,    11,    12,    13,    14,
+      15,    16,    17,    83,     2,     3,    77,   187,     4,    98,
+     135,   136,   160,   161,    83,     5,     6,   162,   163,     7,
+       8,   178,   179,   103,   104,     9,    10,    11,    12,    13,
+      14,    15,    16,    17,    83,    32,    33,   106,   107,    34,
+     121,    35,    36,    37,   134,   177,   180,   145,   148,   184,
+     190,   200,   185,    69
 };
 
-static const yytype_int16 yycheck[] =
+static const yytype_uint8 yycheck[] =
 {
-       5,     6,     7,     0,   104,    21,     0,    42,   160,     3,
-       0,    20,     8,     9,    16,    16,     8,     9,     3,    11,
-      23,    13,    57,    58,    33,     4,     5,     3,     4,    31,
-      31,    34,     9,    35,    35,   187,    13,    31,     3,    33,
-       3,    31,     9,    10,    11,    12,    13,    63,    24,    25,
-      26,    27,    28,    29,    30,    13,    91,    13,     3,    17,
-     160,    17,    59,    60,    13,     3,     4,     5,    17,    74,
-      75,    76,     3,   108,   109,   110,   111,   112,    83,    84,
-      21,    22,    87,     3,    89,     3,     4,   187,     0,     7,
-      31,    32,    33,    21,    22,     3,    14,    15,    95,    96,
-      18,    19,     4,     5,    32,    33,    24,    25,    26,    27,
-      28,    29,    30,   110,   149,   120,   121,     8,     9,   124,
-     125,    13,    13,     4,     5,    17,   131,   132,    13,    13,
-       3,    16,    16,     3,   139,     3,   133,   134,     3,     4,
-     137,   138,     7,     5,   149,   150,   151,    61,    62,    14,
-      15,    16,     5,    18,    19,     9,    10,    11,     5,    24,
-      25,    26,    27,    28,    29,    30,    31,     9,    10,    11,
-      35,   176,   177,    12,    13,     5,     0,   182,   183,     3,
-       4,    12,    13,     7,    12,    13,   191,    13,    13,     3,
-      14,    15,    13,    13,    18,    19,    31,     8,    36,    36,
-      24,    25,    26,    27,    28,    29,    30,     3,     4,    24,
-      25,     7,    27,    28,    29,    30,     4,    36,    14,    15,
-      13,    13,    18,    19,    27,    -1,    -1,    -1,    24,    25,
-      26,    27,    28,    29,    30,    31,    24,    25,    26,    27,
-      28,    29,    30
+       5,     6,     7,     0,    23,     0,   108,    16,     3,    44,
+       0,     0,   164,    13,    20,    16,     8,     9,     9,    11,
+      23,    13,    13,     3,    33,     3,    61,    62,    37,    35,
+       3,     4,    33,    36,     7,     3,    37,     3,    33,   191,
+      35,    14,    15,    33,    13,    18,    19,    16,    67,     4,
+       5,    24,    25,    26,    27,    28,    29,    30,    31,    32,
+      95,    13,   164,     8,     9,    17,    63,    64,    13,     3,
+       4,     3,    13,    78,    79,    80,    17,   112,   113,   114,
+     115,   116,    87,    88,     4,     3,    91,     3,    93,   191,
+      24,    25,    26,    27,    28,    29,    30,    31,    32,     3,
+       4,     5,    99,   100,    24,    25,    26,    27,    28,    29,
+      30,    31,    32,    21,    22,    21,    22,   114,   153,   124,
+     125,     4,     5,   128,   129,    33,    34,    35,    34,    35,
+     135,   136,     9,    10,    11,    12,    13,     5,   143,     0,
+     137,   138,     3,     4,   141,   142,     7,    13,   153,   154,
+     155,    17,     3,    14,    15,    13,     3,    18,    19,    17,
+       9,    10,    11,    24,    25,    26,    27,    28,    29,    30,
+      31,    32,     3,     3,     4,   180,   181,     7,     4,     5,
+      13,   186,   187,    16,    14,    15,    16,     3,    18,    19,
+     195,     9,    10,    11,    24,    25,    26,    27,    28,    29,
+      30,    31,    32,    33,     3,     4,     3,    37,     7,     5,
+       8,     9,    12,    13,    33,    14,    15,    12,    13,    18,
+      19,    12,    13,    65,    66,    24,    25,    26,    27,    28,
+      29,    30,    31,    32,    33,    24,    25,     5,     5,    28,
+       3,    30,    31,    32,    13,    38,     8,    13,    13,    13,
+      38,    38,    13,    29
 };
 
   /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
@@ -834,42 +843,43 @@ static const yytype_int16 yycheck[] =
 static const yytype_int8 yystos[] =
 {
        0,     0,     3,     4,     7,    14,    15,    18,    19,    24,
-      25,    26,    27,    28,    29,    30,    38,    40,    41,    42,
-      48,    49,    50,    53,    54,    55,    56,    57,    58,    62,
-      24,    25,    27,    28,    29,    30,    43,    44,    47,    43,
-      43,    43,     3,     3,     3,     3,     3,     4,     5,     3,
-       4,     5,     3,     0,     0,    31,    39,    21,    22,    32,
-      33,    23,    34,    59,    62,    58,     3,     3,     4,     5,
-       3,     4,     5,     3,     8,     9,    11,    13,    52,    31,
-      42,    45,    46,     8,     9,    13,    13,    16,    13,    16,
-      20,    33,    47,     5,     5,    47,    47,    42,    42,    48,
-      48,    62,     5,     5,    43,    43,    43,    13,    21,    22,
-      31,    32,    33,    43,    43,    43,    43,     3,    60,    47,
-      16,    35,    42,    42,     9,    10,    12,    13,    51,    52,
-      13,     8,     9,    47,    47,    42,    47,    47,    47,     9,
-      13,    13,    13,    17,    13,     0,     3,    31,    33,    61,
-      16,    35,    43,    43,    43,    43,    12,    13,    12,    13,
-      43,    43,    42,    42,    42,    42,    43,    43,    47,    43,
-      43,    13,    17,    36,    12,    13,     8,     9,    51,    52,
-      13,    13,    16,    35,    13,    17,    36,    43,    43,    43,
-      43,     9,    51,    52,    13,    17,    36,    43
+      25,    26,    27,    28,    29,    30,    31,    32,    40,    42,
+      43,    44,    50,    51,    52,    55,    56,    57,    58,    59,
+      60,    64,    24,    25,    28,    30,    31,    32,    45,    46,
+      49,    45,    45,    45,     3,     3,     3,     3,     3,     3,
+       4,     5,     3,     3,     4,     5,     3,     0,     0,    33,
+      41,    21,    22,    34,    35,    23,    36,    61,    64,    60,
+       3,     3,     4,     5,     3,     4,     5,     3,     8,     9,
+      11,    13,    54,    33,    44,    47,    48,     8,     9,    13,
+      13,    16,    13,    16,    20,    35,    49,     5,     5,    49,
+      49,    44,    44,    50,    50,    64,     5,     5,    45,    45,
+      45,    13,    21,    22,    33,    34,    35,    45,    45,    45,
+      45,     3,    62,    49,    16,    37,    44,    44,     9,    10,
+      12,    13,    53,    54,    13,     8,     9,    49,    49,    44,
+      49,    49,    49,     9,    13,    13,    13,    17,    13,     0,
+       3,    33,    35,    63,    16,    37,    45,    45,    45,    45,
+      12,    13,    12,    13,    45,    45,    44,    44,    44,    44,
+      45,    45,    49,    45,    45,    13,    17,    38,    12,    13,
+       8,     9,    53,    54,    13,    13,    16,    37,    13,    17,
+      38,    45,    45,    45,    45,     9,    53,    54,    13,    17,
+      38,    45
 };
 
   /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
 static const yytype_int8 yyr1[] =
 {
-       0,    37,    38,    38,    39,    39,    40,    40,    40,    41,
-      41,    41,    41,    41,    42,    42,    42,    43,    43,    44,
-      45,    45,    45,    46,    46,    46,    46,    46,    46,    47,
-      47,    48,    48,    48,    49,    49,    49,    49,    49,    50,
-      50,    50,    50,    50,    50,    50,    50,    50,    50,    50,
-      51,    51,    51,    51,    52,    52,    52,    52,    52,    52,
-      53,    53,    53,    53,    54,    54,    54,    55,    55,    56,
-      56,    56,    56,    56,    56,    56,    56,    56,    56,    57,
-      57,    58,    58,    59,    59,    60,    60,    61,    61,    61,
-      62,    62,    62,    62,    62,    62,    62,    62,    62,    62,
-      62,    62,    62,    62,    62,    62,    62,    62,    62,    62,
-      62,    62
+       0,    39,    40,    40,    41,    41,    42,    42,    42,    43,
+      43,    43,    43,    43,    44,    44,    44,    45,    45,    46,
+      47,    47,    47,    48,    48,    48,    48,    48,    48,    49,
+      49,    50,    50,    50,    51,    51,    51,    51,    51,    52,
+      52,    52,    52,    52,    52,    52,    52,    52,    52,    52,
+      53,    53,    53,    53,    54,    54,    54,    54,    54,    54,
+      55,    55,    55,    55,    56,    56,    56,    57,    57,    58,
+      58,    58,    58,    58,    58,    58,    58,    58,    58,    59,
+      59,    60,    60,    61,    61,    62,    62,    63,    63,    63,
+      64,    64,    64,    64,    64,    64,    64,    64,    64,    64,
+      64,    64,    64,    64,    64,    64,    64,    64,    64,    64,
+      64,    64,    64,    64
 };
 
   /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
@@ -886,7 +896,7 @@ static const yytype_int8 yyr2[] =
        2,     1,     1,     1,     2,     1,     2,     1,     1,     1,
        2,     3,     2,     2,     3,     3,     3,     4,     2,     3,
        2,     2,     3,     3,     3,     4,     2,     2,     2,     3,
-       2,     3
+       2,     2,     2,     3
 };
 
 
@@ -1364,527 +1374,539 @@ yyreduce:
   case 2: /* inputunit: simple_list terminator  */
 #line 57 "mrbgems/mruby-reddish-parser/core/parser.y"
                          { p->result = yyvsp[-1]; YYACCEPT;}
-#line 1368 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1378 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 3: /* inputunit: $end  */
 #line 58 "mrbgems/mruby-reddish-parser/core/parser.y"
                          { p->result = NIL;YYACCEPT;}
-#line 1374 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1384 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 7: /* simple_list: connector '&'  */
 #line 64 "mrbgems/mruby-reddish-parser/core/parser.y"
                 { yyval = ASYNC(p, yyvsp[-1]); }
-#line 1380 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1390 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 9: /* connector: connector AND_AND newline_list pipeline  */
 #line 68 "mrbgems/mruby-reddish-parser/core/parser.y"
                                           { yyval = CONNECTOR(p, "and", yyvsp[-3], yyvsp[0]); }
-#line 1386 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1396 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 10: /* connector: connector OR_OR newline_list pipeline  */
 #line 69 "mrbgems/mruby-reddish-parser/core/parser.y"
                                           { yyval = CONNECTOR(p, "or",  yyvsp[-3], yyvsp[0]); }
-#line 1392 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1402 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 11: /* connector: connector '&' pipeline  */
 #line 70 "mrbgems/mruby-reddish-parser/core/parser.y"
                                           { yyval = CONNECTOR(p, "async", yyvsp[-2], yyvsp[0]); }
-#line 1398 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1408 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 12: /* connector: connector ';' pipeline  */
 #line 71 "mrbgems/mruby-reddish-parser/core/parser.y"
                                           { yyval = CONNECTOR(p, "semicolon", yyvsp[-2], yyvsp[0]); }
-#line 1404 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1414 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 14: /* pipeline: pipeline '|' command  */
 #line 75 "mrbgems/mruby-reddish-parser/core/parser.y"
                           { yyval = PIPELINE(p, yyvsp[-2], yyvsp[0], MRB_FALSE); }
-#line 1410 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1420 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 15: /* pipeline: pipeline OR_AND command  */
 #line 76 "mrbgems/mruby-reddish-parser/core/parser.y"
                           { yyval = PIPELINE(p, yyvsp[-2], yyvsp[0], MRB_TRUE); }
-#line 1416 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1426 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 18: /* compound_list: newline_list list1  */
 #line 81 "mrbgems/mruby-reddish-parser/core/parser.y"
                      { yyval = yyvsp[0]; }
-#line 1422 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1432 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 19: /* list: newline_list list0  */
 #line 84 "mrbgems/mruby-reddish-parser/core/parser.y"
                      { yyval = yyvsp[0]; }
-#line 1428 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1438 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 21: /* list0: list1 '&' newline_list  */
 #line 88 "mrbgems/mruby-reddish-parser/core/parser.y"
                           { yyval = ASYNC(p, yyvsp[-2]); }
-#line 1434 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1444 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 23: /* list1: list1 AND_AND newline_list pipeline  */
 #line 92 "mrbgems/mruby-reddish-parser/core/parser.y"
                                       { yyval = CONNECTOR(p, "and", yyvsp[-3], yyvsp[0]); }
-#line 1440 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1450 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 24: /* list1: list1 OR_OR newline_list pipeline  */
 #line 93 "mrbgems/mruby-reddish-parser/core/parser.y"
                                       { yyval = CONNECTOR(p, "or",  yyvsp[-3], yyvsp[0]); }
-#line 1446 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1456 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 25: /* list1: list1 '&' newline_list pipeline  */
 #line 94 "mrbgems/mruby-reddish-parser/core/parser.y"
                                       { yyval = CONNECTOR(p, "async", yyvsp[-3], yyvsp[0]); }
-#line 1452 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1462 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 26: /* list1: list1 ';' newline_list pipeline  */
 #line 95 "mrbgems/mruby-reddish-parser/core/parser.y"
                                       { yyval = CONNECTOR(p, "semicolon", yyvsp[-3], yyvsp[0]); }
-#line 1458 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1468 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 27: /* list1: list1 '\n' pipeline  */
 #line 96 "mrbgems/mruby-reddish-parser/core/parser.y"
                                       { yyval = CONNECTOR(p, "semicolon", yyvsp[-2], yyvsp[0]); }
-#line 1464 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1474 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 31: /* command: simple_command  */
 #line 104 "mrbgems/mruby-reddish-parser/core/parser.y"
                  { yyval = COMMAND(p, yyvsp[0]); }
-#line 1470 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1480 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 33: /* command: shell_command redirect_list  */
 #line 106 "mrbgems/mruby-reddish-parser/core/parser.y"
                               { APPEND_REDIRECT(p, yyvsp[-1], yyvsp[0]); yyval = yyvsp[-1]; }
-#line 1476 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1486 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 39: /* if_statement: IF compound_list END  */
 #line 116 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-1], 0, NIL); }
-#line 1482 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1492 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 40: /* if_statement: IF compound_list ELSE compound_list END  */
 #line 117 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-3], 2, NIL, yyvsp[-1]); }
-#line 1488 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1498 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 41: /* if_statement: IF compound_list elsif_clause END  */
 #line 118 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-2], 2, NIL, yyvsp[-1]); }
-#line 1494 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1504 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 42: /* if_statement: IF compound_list THEN compound_list FI  */
 #line 119 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-3], 1, yyvsp[-1]); }
-#line 1500 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1510 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 43: /* if_statement: IF compound_list THEN compound_list END  */
 #line 120 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-3], 1, yyvsp[-1]); }
-#line 1506 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1516 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 44: /* if_statement: IF compound_list THEN compound_list ELSE compound_list FI  */
 #line 121 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-5], 2, yyvsp[-3], yyvsp[-1]); }
-#line 1512 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1522 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 45: /* if_statement: IF compound_list THEN compound_list ELSE compound_list END  */
 #line 122 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-5], 2, yyvsp[-3], yyvsp[-1]); }
-#line 1518 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1528 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 46: /* if_statement: IF compound_list THEN compound_list elif_clause FI  */
 #line 123 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-4], 2, yyvsp[-2], yyvsp[-1]); }
-#line 1524 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1534 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 47: /* if_statement: IF compound_list THEN compound_list elif_clause END  */
 #line 124 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-4], 2, yyvsp[-2], yyvsp[-1]); }
-#line 1530 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1540 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 48: /* if_statement: IF compound_list THEN compound_list elsif_clause FI  */
 #line 125 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-4], 2, yyvsp[-2], yyvsp[-1]); }
-#line 1536 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1546 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 49: /* if_statement: IF compound_list THEN compound_list elsif_clause END  */
 #line 126 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-4], 2, yyvsp[-2], yyvsp[-1]); }
-#line 1542 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1552 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 50: /* elif_clause: ELIF compound_list THEN compound_list  */
 #line 129 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                            { yyval = IF_STMT(p, yyvsp[-2], 1, yyvsp[0]); }
-#line 1548 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1558 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 51: /* elif_clause: ELIF compound_list THEN compound_list ELSE compound_list  */
 #line 130 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                            { yyval = IF_STMT(p, yyvsp[-4], 2, yyvsp[-2], yyvsp[0]); }
-#line 1554 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1564 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 52: /* elif_clause: ELIF compound_list THEN compound_list elif_clause  */
 #line 131 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                            { yyval = IF_STMT(p, yyvsp[-3], 2, yyvsp[-1], yyvsp[0]); }
-#line 1560 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1570 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 53: /* elif_clause: ELIF compound_list THEN compound_list elsif_clause  */
 #line 132 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                            { yyval = IF_STMT(p, yyvsp[-3], 2, yyvsp[-1], yyvsp[0]); }
-#line 1566 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1576 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 54: /* elsif_clause: ELSIF compound_list  */
 #line 135 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[0], 0, NIL); }
-#line 1572 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1582 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 55: /* elsif_clause: ELSIF compound_list ELSE compound_list  */
 #line 136 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-2], 2, NIL, yyvsp[0]); }
-#line 1578 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1588 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 56: /* elsif_clause: ELSIF compound_list THEN compound_list  */
 #line 137 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-2], 1, yyvsp[0]); }
-#line 1584 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1594 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 57: /* elsif_clause: ELSIF compound_list THEN compound_list ELSE compound_list  */
 #line 138 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-4], 2, yyvsp[-2], yyvsp[0]); }
-#line 1590 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1600 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 58: /* elsif_clause: ELSIF compound_list THEN compound_list elif_clause  */
 #line 139 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-3], 2, yyvsp[-1], yyvsp[0]); }
-#line 1596 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1606 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 59: /* elsif_clause: ELSIF compound_list THEN compound_list elsif_clause  */
 #line 140 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                             { yyval = IF_STMT(p, yyvsp[-3], 2, yyvsp[-1], yyvsp[0]); }
-#line 1602 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1612 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 60: /* unless_statement: UNLESS compound_list END  */
 #line 143 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                                  { yyval = UNLESS_STMT(p, yyvsp[-1], 0, NIL); }
-#line 1608 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1618 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 61: /* unless_statement: UNLESS compound_list ELSE compound_list END  */
 #line 144 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                                  { yyval = UNLESS_STMT(p, yyvsp[-3], 2, NIL, yyvsp[-1]); }
-#line 1614 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1624 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 62: /* unless_statement: UNLESS compound_list THEN compound_list END  */
 #line 145 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                                  { yyval = UNLESS_STMT(p, yyvsp[-3], 1, yyvsp[-1]); }
-#line 1620 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1630 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 63: /* unless_statement: UNLESS compound_list THEN compound_list ELSE compound_list END  */
 #line 146 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                                  { yyval = UNLESS_STMT(p, yyvsp[-5], 2, yyvsp[-3], yyvsp[-1]); }
-#line 1626 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1636 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 64: /* while_statement: WHILE compound_list END  */
 #line 149 "mrbgems/mruby-reddish-parser/core/parser.y"
                                             { yyval = WHILE_STMT(p, yyvsp[-1], NIL); }
-#line 1632 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1642 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 65: /* while_statement: WHILE compound_list DO compound_list DONE  */
 #line 150 "mrbgems/mruby-reddish-parser/core/parser.y"
                                             { yyval = WHILE_STMT(p, yyvsp[-3], yyvsp[-1]); }
-#line 1638 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1648 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 66: /* while_statement: WHILE compound_list DO compound_list END  */
 #line 151 "mrbgems/mruby-reddish-parser/core/parser.y"
                                             { yyval = WHILE_STMT(p, yyvsp[-3], yyvsp[-1]); }
-#line 1644 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1654 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 67: /* until_statement: UNTIL compound_list END  */
 #line 154 "mrbgems/mruby-reddish-parser/core/parser.y"
                                             { yyval = UNTIL_STMT(p, yyvsp[-1], NIL); }
-#line 1650 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1660 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 68: /* until_statement: UNTIL compound_list DO compound_list END  */
 #line 155 "mrbgems/mruby-reddish-parser/core/parser.y"
                                             { yyval = UNTIL_STMT(p, yyvsp[-3], yyvsp[-1]); }
-#line 1656 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1666 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 69: /* for_statement: FOR WORD newline_list DO compound_list DONE  */
 #line 158 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                           { yyval = FOR_STMT(p, yyvsp[-4], NIL, yyvsp[-1]); }
-#line 1662 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1672 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 70: /* for_statement: FOR WORD newline_list DO compound_list END  */
 #line 159 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                           { yyval = FOR_STMT(p, yyvsp[-4], NIL, yyvsp[-1]); }
-#line 1668 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1678 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 71: /* for_statement: FOR WORD newline_list '{' compound_list '}'  */
 #line 160 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                           { yyval = FOR_STMT(p, yyvsp[-4], NIL, yyvsp[-1]); }
-#line 1674 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1684 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 72: /* for_statement: FOR WORD ';' newline_list DO compound_list DONE  */
 #line 161 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                           { yyval = FOR_STMT(p, yyvsp[-5], NIL, yyvsp[-1]); }
-#line 1680 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1690 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 73: /* for_statement: FOR WORD ';' newline_list DO compound_list END  */
 #line 162 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                           { yyval = FOR_STMT(p, yyvsp[-5], NIL, yyvsp[-1]); }
-#line 1686 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1696 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 74: /* for_statement: FOR WORD ';' newline_list '{' compound_list '}'  */
 #line 163 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                           { yyval = FOR_STMT(p, yyvsp[-5], NIL, yyvsp[-1]); }
-#line 1692 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1702 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 75: /* for_statement: FOR WORD IN word_list list_terminater compound_list END  */
 #line 164 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                               { yyval = FOR_STMT(p, yyvsp[-5], yyvsp[-3], yyvsp[-1]); }
-#line 1698 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1708 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 76: /* for_statement: FOR WORD IN word_list list_terminater newline_list DO compound_list DONE  */
 #line 165 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                                            { yyval = FOR_STMT(p, yyvsp[-7], yyvsp[-5], yyvsp[-1]); }
-#line 1704 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1714 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 77: /* for_statement: FOR WORD IN word_list list_terminater newline_list DO compound_list END  */
 #line 166 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                                            { yyval = FOR_STMT(p, yyvsp[-7], yyvsp[-5], yyvsp[-1]); }
-#line 1710 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1720 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 78: /* for_statement: FOR WORD IN word_list list_terminater newline_list '{' compound_list '}'  */
 #line 167 "mrbgems/mruby-reddish-parser/core/parser.y"
                                                                            { yyval = FOR_STMT(p, yyvsp[-7], yyvsp[-5], yyvsp[-1]); }
-#line 1716 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1726 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 79: /* simple_command: simple_command_element  */
 #line 170 "mrbgems/mruby-reddish-parser/core/parser.y"
                          { yyval = mrb_ary_new_from_values(p->state, 1, &yyvsp[0]); }
-#line 1722 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1732 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 80: /* simple_command: simple_command simple_command_element  */
 #line 171 "mrbgems/mruby-reddish-parser/core/parser.y"
                                         { mrb_ary_push(p->state, yyvsp[-1], yyvsp[0]); yyval = yyvsp[-1]; }
-#line 1728 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1738 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 81: /* simple_command_element: WORD  */
 #line 174 "mrbgems/mruby-reddish-parser/core/parser.y"
        { yyval = WORD(p, yyvsp[0]); }
-#line 1734 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1744 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 84: /* redirect_list: redirect_list redirect  */
 #line 179 "mrbgems/mruby-reddish-parser/core/parser.y"
                          { mrb_ary_concat(p->state, yyvsp[-1], yyvsp[0]); yyval = yyvsp[-1]; }
-#line 1740 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1750 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 85: /* word_list: WORD  */
 #line 182 "mrbgems/mruby-reddish-parser/core/parser.y"
        { yyval = mrb_ary_new_from_values(p->state, 1, &yyvsp[0]); }
-#line 1746 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1756 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 86: /* word_list: word_list WORD  */
 #line 183 "mrbgems/mruby-reddish-parser/core/parser.y"
                  { mrb_ary_push(p->state, yyvsp[-1], yyvsp[0]); yyval = yyvsp[-1]; }
-#line 1752 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1762 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 90: /* redirect: LT WORD  */
 #line 188 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "read",     2, FIXNUM(0), yyvsp[0]); }
-#line 1758 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1768 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 91: /* redirect: NUMBER LT WORD  */
 #line 189 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "read",     2, yyvsp[-2], yyvsp[0]); }
-#line 1764 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1774 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 92: /* redirect: LT_AND MINUS  */
 #line 190 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "close",    1, FIXNUM(0)); }
-#line 1770 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1780 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 93: /* redirect: LT_AND NUMBER  */
 #line 191 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "copyread", 2, FIXNUM(0), yyvsp[0]); }
-#line 1776 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1786 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 94: /* redirect: LT_AND NUMBER MINUS  */
 #line 192 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "copyreadclose", 2, FIXNUM(0), yyvsp[-1]); }
-#line 1782 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1792 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 95: /* redirect: NUMBER LT_AND MINUS  */
 #line 193 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "close",    1, yyvsp[-2]); }
-#line 1788 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1798 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 96: /* redirect: NUMBER LT_AND NUMBER  */
 #line 194 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "copyread", 2, yyvsp[-2], yyvsp[0]); }
-#line 1794 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1804 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 97: /* redirect: NUMBER LT_AND NUMBER MINUS  */
 #line 195 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "copyreadclose", 2, yyvsp[-3], yyvsp[-1]); }
-#line 1800 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1810 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 98: /* redirect: GT WORD  */
 #line 196 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "write",     2, FIXNUM(1), yyvsp[0]); }
-#line 1806 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1816 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 99: /* redirect: NUMBER GT WORD  */
 #line 197 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "write",     2, yyvsp[-2], yyvsp[0]); }
-#line 1812 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1822 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 100: /* redirect: GT_AND MINUS  */
 #line 198 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "close",     1, FIXNUM(1)); }
-#line 1818 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1828 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 101: /* redirect: GT_AND NUMBER  */
 #line 199 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "copywrite", 2, FIXNUM(1), yyvsp[0]); }
-#line 1824 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1834 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 102: /* redirect: GT_AND NUMBER MINUS  */
 #line 200 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "copywriteclose", 2, FIXNUM(1), yyvsp[-1]); }
-#line 1830 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1840 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 103: /* redirect: NUMBER GT_AND MINUS  */
 #line 201 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "close",     1, yyvsp[-2]); }
-#line 1836 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1846 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 104: /* redirect: NUMBER GT_AND NUMBER  */
 #line 202 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "copywrite", 2, yyvsp[-2], yyvsp[0]); }
-#line 1842 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1852 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 105: /* redirect: NUMBER GT_AND NUMBER MINUS  */
 #line 203 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "copywriteclose", 2, yyvsp[-3], yyvsp[-1]); }
-#line 1848 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1858 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 106: /* redirect: AND_GT WORD  */
 #line 204 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "copystdoutstderr", 3, FIXNUM(1), FIXNUM(2), yyvsp[0]); }
-#line 1854 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1864 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 107: /* redirect: GT_AND WORD  */
 #line 205 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "copystdoutstderr", 3, FIXNUM(1), FIXNUM(2), yyvsp[0]); }
-#line 1860 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1870 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 108: /* redirect: GT_GT WORD  */
 #line 206 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "append", 2, FIXNUM(1), yyvsp[0]); }
-#line 1866 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1876 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
   case 109: /* redirect: NUMBER GT_GT WORD  */
 #line 207 "mrbgems/mruby-reddish-parser/core/parser.y"
                                        { yyval = REDIRECT(p, "append", 2, yyvsp[-2], yyvsp[0]); }
-#line 1872 "mrbgems/mruby-reddish-parser/src/parser.c"
+#line 1882 "mrbgems/mruby-reddish-parser/src/parser.c"
     break;
 
-  case 110: /* redirect: LT_GT WORD  */
+  case 110: /* redirect: AND_GT_GT WORD  */
 #line 208 "mrbgems/mruby-reddish-parser/core/parser.y"
-                                       { yyval = REDIRECT(p, "readwrite", 2, FIXNUM(0), yyvsp[0]); }
-#line 1878 "mrbgems/mruby-reddish-parser/src/parser.c"
-    break;
-
-  case 111: /* redirect: NUMBER LT_GT WORD  */
-#line 209 "mrbgems/mruby-reddish-parser/core/parser.y"
-                                       { yyval = REDIRECT(p, "readwrite", 2, yyvsp[-2], yyvsp[0]); }
-#line 1884 "mrbgems/mruby-reddish-parser/src/parser.c"
-    break;
-
-
+                                       { yyval = REDIRECT(p, "copyappend", 2, FIXNUM(1), yyvsp[0]); }
 #line 1888 "mrbgems/mruby-reddish-parser/src/parser.c"
+    break;
+
+  case 111: /* redirect: GT_GT_AND WORD  */
+#line 209 "mrbgems/mruby-reddish-parser/core/parser.y"
+                                       { yyval = REDIRECT(p, "copyappend", 2, FIXNUM(1), yyvsp[0]); }
+#line 1894 "mrbgems/mruby-reddish-parser/src/parser.c"
+    break;
+
+  case 112: /* redirect: LT_GT WORD  */
+#line 210 "mrbgems/mruby-reddish-parser/core/parser.y"
+                                       { yyval = REDIRECT(p, "readwrite", 2, FIXNUM(0), yyvsp[0]); }
+#line 1900 "mrbgems/mruby-reddish-parser/src/parser.c"
+    break;
+
+  case 113: /* redirect: NUMBER LT_GT WORD  */
+#line 211 "mrbgems/mruby-reddish-parser/core/parser.y"
+                                       { yyval = REDIRECT(p, "readwrite", 2, yyvsp[-2], yyvsp[0]); }
+#line 1906 "mrbgems/mruby-reddish-parser/src/parser.c"
+    break;
+
+
+#line 1910 "mrbgems/mruby-reddish-parser/src/parser.c"
 
       default: break;
     }
@@ -2078,7 +2100,7 @@ yyreturn:
   return yyresult;
 }
 
-#line 211 "mrbgems/mruby-reddish-parser/core/parser.y"
+#line 213 "mrbgems/mruby-reddish-parser/core/parser.y"
 
 static const struct token_type {
     const char *name;
@@ -2092,8 +2114,10 @@ static const struct token_type {
     {"}",  '}'},
     {"&&", AND_AND},
     {"&>", AND_GT},
+    {"&>>", AND_GT_GT},
     {">",  GT},
     {">&", GT_AND},
+    {">>&", GT_GT_AND},
     {">>", GT_GT},
     {"<",  LT},
     {"<&", LT_AND},

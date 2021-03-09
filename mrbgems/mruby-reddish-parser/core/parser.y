@@ -48,7 +48,7 @@ static int yyparse(parser_state*);
 %token IF THEN ELSE ELIF ELSIF FI END UNLESS
 %token WHILE DO DONE UNTIL FOR IN
 %token AND_AND OR_OR OR_AND
-%token GT GT_GT AND_GT GT_AND LT LT_AND LT_GT
+%token GT GT_GT AND_GT AND_GT_GT GT_AND GT_GT_AND LT LT_AND LT_GT
 %start inputunit
 
 %%
@@ -205,6 +205,8 @@ redirect
 /* >&   */| GT_AND WORD                { $$ = REDIRECT(p, "copystdoutstderr", 3, FIXNUM(1), FIXNUM(2), $2); }
 /* >>   */| GT_GT WORD                 { $$ = REDIRECT(p, "append", 2, FIXNUM(1), $2); }
 /* n>>  */| NUMBER GT_GT WORD          { $$ = REDIRECT(p, "append", 2, $1, $3); }
+/* &>>  */| AND_GT_GT WORD             { $$ = REDIRECT(p, "copyappend", 2, FIXNUM(1), $2); }
+/* >>&  */| GT_GT_AND WORD             { $$ = REDIRECT(p, "copyappend", 2, FIXNUM(1), $2); }
 /* <>   */| LT_GT WORD                 { $$ = REDIRECT(p, "readwrite", 2, FIXNUM(0), $2); }
 /* n<>  */| NUMBER LT_GT WORD          { $$ = REDIRECT(p, "readwrite", 2, $1, $3); }
 
@@ -221,8 +223,10 @@ static const struct token_type {
     {"}",  '}'},
     {"&&", AND_AND},
     {"&>", AND_GT},
+    {"&>>", AND_GT_GT},
     {">",  GT},
     {">&", GT_AND},
+    {">>&", GT_GT_AND},
     {">>", GT_GT},
     {"<",  LT},
     {"<&", LT_AND},
