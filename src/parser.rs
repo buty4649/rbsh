@@ -1,8 +1,8 @@
-mod redirect;
+pub mod redirect;
 
 use crate::lexer::lex;
 use crate::token::{Token, TokenKind};
-use redirect::parse_redirect;
+use redirect::{parse_redirect, Redirect};
 use std::iter::Peekable;
 use std::str::Utf8Error;
 
@@ -10,7 +10,7 @@ use std::str::Utf8Error;
 pub enum UnitKind {
     SimpleCommand {
         command: Vec<Vec<Token>>,
-        redirect: Vec<Token>,
+        redirect: Vec<Redirect>,
         background: bool,
     },
 }
@@ -33,6 +33,13 @@ impl Location {
     pub fn new_from_offset(other: &Self, column_offset: usize, line_offset: usize) -> Self {
         Self::new(other.column + column_offset, other.line + line_offset)
     }
+}
+
+#[macro_export]
+macro_rules! loc {
+    ($c: expr, $l: expr) => {
+        Location::new($c, $l)
+    };
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -98,20 +105,6 @@ pub enum WordKind {
     Variable,  // $word
     Parameter, // ${word}
 }
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum RedirectKind {
-    ReadFrom(FdSize, Vec<Token>),      // fd filename / n<word
-    WriteTo(FdSize, Vec<Token>, bool), // fd filename force / n>word
-    WriteBoth(Vec<Token>),             // filename / &>word, >&word
-    ReadCopy(FdSize, FdSize, bool),    // fd(src) fd(dest) close? / n<&n, n<&n-
-    WriteCopy(FdSize, FdSize, bool),   // fd(src) fd(dest) close? / n>&n, n>&n-
-    Append(FdSize, Vec<Token>),        // fd filename / n>>word
-    AppendBoth(Vec<Token>),            // fd filename / &>>word
-    Close(FdSize),                     // fd / n<&-, n>&-
-    ReadWrite(FdSize, Vec<Token>),     // fd filename / n<>word
-}
-pub type FdSize = u16;
 
 pub fn parse_command_line(s: &str) -> Result<Option<UnitKind>, ParseError> {
     let tokens = lex(s)?;

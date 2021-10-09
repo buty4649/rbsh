@@ -1,4 +1,5 @@
-use crate::parser::{Annotate, Location, RedirectKind, WordKind};
+use crate::parser::redirect::RedirectKind;
+use crate::parser::{Annotate, Location, WordKind};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenKind {
@@ -110,4 +111,74 @@ impl Token {
     pub fn eof(loc: Location) -> Self {
         Self::new(TokenKind::Eof, loc)
     }
+}
+
+#[macro_export]
+macro_rules! normal_word {
+    ($s: expr, $l: expr) => {
+        Token::word($s.to_string(), WordKind::Normal, $l)
+    };
+    ($s: expr) => {
+        normal_word!($s, loc!(1, 1))
+    };
+}
+
+#[macro_export]
+macro_rules! quote_word {
+    ($s: expr, $l: expr) => {
+        Token::word($s.to_string(), WordKind::Quote, $l)
+    };
+    ($s: expr) => {
+        quote_word!($s, loc!(1, 1))
+    };
+}
+
+#[macro_export]
+macro_rules! literal_word {
+    ($s: expr, $l: expr) => {
+        Token::word($s.to_string(), WordKind::Literal, $l)
+    };
+    ($s: expr) => {
+        literal_word!($s, loc!(1, 1))
+    };
+}
+
+#[macro_export]
+macro_rules! cmd {
+    ($s: expr, $l: expr) => {
+        Token::word($s.to_string(), WordKind::Command, $l)
+    };
+    ($s: expr) => {
+        cmd!($s, loc!(1, 1))
+    };
+}
+
+#[macro_export]
+macro_rules! var {
+    ($s: expr, $l: expr) => {
+        Token::word($s.to_string(), WordKind::Variable, $l)
+    };
+    ($s: expr) => {
+        var!($s, loc!(1, 1))
+    };
+}
+
+#[macro_export]
+macro_rules! param {
+    ($s: expr, $l: expr) => {
+        Token::word($s.to_string(), WordKind::Parameter, $l)
+    };
+    ($s: expr) => {
+        param!($s, loc!(1, 1))
+    };
+}
+
+#[macro_export]
+macro_rules! number {
+    ($s: expr, $l: expr) => {
+        Token::number($s.to_string(), $l)
+    };
+    ($s: expr) => {
+        number!($s, loc!(1, 1))
+    };
 }

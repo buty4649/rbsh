@@ -1,9 +1,60 @@
-use super::{
-    parse_wordlist, peek_token, FdSize, Location, ParseError, RedirectKind, Token, TokenKind,
-};
+use super::{parse_wordlist, peek_token, Annotate, Location, ParseError, Token, TokenKind};
 use std::iter::Peekable;
 
-pub fn parse_redirect<T>(tokens: &mut Peekable<T>) -> Result<Option<Token>, ParseError>
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RedirectKind {
+    ReadFrom(FdSize, Vec<Token>),      // fd filename / n<word
+    WriteTo(FdSize, Vec<Token>, bool), // fd filename force / n>word
+    WriteBoth(Vec<Token>),             // filename / &>word, >&word
+    ReadCopy(FdSize, FdSize, bool),    // fd(src) fd(dest) close? / n<&n, n<&n-
+    WriteCopy(FdSize, FdSize, bool),   // fd(src) fd(dest) close? / n>&n, n>&n-
+    Append(FdSize, Vec<Token>),        // fd filename / n>>word
+    AppendBoth(Vec<Token>),            // fd filename / &>>word
+    Close(FdSize),                     // fd / n<&-, n>&-
+    ReadWrite(FdSize, Vec<Token>),     // fd filename / n<>word
+}
+pub type FdSize = u16;
+pub type Redirect = Annotate<RedirectKind>;
+
+impl Redirect {
+    pub fn read_from(fd: FdSize, word: Vec<Token>, loc: Location) -> Self {
+        Self::new(RedirectKind::ReadFrom(fd, word), loc)
+    }
+
+    pub fn write_to(fd: FdSize, word: Vec<Token>, force: bool, loc: Location) -> Self {
+        Self::new(RedirectKind::WriteTo(fd, word, force), loc)
+    }
+
+    pub fn write_both(word: Vec<Token>, loc: Location) -> Self {
+        Self::new(RedirectKind::WriteBoth(word), loc)
+    }
+
+    pub fn read_copy(src: FdSize, dest: FdSize, close: bool, loc: Location) -> Self {
+        Self::new(RedirectKind::ReadCopy(src, dest, close), loc)
+    }
+
+    pub fn write_copy(src: FdSize, dest: FdSize, close: bool, loc: Location) -> Self {
+        Self::new(RedirectKind::WriteCopy(src, dest, close), loc)
+    }
+
+    pub fn append(fd: FdSize, word: Vec<Token>, loc: Location) -> Self {
+        Self::new(RedirectKind::Append(fd, word), loc)
+    }
+
+    pub fn append_both(word: Vec<Token>, loc: Location) -> Self {
+        Self::new(RedirectKind::AppendBoth(word), loc)
+    }
+
+    pub fn close(fd: FdSize, loc: Location) -> Self {
+        Self::new(RedirectKind::Close(fd), loc)
+    }
+
+    pub fn read_write(fd: FdSize, word: Vec<Token>, loc: Location) -> Self {
+        Self::new(RedirectKind::ReadWrite(fd, word), loc)
+    }
+}
+
+pub fn parse_redirect<T>(tokens: &mut Peekable<T>) -> Result<Option<Redirect>, ParseError>
 where
     T: Iterator<Item = Token> + Clone,
 {
@@ -49,8 +100,9 @@ where
         }
         _ => return Ok(None),
     }?;
-    let token = Token::redirect(redirect, loc);
-    Ok(Some(token))
+
+    let redirect = Redirect::new(redirect, loc);
+    Ok(Some(redirect))
 }
 
 fn parse_redirect_read_from<T>(

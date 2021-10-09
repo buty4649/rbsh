@@ -1,8 +1,9 @@
 #[cfg(test)]
 mod test {
-    use super::super::parser::ParseError;
     use super::*;
-    use crate::test_case;
+    use crate::*;
+    use crate::parser::ParseError;
+
 
     macro_rules! lex {
         ($f: ident) => {
@@ -27,75 +28,6 @@ mod test {
                 lexer.column += lexer.pos;
                 lexer.$f().map(|t| (t, lexer.location()))
             }
-        };
-    }
-
-    macro_rules! loc {
-        ($c: expr, $l: expr) => {
-            Location::new($c, $l)
-        };
-    }
-
-    macro_rules! normal_word {
-        ($s: expr, $l: expr) => {
-            Token::word($s.to_string(), WordKind::Normal, $l)
-        };
-        ($s: expr) => {
-            normal_word!($s, loc!(1, 1))
-        };
-    }
-
-    macro_rules! quote_word {
-        ($s: expr, $l: expr) => {
-            Token::word($s.to_string(), WordKind::Quote, $l)
-        };
-        ($s: expr) => {
-            quote_word!($s, loc!(1, 1))
-        };
-    }
-
-    macro_rules! literal_word {
-        ($s: expr, $l: expr) => {
-            Token::word($s.to_string(), WordKind::Literal, $l)
-        };
-        ($s: expr) => {
-            literal_word!($s, loc!(1, 1))
-        };
-    }
-
-    macro_rules! cmd {
-        ($s: expr, $l: expr) => {
-            Token::word($s.to_string(), WordKind::Command, $l)
-        };
-        ($s: expr) => {
-            cmd!($s, loc!(1, 1))
-        };
-    }
-
-    macro_rules! var {
-        ($s: expr, $l: expr) => {
-            Token::word($s.to_string(), WordKind::Variable, $l)
-        };
-        ($s: expr) => {
-            var!($s, loc!(1, 1))
-        };
-    }
-
-    macro_rules! param {
-        ($s: expr, $l: expr) => {
-            Token::word($s.to_string(), WordKind::Parameter, $l)
-        };
-        ($s: expr) => {
-            param!($s, loc!(1, 1))
-        };
-    }
-
-    macro_rules! number {
-        ($s: expr, $l: expr) => {
-            Token::number($s.to_string(), $l)
-        };
-        ($s: expr) => {
-            number!($s, loc!(1, 1))
         };
     }
 
