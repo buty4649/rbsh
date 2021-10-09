@@ -1,32 +1,34 @@
-use super::{parse_wordlist, peek_token, Annotate, Location, ParseError, Token, TokenKind};
+use super::{
+    parse_wordlist, peek_token, Annotate, Location, ParseError, Token, TokenKind, WordList,
+};
 use std::iter::Peekable;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RedirectKind {
-    ReadFrom(FdSize, Vec<Token>),      // fd filename / n<word
-    WriteTo(FdSize, Vec<Token>, bool), // fd filename force / n>word
-    WriteBoth(Vec<Token>),             // filename / &>word, >&word
-    ReadCopy(FdSize, FdSize, bool),    // fd(src) fd(dest) close? / n<&n, n<&n-
-    WriteCopy(FdSize, FdSize, bool),   // fd(src) fd(dest) close? / n>&n, n>&n-
-    Append(FdSize, Vec<Token>),        // fd filename / n>>word
-    AppendBoth(Vec<Token>),            // fd filename / &>>word
-    Close(FdSize),                     // fd / n<&-, n>&-
-    ReadWrite(FdSize, Vec<Token>),     // fd filename / n<>word
+    ReadFrom(FdSize, WordList),      // fd filename / n<word
+    WriteTo(FdSize, WordList, bool), // fd filename force / n>word
+    WriteBoth(WordList),             // filename / &>word, >&word
+    ReadCopy(FdSize, FdSize, bool),  // fd(src) fd(dest) close? / n<&n, n<&n-
+    WriteCopy(FdSize, FdSize, bool), // fd(src) fd(dest) close? / n>&n, n>&n-
+    Append(FdSize, WordList),        // fd filename / n>>word
+    AppendBoth(WordList),            // fd filename / &>>word
+    Close(FdSize),                   // fd / n<&-, n>&-
+    ReadWrite(FdSize, WordList),     // fd filename / n<>word
 }
 pub type FdSize = u16;
 pub type Redirect = Annotate<RedirectKind>;
 
 impl Redirect {
-    pub fn read_from(fd: FdSize, word: Vec<Token>, loc: Location) -> Self {
-        Self::new(RedirectKind::ReadFrom(fd, word), loc)
+    pub fn read_from(fd: FdSize, wordlist: WordList, loc: Location) -> Self {
+        Self::new(RedirectKind::ReadFrom(fd, wordlist), loc)
     }
 
-    pub fn write_to(fd: FdSize, word: Vec<Token>, force: bool, loc: Location) -> Self {
-        Self::new(RedirectKind::WriteTo(fd, word, force), loc)
+    pub fn write_to(fd: FdSize, wordlist: WordList, force: bool, loc: Location) -> Self {
+        Self::new(RedirectKind::WriteTo(fd, wordlist, force), loc)
     }
 
-    pub fn write_both(word: Vec<Token>, loc: Location) -> Self {
-        Self::new(RedirectKind::WriteBoth(word), loc)
+    pub fn write_both(wordlist: WordList, loc: Location) -> Self {
+        Self::new(RedirectKind::WriteBoth(wordlist), loc)
     }
 
     pub fn read_copy(src: FdSize, dest: FdSize, close: bool, loc: Location) -> Self {
@@ -37,20 +39,20 @@ impl Redirect {
         Self::new(RedirectKind::WriteCopy(src, dest, close), loc)
     }
 
-    pub fn append(fd: FdSize, word: Vec<Token>, loc: Location) -> Self {
-        Self::new(RedirectKind::Append(fd, word), loc)
+    pub fn append(fd: FdSize, wordlist: WordList, loc: Location) -> Self {
+        Self::new(RedirectKind::Append(fd, wordlist), loc)
     }
 
-    pub fn append_both(word: Vec<Token>, loc: Location) -> Self {
-        Self::new(RedirectKind::AppendBoth(word), loc)
+    pub fn append_both(wordlist: WordList, loc: Location) -> Self {
+        Self::new(RedirectKind::AppendBoth(wordlist), loc)
     }
 
     pub fn close(fd: FdSize, loc: Location) -> Self {
         Self::new(RedirectKind::Close(fd), loc)
     }
 
-    pub fn read_write(fd: FdSize, word: Vec<Token>, loc: Location) -> Self {
-        Self::new(RedirectKind::ReadWrite(fd, word), loc)
+    pub fn read_write(fd: FdSize, wordlist: WordList, loc: Location) -> Self {
+        Self::new(RedirectKind::ReadWrite(fd, wordlist), loc)
     }
 }
 

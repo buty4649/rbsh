@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod test {
-    use super::super::{ParseError, WordKind};
+    use super::super::word::WordKind;
+    use super::super::ParseError;
     use super::*;
     use crate::*;
 
@@ -16,6 +17,14 @@ mod test {
         };
     }
 
+    macro_rules! wl {
+        ($($w: expr$(,)?)+) => {{
+            let mut list = WordList::new();
+            $(list.push_word_token($w);)+
+            list
+        }};
+    }
+
     #[test]
     fn test_readfrom() {
         test_case! {
@@ -26,7 +35,7 @@ mod test {
                     Token::space(loc!(2, 1)),
                     normal_word!("foobar", loc!(3, 1)),
                 ] => ok![read_from,
-                    0, vec![normal_word!("foobar", loc!(3, 1))], loc!(1, 1)
+                    0, wl![normal_word!("foobar", loc!(3, 1))], loc!(1, 1)
                 ],
 
                 // 123< foobar
@@ -36,7 +45,7 @@ mod test {
                     Token::space(loc!(5, 1)),
                     normal_word!("foobar", loc!(6, 1)),
                 ] => ok![read_from,
-                    123, vec![normal_word!("foobar", loc!(6, 1))], loc!(1, 1)
+                    123, wl![normal_word!("foobar", loc!(6, 1))], loc!(1, 1)
                 ],
 
                 // 12345678901234567890 < foobar
@@ -60,7 +69,7 @@ mod test {
                     Token::space(loc!(2, 1)),
                     normal_word!("foobar", loc!(3, 1)),
                 ] => ok![write_to,
-                    1, vec![normal_word!("foobar", loc!(3, 1))], false, loc!(1, 1)
+                    1, wl![normal_word!("foobar", loc!(3, 1))], false, loc!(1, 1)
                 ],
 
                 // 123> foobar
@@ -69,7 +78,7 @@ mod test {
                     Token::write_to(loc!(4, 1)),
                     Token::space(loc!(5, 1)),
                     normal_word!("foobar", loc!(6, 1)),
-                ] => ok![write_to, 123, vec![normal_word!("foobar", loc!(6, 1))], false, loc!(1, 1)],
+                ] => ok![write_to, 123, wl![normal_word!("foobar", loc!(6, 1))], false, loc!(1, 1)],
 
                 // 123>| foobar
                 vec![
@@ -77,7 +86,7 @@ mod test {
                     Token::force_write_to(loc!(4, 1)),
                     Token::space(loc!(6, 1)),
                     normal_word!("foobar", loc!(7, 1)),
-                ] => ok![write_to, 123, vec![normal_word!("foobar", loc!(7, 1))], true, loc!(1, 1)],
+                ] => ok![write_to, 123, wl![normal_word!("foobar", loc!(7, 1))], true, loc!(1, 1)],
             },
         }
     }
@@ -117,13 +126,13 @@ mod test {
                     Token::write_both(loc!(1, 1)),
                     Token::space(loc!(3, 1)),
                     normal_word!("foobar", loc!(4, 1)),
-                ] => ok![write_both, vec![normal_word!("foobar", loc!(4, 1))], loc!(1, 1)],
+                ] => ok![write_both, wl![normal_word!("foobar", loc!(4, 1))], loc!(1, 1)],
                 // >& foobar
                 vec![
                     Token::write_both(loc!(1, 1)),
                     Token::space(loc!(3, 1)),
                     normal_word!("foobar", loc!(4, 1)),
-                ] => ok![write_both, vec![normal_word!("foobar", loc!(4, 1))], loc!(1, 1)],
+                ] => ok![write_both, wl![normal_word!("foobar", loc!(4, 1))], loc!(1, 1)],
                 // >&&
                 vec![
                     Token::write_both(loc!(1, 1)),
@@ -232,7 +241,7 @@ mod test {
                     Token::append(loc!(1, 1)),
                     Token::space(loc!(3, 1)),
                     normal_word!("foobar", loc!(4, 1)),
-                ] => ok![append, 1, vec![normal_word!("foobar", loc!(4, 1))], loc!(1, 1)],
+                ] => ok![append, 1, wl![normal_word!("foobar", loc!(4, 1))], loc!(1, 1)],
 
                 // n>> foobar
                 vec![
@@ -240,7 +249,7 @@ mod test {
                     Token::append(loc!(2, 1)),
                     Token::space(loc!(4, 1)),
                     normal_word!("foobar", loc!(5, 1)),
-                ] => ok![append, 123, vec![normal_word!("foobar", loc!(5, 1))], loc!(1, 1)],
+                ] => ok![append, 123, wl![normal_word!("foobar", loc!(5, 1))], loc!(1, 1)],
 
                 vec![
                     number!("12345678901234567890", loc!(1, 1)),
@@ -261,7 +270,7 @@ mod test {
                     Token::append_both(loc!(1, 1)),
                     Token::space(loc!(4, 1)),
                     normal_word!("foobar", loc!(5, 1)),
-                ] => ok![append_both, vec![normal_word!("foobar", loc!(5, 1))], loc!(1, 1)],
+                ] => ok![append_both, wl![normal_word!("foobar", loc!(5, 1))], loc!(1, 1)],
 
                 vec![Token::append_both(loc!(1, 1)), Token::and(loc!(4, 1))]
                 => Err(ParseError::unexpected_token(Token::and(loc!(4, 1)))),
@@ -278,7 +287,7 @@ mod test {
                     Token::read_write(loc!(1, 1)),
                     Token::space(loc!(3, 1)),
                     normal_word!("foobar", loc!(4, 1)),
-                ] => ok![read_write, 0, vec![normal_word!("foobar", loc!(4, 1))], loc!(1,1)],
+                ] => ok![read_write, 0, wl![normal_word!("foobar", loc!(4, 1))], loc!(1,1)],
 
                 // 123<> foobar
                 vec![
@@ -286,7 +295,7 @@ mod test {
                     Token::read_write(loc!(2, 1)),
                     Token::space(loc!(4, 1)),
                     normal_word!("foobar", loc!(5, 1)),
-                ] => ok![read_write, 123, vec![normal_word!("foobar", loc!(5, 1))], loc!(1, 1)],
+                ] => ok![read_write, 123, wl![normal_word!("foobar", loc!(5, 1))], loc!(1, 1)],
 
                 vec![Token::read_write(loc!(1, 1)), Token::and(loc!(3, 1))]
                 => Err(ParseError::unexpected_token(Token::and(loc!(3, 1)))),

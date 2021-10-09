@@ -1,11 +1,10 @@
-use crate::parser::redirect::RedirectKind;
-use crate::parser::{Annotate, Location, WordKind};
+use crate::parser::word::WordKind;
+use crate::parser::{Annotate, Location};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenKind {
     Space,
     Word(String, WordKind),
-    Redirect(RedirectKind),
     Number(String),
     And,
     Pipe,
@@ -34,10 +33,6 @@ impl Token {
 
     pub fn word(s: String, k: WordKind, loc: Location) -> Self {
         Self::new(TokenKind::Word(s, k), loc)
-    }
-
-    pub fn redirect(r: RedirectKind, loc: Location) -> Self {
-        Self::new(TokenKind::Redirect(r), loc)
     }
 
     pub fn number(n: String, loc: Location) -> Self {

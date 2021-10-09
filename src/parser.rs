@@ -1,15 +1,17 @@
 pub mod redirect;
+pub mod word;
 
 use crate::lexer::lex;
 use crate::token::{Token, TokenKind};
 use redirect::{parse_redirect, Redirect};
+use word::{parse_wordlist, WordList};
 use std::iter::Peekable;
 use std::str::Utf8Error;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum UnitKind {
     SimpleCommand {
-        command: Vec<Vec<Token>>,
+        command: Vec<WordList>,
         redirect: Vec<Redirect>,
         background: bool,
     },
@@ -96,16 +98,6 @@ impl ParseError {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum WordKind {
-    Normal,    // word
-    Quote,     // "word"
-    Literal,   // 'word'
-    Command,   // `word`
-    Variable,  // $word
-    Parameter, // ${word}
-}
-
 pub fn parse_command_line(s: &str) -> Result<Option<UnitKind>, ParseError> {
     let tokens = lex(s)?;
     let mut tokens = tokens.into_iter().peekable();
@@ -150,29 +142,6 @@ where
         }))
     }
 }
-
-fn parse_wordlist<T>(tokens: &mut Peekable<T>) -> Result<Vec<Token>, ParseError>
-where
-    T: Iterator<Item = Token>,
-{
-    let mut result = vec![];
-
-    loop {
-        match peek_token(tokens) {
-            Some(TokenKind::Word(_, _)) => {
-                let token = tokens.next().unwrap();
-                result.push(token)
-            }
-            Some(TokenKind::Space) => {
-                tokens.next();
-                break;
-            }
-            _ => break,
-        }
-    }
-    Ok(result)
-}
-
 fn peek_token<T>(tokens: &mut Peekable<T>) -> Option<&TokenKind>
 where
     T: Iterator<Item = Token>,
