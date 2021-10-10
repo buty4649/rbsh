@@ -1,18 +1,57 @@
+pub mod command;
 pub mod redirect;
 pub mod word;
 
 use crate::lexer::lex;
 use crate::token::{Token, TokenKind};
-use redirect::{parse_redirect, Redirect};
-use word::{parse_wordlist, WordList};
-use std::iter::Peekable;
+use command::{parse_command, ConnecterKind};
+use redirect::Redirect;
+use std::iter::{Iterator, Peekable};
 use std::str::Utf8Error;
+use word::{parse_wordlist, WordList};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CommandList {
+    list: Vec<UnitKind>,
+    ignore_history: bool,
+    current: usize,
+}
+
+impl CommandList {
+    pub fn new(list: Vec<UnitKind>, ignore_history: bool) -> Self {
+        Self {
+            list,
+            ignore_history,
+            current: 0,
+        }
+    }
+}
+
+impl Iterator for CommandList {
+    type Item = UnitKind;
+
+    fn next(&mut self) -> Option<UnitKind> {
+        if self.current >= self.list.len() {
+            None
+        } else {
+            let result = self.list[self.current].clone();
+            self.current += 1;
+            Some(result)
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum UnitKind {
     SimpleCommand {
         command: Vec<WordList>,
         redirect: Vec<Redirect>,
+        background: bool,
+    },
+    Connecter {
+        left: Box<UnitKind>,
+        right: Box<UnitKind>,
+        kind: ConnecterKind,
         background: bool,
     },
 }
@@ -98,50 +137,30 @@ impl ParseError {
     }
 }
 
-pub fn parse_command_line(s: &str) -> Result<Option<UnitKind>, ParseError> {
+pub fn parse_command_line(s: &str) -> Result<CommandList, ParseError> {
     let tokens = lex(s)?;
     let mut tokens = tokens.into_iter().peekable();
-    parse_simple_command(&mut tokens)
-}
+    let mut result = vec![];
 
-fn parse_simple_command<T>(tokens: &mut Peekable<T>) -> Result<Option<UnitKind>, ParseError>
-where
-    T: Iterator<Item = Token> + Clone,
-{
-    let mut command = vec![];
-    let mut redirect = vec![];
+    let ignore_history = match peek_token(&mut tokens) {
+        Some(TokenKind::Space) => {
+            tokens.next();
+            true
+        }
+        _ => false,
+    };
 
     loop {
-        match parse_redirect(tokens)? {
-            None => (),
-            Some(r) => {
-                redirect.push(r);
-                continue;
-            }
-        }
-
-        match peek_token(tokens) {
-            Some(TokenKind::Space) => {
-                tokens.next();
-            }
-            Some(TokenKind::Word(_, _)) => {
-                let words = parse_wordlist(tokens)?;
-                command.push(words);
-            }
-            _ => break,
+        match parse_command(&mut tokens)? {
+            None => break,
+            Some(c) => result.push(c),
         }
     }
 
-    if command.is_empty() && redirect.is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(UnitKind::SimpleCommand {
-            command,
-            redirect,
-            background: false,
-        }))
-    }
+    let result = CommandList::new(result, ignore_history);
+    Ok(result)
 }
+
 fn peek_token<T>(tokens: &mut Peekable<T>) -> Option<&TokenKind>
 where
     T: Iterator<Item = Token>,

@@ -6,8 +6,11 @@ pub enum TokenKind {
     Space,
     Word(String, WordKind),
     Number(String),
-    And,
-    Pipe,
+    Background,   // '&'
+    Pipe,         // '|'
+    PipeBoth,     // '|&'
+    And,          // '&&'
+    Or,           // '||'
     ReadFrom,     // '<'
     WriteTo,      // '>'
     ForceWriteTo, // '>|'
@@ -22,6 +25,8 @@ pub enum TokenKind {
     HereDocument, // '<<'
     HereString,   // '<<<'
     Hyphen,
+    Termination, // ';'
+    NewLine,
     Eof,
 }
 pub type Token = Annotate<TokenKind>;
@@ -39,12 +44,24 @@ impl Token {
         Self::new(TokenKind::Number(n), loc)
     }
 
-    pub fn and(loc: Location) -> Self {
-        Self::new(TokenKind::And, loc)
+    pub fn background(loc: Location) -> Self {
+        Self::new(TokenKind::Background, loc)
     }
 
     pub fn pipe(loc: Location) -> Self {
         Self::new(TokenKind::Pipe, loc)
+    }
+
+    pub fn pipe_both(loc: Location) -> Self {
+        Self::new(TokenKind::PipeBoth, loc)
+    }
+
+    pub fn and(loc: Location) -> Self {
+        Self::new(TokenKind::And, loc)
+    }
+
+    pub fn or(loc: Location) -> Self {
+        Self::new(TokenKind::Or, loc)
     }
 
     pub fn read_from(loc: Location) -> Self {
@@ -101,6 +118,14 @@ impl Token {
 
     pub fn here_string(loc: Location) -> Self {
         Self::new(TokenKind::HereDocument, loc)
+    }
+
+    pub fn termination(loc: Location) -> Self {
+        Self::new(TokenKind::Termination, loc)
+    }
+
+    pub fn newline(loc: Location) -> Self {
+        Self::new(TokenKind::NewLine, loc)
     }
 
     pub fn eof(loc: Location) -> Self {

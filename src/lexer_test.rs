@@ -1,9 +1,8 @@
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::*;
     use crate::parser::ParseError;
-
+    use crate::*;
 
     macro_rules! lex {
         ($f: ident) => {
@@ -41,10 +40,29 @@ mod test {
     }
 
     #[test]
+    fn test_lex_newline() {
+        test_case! {
+            lex!(lex_newline) => {
+                "\n\n\n \t" => Ok((Token::newline(loc!(1,1)), loc!(1, 4))),
+            },
+        }
+    }
+
+    #[test]
+    fn test_lex_semicolon() {
+        test_case! {
+            lex!(lex_semicolon) => {
+                ";;;\n\t" => Ok((Token::termination(loc!(1,1)), loc!(4, 1))),
+            },
+        }
+    }
+
+    #[test]
     fn test_lex_ampersand() {
         test_case! {
             lex!(lex_ampersand) => {
-                "&"   => Ok((Token::and(loc!(1, 1)),         loc!(2, 1))),
+                "&"   => Ok((Token::background(loc!(1, 1)),  loc!(2, 1))),
+                "&&"  => Ok((Token::and(loc!(1, 1)),         loc!(3, 1))),
                 "&>"  => Ok((Token::write_both(loc!(1, 1)),  loc!(3, 1))),
                 "&>>" => Ok((Token::append_both(loc!(1, 1)), loc!(4, 1))),
             },
@@ -67,7 +85,9 @@ mod test {
     fn test_lex_vertical_line() {
         test_case! {
             lex!(lex_vertical_line) => {
-                "|" => Ok((Token::pipe(loc!(1, 1)), loc!(2, 1))),
+                "|"  => Ok((Token::pipe(loc!(1, 1)),      loc!(2, 1))),
+                "||" => Ok((Token::or(loc!(1, 1)),        loc!(3, 1))),
+                "|&" => Ok((Token::pipe_both(loc!(1, 1)), loc!(3, 1))),
             },
         };
     }

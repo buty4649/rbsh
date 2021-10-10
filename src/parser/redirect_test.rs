@@ -136,8 +136,8 @@ mod test {
                 // >&&
                 vec![
                     Token::write_both(loc!(1, 1)),
-                    Token::and(loc!(3, 1))
-                ] => Err(ParseError::unexpected_token(Token::and(loc!(3, 1)))),
+                    Token::background(loc!(3, 1))
+                ] => Err(ParseError::unexpected_token(Token::background(loc!(3, 1)))),
             },
         }
     }
@@ -272,8 +272,8 @@ mod test {
                     normal_word!("foobar", loc!(5, 1)),
                 ] => ok![append_both, wl![normal_word!("foobar", loc!(5, 1))], loc!(1, 1)],
 
-                vec![Token::append_both(loc!(1, 1)), Token::and(loc!(4, 1))]
-                => Err(ParseError::unexpected_token(Token::and(loc!(4, 1)))),
+                vec![Token::append_both(loc!(1, 1)), Token::background(loc!(4, 1))]
+                => Err(ParseError::unexpected_token(Token::background(loc!(4, 1)))),
             },
         }
     }
@@ -297,8 +297,8 @@ mod test {
                     normal_word!("foobar", loc!(5, 1)),
                 ] => ok![read_write, 123, wl![normal_word!("foobar", loc!(5, 1))], loc!(1, 1)],
 
-                vec![Token::read_write(loc!(1, 1)), Token::and(loc!(3, 1))]
-                => Err(ParseError::unexpected_token(Token::and(loc!(3, 1)))),
+                vec![Token::read_write(loc!(1, 1)), Token::background(loc!(3, 1))]
+                => Err(ParseError::unexpected_token(Token::background(loc!(3, 1)))),
 
                 vec![
                     number!("12345678901234567890"),

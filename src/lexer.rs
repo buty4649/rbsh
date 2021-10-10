@@ -13,6 +13,16 @@ struct Lexer {
     token: Vec<Token>,
 }
 
+macro_rules! lex_simple_token {
+    ($self: expr, $kind: path, $e: expr) => {{
+        let loc = $self.location();
+        while matches!($self.peek(), Some(c) if $e(c)) {
+            $self.next();
+        }
+        Ok($kind(loc))
+    }};
+}
+
 impl Lexer {
     fn new(input: &str) -> Self {
         let mut v = input.as_bytes().to_vec();
@@ -41,16 +51,18 @@ impl Lexer {
 
         loop {
             match self.peek() {
+                None => break,
                 Some(b'&') => action!(lex_ampersand),
                 Some(b'|') => action!(lex_vertical_line),
                 Some(b'-') => action!(lex_hyphen),
                 Some(b'$') => action!(lex_dollar),
                 Some(b'`') => action!(lex_backquote),
+                Some(b';') => action!(lex_semicolon),
                 Some(b'\'') => action!(lex_single_quote),
+                Some(b'\n') => action!(lex_newline),
                 Some(b'<') | Some(b'>') => action!(lex_redirect),
                 Some(c) if is_space(c) => action!(lex_space),
                 Some(c) if is_number(c) => action!(lex_number),
-                None => break,
                 Some(b'"') => {
                     let mut tokens = self.lex_double_quote()?;
                     self.token.append(&mut tokens)
@@ -63,17 +75,25 @@ impl Lexer {
     }
 
     fn lex_space(&mut self) -> LexResult {
-        let loc = self.location();
-        while matches!(self.peek(), Some(c) if is_space(c)) {
-            self.next();
-        }
-        Ok(Token::space(loc))
+        lex_simple_token!(self, Token::space, is_space)
+    }
+
+    fn lex_newline(&mut self) -> LexResult {
+        lex_simple_token!(self, Token::newline, |c| c == b'\n')
+    }
+
+    fn lex_semicolon(&mut self) -> LexResult {
+        lex_simple_token!(self, Token::termination, |c| c == b';')
     }
 
     fn lex_ampersand(&mut self) -> LexResult {
         let loc = self.location();
         self.next(); // '&'
         let token = match self.peek() {
+            Some(b'&') => {
+                self.next();
+                Token::and(loc)
+            }
             Some(b'>') => {
                 self.next();
                 match self.peek() {
@@ -84,7 +104,7 @@ impl Lexer {
                     _ => Token::write_both(loc),
                 }
             }
-            _ => Token::and(loc),
+            _ => Token::background(loc),
         };
         Ok(token)
     }
@@ -92,7 +112,18 @@ impl Lexer {
     fn lex_vertical_line(&mut self) -> LexResult {
         let loc = self.location();
         self.next(); // '|'
-        Ok(Token::pipe(loc))
+        let token = match self.peek() {
+            Some(b'&') => {
+                self.next();
+                Token::pipe_both(loc)
+            }
+            Some(b'|') => {
+                self.next();
+                Token::or(loc)
+            }
+            _ => Token::pipe(loc),
+        };
+        Ok(token)
     }
 
     fn lex_hyphen(&mut self) -> LexResult {

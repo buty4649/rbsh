@@ -66,6 +66,28 @@ impl From<Vec<Word>> for WordList {
     }
 }
 
+impl From<Vec<Token>> for WordList {
+    fn from(tokens: Vec<Token>) -> Self {
+        let mut wordlist = Self::new();
+        tokens
+            .iter()
+            .for_each(|t| wordlist.push_word_token(t.clone()));
+        wordlist
+    }
+}
+
+impl From<Vec<&str>> for WordList {
+    fn from(input: Vec<&str>) -> Self {
+        let mut wordlist = Self::new();
+        let mut pos = 1;
+        for s in input {
+            wordlist.push_word(s.to_string(), WordKind::Normal, Location::new(pos, 1));
+            pos += s.len();
+        }
+        wordlist
+    }
+}
+
 pub fn parse_wordlist<T>(tokens: &mut Peekable<T>) -> Result<WordList, ParseError>
 where
     T: Iterator<Item = Token>,

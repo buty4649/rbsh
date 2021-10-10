@@ -8,7 +8,11 @@ fn main() -> Result<()> {
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => match parse_command_line(line.as_str()) {
-                Ok(cmd) => println!("{:?}", cmd),
+                Ok(cmds) => {
+                    for cmd in cmds {
+                        println!("{:?}", cmd);
+                    }
+                }
                 Err(e) => eprintln!("Error: {:?}", e),
             },
             Err(ReadlineError::Interrupted) => {
