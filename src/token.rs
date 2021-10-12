@@ -40,6 +40,7 @@ pub enum TokenKind {
     While,
     Do,
     Done,
+    Until,
     Eof,
 }
 pub type Token = Annotate<TokenKind>;
@@ -183,6 +184,10 @@ impl Token {
 
     pub fn done_keyword(loc: Location) -> Self {
         Self::new(TokenKind::Done, loc)
+    }
+
+    pub fn until_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::Until, loc)
     }
 }
 

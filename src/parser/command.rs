@@ -49,6 +49,12 @@ pub fn parse_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, Parse
                         command: _,
                         redirect: _,
                         background,
+                    }
+                    | UnitKind::Until {
+                        condition: _,
+                        command: _,
+                        redirect: _,
+                        background,
                     } => *background = true,
                 };
                 Ok(Some(c))
@@ -123,7 +129,7 @@ pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>,
     let mut unit = match tokens.peek_token() {
         Some(TokenKind::If) => parse_if_statement(tokens)?,
         Some(TokenKind::Unless) => parse_unless_statement(tokens)?,
-        Some(TokenKind::While) => parse_while_statement(tokens)?,
+        Some(TokenKind::While) | Some(TokenKind::Until) => parse_while_or_until_statement(tokens)?,
         _ => return parse_simple_command(tokens),
     };
 
@@ -144,6 +150,12 @@ pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>,
             background: _,
         })
         | Some(UnitKind::While {
+            condition: _,
+            command: _,
+            redirect,
+            background: _,
+        })
+        | Some(UnitKind::Until {
             condition: _,
             command: _,
             redirect,
@@ -293,8 +305,10 @@ fn parse_else_clause(tokens: &mut TokenReader) -> Result<Option<Vec<UnitKind>>, 
     }
 }
 
-fn parse_while_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
-    tokens.next(); // 'while'
+fn parse_while_or_until_statement(
+    tokens: &mut TokenReader,
+) -> Result<Option<UnitKind>, ParseError> {
+    let token = tokens.next().unwrap().value; // 'while' or 'until'
 
     // need space
     match tokens.skip_space() {
@@ -329,11 +343,21 @@ fn parse_while_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, P
             _ => (),
         };
     }
-    let unit = UnitKind::While {
-        condition: Box::new(condition),
-        command,
-        redirect: vec![],
-        background: false,
+
+    let unit = match token {
+        TokenKind::While => UnitKind::While {
+            condition: Box::new(condition),
+            command,
+            redirect: vec![],
+            background: false,
+        },
+        TokenKind::Until => UnitKind::Until {
+            condition: Box::new(condition),
+            command,
+            redirect: vec![],
+            background: false,
+        },
+        _ => unimplemented![],
     };
 
     Ok(Some(unit))

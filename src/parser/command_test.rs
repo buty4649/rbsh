@@ -114,6 +114,21 @@ mod test {
         };
     }
 
+    macro_rules! until_stmt {
+        ($c: expr, $a: expr, $r: expr, $b: expr) => {
+            UnitKind::Until {
+                condition: Box::new($c),
+                command: $a,
+                redirect: $r,
+                background: $b,
+            }
+        };
+
+        ($c: expr, $a: expr) => {
+            until_stmt!($c, $a, vec![], false)
+        };
+    }
+
     macro_rules! connecter_pipe {
         ($left: expr, $right: expr, $background: expr) => {
             UnitKind::Connecter {
@@ -398,6 +413,18 @@ mod test {
                     ]
                 ],
 
+                lex!("until foo; bar; end > baz 2>&1") => ok![
+                    until_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]])),
+                        vec![
+                            Redirect::write_to(1, w![normal_word!("baz", loc!(23, 1))], false, loc!(21, 1)),
+                            Redirect::write_copy(1, 2, false, loc!(27, 1)),
+                        ],
+                        false
+                    ]
+                ],
+
                 lex!("ifconfig") => ok![simple_command!(
                     vec![w!["ifconfig"]], vec![], false
                 )],
@@ -541,9 +568,9 @@ mod test {
     }
 
     #[test]
-    fn test_parse_while_statement() {
+    fn test_parse_while_or_until_statement() {
         test_case! {
-            got!(parse_while_statement) => {
+            got!(parse_while_or_until_statement) => {
                 lex!("while foo; bar; end") => ok![
                     while_stmt![
                         simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
@@ -572,6 +599,39 @@ mod test {
                 bar
                 end") => ok![
                     while_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(17, 2))]]))
+                    ]
+                ],
+
+                lex!("until foo; bar; end") => ok![
+                    until_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]))
+                    ]
+                ],
+                lex!("until foo; bar; done") => ok![
+                    until_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]))
+                    ]
+                ],
+                lex!("until foo; do bar; end") => ok![
+                    until_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(15, 1))]]))
+                    ]
+                ],
+                lex!("until foo; do bar; done") => ok![
+                    until_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(15, 1))]]))
+                    ]
+                ],
+                lex!("until foo
+                bar
+                end") => ok![
+                    until_stmt![
                         simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
                         vec!(simple_command!(vec![w![normal_word!("bar", loc!(17, 2))]]))
                     ]

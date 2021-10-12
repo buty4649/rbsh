@@ -44,6 +44,7 @@ mod test {
                 "while"  => Ok(vec![Token::while_keyword(loc!(1, 1))]),
                 "do"     => Ok(vec![Token::do_keyword(loc!(1, 1))]),
                 "done"   => Ok(vec![Token::done_keyword(loc!(1, 1))]),
+                "until"  => Ok(vec![Token::until_keyword(loc!(1, 1))]),
                 "echo if" => Ok(vec![
                     normal_word!("echo"),
                     Token::space(loc!(5, 1)),
