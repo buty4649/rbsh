@@ -43,6 +43,12 @@ pub fn parse_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, Parse
                         true_case: _,
                         redirect: _,
                         background,
+                    }
+                    | UnitKind::While {
+                        condition: _,
+                        command: _,
+                        redirect: _,
+                        background,
                     } => *background = true,
                 };
                 Ok(Some(c))
@@ -117,6 +123,7 @@ pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>,
     let mut unit = match tokens.peek_token() {
         Some(TokenKind::If) => parse_if_statement(tokens)?,
         Some(TokenKind::Unless) => parse_unless_statement(tokens)?,
+        Some(TokenKind::While) => parse_while_statement(tokens)?,
         _ => return parse_simple_command(tokens),
     };
 
@@ -133,6 +140,12 @@ pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>,
             condition: _,
             false_case: _,
             true_case: _,
+            redirect,
+            background: _,
+        })
+        | Some(UnitKind::While {
+            condition: _,
+            command: _,
             redirect,
             background: _,
         }) => {
@@ -278,6 +291,52 @@ fn parse_else_clause(tokens: &mut TokenReader) -> Result<Option<Vec<UnitKind>>, 
             _ => (),
         }
     }
+}
+
+fn parse_while_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
+    tokens.next(); // 'while'
+
+    // need space
+    match tokens.skip_space() {
+        Some(_) => (),
+        None => return Err(tokens.error_unexpected_token()),
+    };
+
+    let condition = match parse_command(tokens)? {
+        Some(c) => c,
+        None => return Err(tokens.error_unexpected_token()),
+    };
+
+    tokens.skip_space();
+    if matches!(tokens.peek_token(), Some(TokenKind::Do)) {
+        tokens.next();
+    }
+
+    let mut command = vec![];
+    loop {
+        match parse_command(tokens)? {
+            Some(c) => command.push(c),
+            None => return Err(tokens.error_eof()),
+        };
+
+        tokens.skip_space();
+        match tokens.peek_token() {
+            Some(TokenKind::Done) | Some(TokenKind::End) => {
+                tokens.next();
+                break;
+            }
+            None => return Err(tokens.error_eof()),
+            _ => (),
+        };
+    }
+    let unit = UnitKind::While {
+        condition: Box::new(condition),
+        command,
+        redirect: vec![],
+        background: false,
+    };
+
+    Ok(Some(unit))
 }
 
 fn parse_simple_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {

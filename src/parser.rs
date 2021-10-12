@@ -68,6 +68,12 @@ pub enum UnitKind {
         redirect: Vec<Redirect>,
         background: bool,
     },
+    While {
+        condition: Box<UnitKind>,
+        command: Vec<UnitKind>,
+        redirect: Vec<Redirect>,
+        background: bool,
+    },
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

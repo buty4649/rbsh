@@ -37,6 +37,9 @@ pub enum TokenKind {
     Fi,
     End,
     Unless,
+    While,
+    Do,
+    Done,
     Eof,
 }
 pub type Token = Annotate<TokenKind>;
@@ -168,6 +171,18 @@ impl Token {
 
     pub fn unless_keyword(loc: Location) -> Self {
         Self::new(TokenKind::Unless, loc)
+    }
+
+    pub fn while_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::While, loc)
+    }
+
+    pub fn do_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::Do, loc)
+    }
+
+    pub fn done_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::Done, loc)
     }
 }
 

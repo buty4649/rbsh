@@ -41,6 +41,9 @@ mod test {
                 "elsif"  => Ok(vec![Token::elsif_keyword(loc!(1, 1))]),
                 "end"    => Ok(vec![Token::end_keyword(loc!(1, 1))]),
                 "unless" => Ok(vec![Token::unless_keyword(loc!(1, 1))]),
+                "while"  => Ok(vec![Token::while_keyword(loc!(1, 1))]),
+                "do"     => Ok(vec![Token::do_keyword(loc!(1, 1))]),
+                "done"   => Ok(vec![Token::done_keyword(loc!(1, 1))]),
                 "echo if" => Ok(vec![
                     normal_word!("echo"),
                     Token::space(loc!(5, 1)),

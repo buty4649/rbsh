@@ -99,6 +99,21 @@ mod test {
         };
     }
 
+    macro_rules! while_stmt {
+        ($c: expr, $a: expr, $r: expr, $b: expr) => {
+            UnitKind::While {
+                condition: Box::new($c),
+                command: $a,
+                redirect: $r,
+                background: $b,
+            }
+        };
+
+        ($c: expr, $a: expr) => {
+            while_stmt!($c, $a, vec![], false)
+        };
+    }
+
     macro_rules! connecter_pipe {
         ($left: expr, $right: expr, $background: expr) => {
             UnitKind::Connecter {
@@ -371,6 +386,18 @@ mod test {
                     ]
                 ],
 
+                lex!("while foo; bar; end > baz 2>&1") => ok![
+                    while_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]])),
+                        vec![
+                            Redirect::write_to(1, w![normal_word!("baz", loc!(23, 1))], false, loc!(21, 1)),
+                            Redirect::write_copy(1, 2, false, loc!(27, 1)),
+                        ],
+                        false
+                    ]
+                ],
+
                 lex!("ifconfig") => ok![simple_command!(
                     vec![w!["ifconfig"]], vec![], false
                 )],
@@ -509,6 +536,46 @@ mod test {
                 lex!("unless foo; then bar; fi") => Err(
                     ParseError::unexpected_token(Token::fi_keyword(loc!(23, 1))),
                 ),
+            },
+        }
+    }
+
+    #[test]
+    fn test_parse_while_statement() {
+        test_case! {
+            got!(parse_while_statement) => {
+                lex!("while foo; bar; end") => ok![
+                    while_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]))
+                    ]
+                ],
+                lex!("while foo; bar; done") => ok![
+                    while_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]))
+                    ]
+                ],
+                lex!("while foo; do bar; end") => ok![
+                    while_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(15, 1))]]))
+                    ]
+                ],
+                lex!("while foo; do bar; done") => ok![
+                    while_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(15, 1))]]))
+                    ]
+                ],
+                lex!("while foo
+                bar
+                end") => ok![
+                    while_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(17, 2))]]))
+                    ]
+                ],
             },
         }
     }

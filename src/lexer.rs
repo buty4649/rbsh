@@ -87,6 +87,9 @@ impl Lexer {
                 _ if self.start_with("elif") => keyword!("elif", elif_keyword),
                 _ if self.start_with("end") => keyword!("end", end_keyword),
                 _ if self.start_with("unless") => keyword!("unless", unless_keyword),
+                _ if self.start_with("while") => keyword!("while", while_keyword),
+                _ if self.start_with("do") => keyword!("do", do_keyword),
+                _ if self.start_with("done") => keyword!("done", done_keyword),
                 _ => action!(lex_word),
             }
 
@@ -102,7 +105,9 @@ impl Lexer {
                 | Some(TokenKind::PipeBoth)
                 | Some(TokenKind::And)
                 | Some(TokenKind::Or)
-                | Some(TokenKind::Unless) => true,
+                | Some(TokenKind::Unless)
+                | Some(TokenKind::While)
+                | Some(TokenKind::Do) => true,
                 Some(TokenKind::Space) if self.begin_command => true,
                 _ => false,
             }
