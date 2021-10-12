@@ -34,12 +34,13 @@ mod test {
     fn test_lex_keyword() {
         test_case! {
             lex => {
-                "if"    => Ok(vec![Token::if_keyword(loc!(1, 1))]),
-                "then"  => Ok(vec![Token::then_keyword(loc!(1, 1))]),
-                "fi"    => Ok(vec![Token::fi_keyword(loc!(1, 1))]),
-                "elif"  => Ok(vec![Token::elif_keyword(loc!(1, 1))]),
-                "elsif" => Ok(vec![Token::elsif_keyword(loc!(1, 1))]),
-                "end"   => Ok(vec![Token::end_keyword(loc!(1, 1))]),
+                "if"     => Ok(vec![Token::if_keyword(loc!(1, 1))]),
+                "then"   => Ok(vec![Token::then_keyword(loc!(1, 1))]),
+                "fi"     => Ok(vec![Token::fi_keyword(loc!(1, 1))]),
+                "elif"   => Ok(vec![Token::elif_keyword(loc!(1, 1))]),
+                "elsif"  => Ok(vec![Token::elsif_keyword(loc!(1, 1))]),
+                "end"    => Ok(vec![Token::end_keyword(loc!(1, 1))]),
+                "unless" => Ok(vec![Token::unless_keyword(loc!(1, 1))]),
                 "echo if" => Ok(vec![
                     normal_word!("echo"),
                     Token::space(loc!(5, 1)),

@@ -36,6 +36,7 @@ pub enum TokenKind {
     ElsIf,
     Fi,
     End,
+    Unless,
     Eof,
 }
 pub type Token = Annotate<TokenKind>;
@@ -163,6 +164,10 @@ impl Token {
 
     pub fn end_keyword(loc: Location) -> Self {
         Self::new(TokenKind::End, loc)
+    }
+
+    pub fn unless_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::Unless, loc)
     }
 }
 

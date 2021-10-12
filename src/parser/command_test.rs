@@ -79,6 +79,26 @@ mod test {
         };
     }
 
+    macro_rules! unless_stmt {
+        ($c: expr, $f: expr, $t: expr, $r: expr, $b: expr) => {
+            UnitKind::Unless {
+                condition: Box::new($c),
+                false_case: $f,
+                true_case: $t,
+                redirect: $r,
+                background: $b,
+            }
+        };
+
+        ($c: expr, $f: expr) => {
+            unless_stmt!($c, $f, None, vec![], false)
+        };
+
+        ($c: expr, $f: expr, $t: expr) => {
+            unless_stmt!($c, $f, Some($t), vec![], false)
+        };
+    }
+
     macro_rules! connecter_pipe {
         ($left: expr, $right: expr, $background: expr) => {
             UnitKind::Connecter {
@@ -325,6 +345,55 @@ mod test {
     fn test_parse_shell_command() {
         test_case! {
             got!(parse_shell_command) => {
+                lex!("if foo; bar; end > baz 2>&1") => ok![
+                    if_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]])),
+                        None,
+                        vec![
+                            Redirect::write_to(1, w![normal_word!("baz", loc!(20, 1))], false, loc!(18, 1)),
+                            Redirect::write_copy(1, 2, false, loc!(24, 1)),
+                        ],
+                        false
+                    ]
+                ],
+
+                lex!("unless foo; bar; end > baz 2>&1") => ok![
+                    unless_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(8, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(13, 1))]])),
+                        None,
+                        vec![
+                            Redirect::write_to(1, w![normal_word!("baz", loc!(24, 1))], false, loc!(22, 1)),
+                            Redirect::write_copy(1, 2, false, loc!(28, 1)),
+                        ],
+                        false
+                    ]
+                ],
+
+                lex!("ifconfig") => ok![simple_command!(
+                    vec![w!["ifconfig"]], vec![], false
+                )],
+                lex!("echo if") => ok![simple_command!(
+                    vec![w!["echo"], w![normal_word!("if", loc!(6, 1))]], vec![], false
+                )],
+
+                lex!("foo > bar 2>&1") => ok![simple_command!(
+                    vec![w!["foo"]],
+                    vec![
+                        Redirect::write_to(1, w![normal_word!("bar", loc!(7, 1))], false, loc!(5, 1)),
+                        Redirect::write_copy(1, 2, false, loc!(11, 1)),
+                    ],
+                    false
+                )],
+            },
+        }
+    }
+
+    #[test]
+    fn test_parse_if_statement() {
+        test_case! {
+            got!(parse_if_statement) => {
                 lex!("if foo; then bar; fi") => ok![
                     if_stmt![
                         simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
@@ -402,34 +471,44 @@ mod test {
                         ]]
                     ]
                 ],
-                lex!("if foo; bar; end > baz 2>&1") => ok![
-                    if_stmt![
-                        simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
-                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]])),
-                        None,
-                        vec![
-                            Redirect::write_to(1, w![normal_word!("baz", loc!(20, 1))], false, loc!(18, 1)),
-                            Redirect::write_copy(1, 2, false, loc!(24, 1)),
-                        ],
-                        false
+            },
+        }
+    }
+
+    #[test]
+    fn test_parse_unless_statement() {
+        test_case! {
+            got!(parse_unless_statement) => {
+                lex!("unless foo; then bar; end") => ok![
+                    unless_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(8, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(18, 1))]]))
                     ]
                 ],
-
-                lex!("ifconfig") => ok![simple_command!(
-                    vec![w!["ifconfig"]], vec![], false
-                )],
-                lex!("echo if") => ok![simple_command!(
-                    vec![w!["echo"], w![normal_word!("if", loc!(6, 1))]], vec![], false
-                )],
-
-                lex!("foo > bar 2>&1") => ok![simple_command!(
-                    vec![w!["foo"]],
-                    vec![
-                        Redirect::write_to(1, w![normal_word!("bar", loc!(7, 1))], false, loc!(5, 1)),
-                        Redirect::write_copy(1, 2, false, loc!(11, 1)),
-                    ],
-                    false
-                )],
+                lex!("unless foo
+                bar
+                end") => ok![
+                    unless_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(8, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(17, 2))]]))
+                    ]
+                ],
+                lex!("unless foo; bar; end") => ok![
+                    unless_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(8, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(13, 1))]]))
+                    ]
+                ],
+                lex!("unless foo; bar; else baz; end") => ok![
+                    unless_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(8, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(13, 1))]])),
+                        vec!(simple_command!(vec![w![normal_word!("baz", loc!(23, 1))]]))
+                    ]
+                ],
+                lex!("unless foo; then bar; fi") => Err(
+                    ParseError::unexpected_token(Token::fi_keyword(loc!(23, 1))),
+                ),
             },
         }
     }

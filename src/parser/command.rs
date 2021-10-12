@@ -36,6 +36,13 @@ pub fn parse_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, Parse
                         false_case: _,
                         redirect: _,
                         background,
+                    }
+                    | UnitKind::Unless {
+                        condition: _,
+                        false_case: _,
+                        true_case: _,
+                        redirect: _,
+                        background,
                     } => *background = true,
                 };
                 Ok(Some(c))
@@ -109,6 +116,7 @@ pub fn parse_connecter(tokens: &mut TokenReader) -> Result<Option<UnitKind>, Par
 pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
     let mut unit = match tokens.peek_token() {
         Some(TokenKind::If) => parse_if_statement(tokens)?,
+        Some(TokenKind::Unless) => parse_unless_statement(tokens)?,
         _ => return parse_simple_command(tokens),
     };
 
@@ -118,6 +126,13 @@ pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>,
             condition: _,
             true_case: _,
             false_case: _,
+            redirect,
+            background: _,
+        })
+        | Some(UnitKind::Unless {
+            condition: _,
+            false_case: _,
+            true_case: _,
             redirect,
             background: _,
         }) => {
@@ -171,24 +186,7 @@ fn parse_if_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, Pars
             }
             Some(TokenKind::Else) => {
                 tokens.next();
-                false_case = {
-                    let mut false_case = vec![];
-                    loop {
-                        match parse_command(tokens)? {
-                            Some(c) => false_case.push(c),
-                            None => return Err(tokens.error_eof()),
-                        };
-                        tokens.skip_space();
-                        match tokens.peek_token() {
-                            Some(TokenKind::Fi) | Some(TokenKind::End) => {
-                                tokens.next();
-                                break Some(false_case);
-                            }
-                            None => return Err(tokens.error_eof()),
-                            _ => (),
-                        }
-                    }
-                };
+                false_case = parse_else_clause(tokens)?;
                 break;
             }
             Some(TokenKind::ElsIf) | Some(TokenKind::ElIf) => {
@@ -208,6 +206,78 @@ fn parse_if_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, Pars
     };
 
     Ok(Some(unit))
+}
+
+fn parse_unless_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
+    tokens.next(); // 'unless'
+
+    // need space
+    match tokens.skip_space() {
+        Some(_) => (),
+        None => return Err(tokens.error_unexpected_token()),
+    };
+
+    let condition = match parse_command(tokens)? {
+        Some(c) => c,
+        None => return Err(tokens.error_unexpected_token()),
+    };
+
+    tokens.skip_space();
+    if matches!(tokens.peek_token(), Some(TokenKind::Then)) {
+        tokens.next();
+    }
+
+    let mut false_case = vec![];
+    let mut true_case: Option<_> = None;
+    loop {
+        match parse_command(tokens)? {
+            Some(c) => false_case.push(c),
+            None => return Err(tokens.error_eof()),
+        };
+
+        tokens.skip_space();
+        match tokens.peek_token() {
+            Some(TokenKind::End) => {
+                tokens.next();
+                break;
+            }
+            Some(TokenKind::Else) => {
+                tokens.next();
+                true_case = parse_else_clause(tokens)?;
+                break;
+            }
+            None => return Err(tokens.error_eof()),
+            _ => (),
+        };
+    }
+    let unit = UnitKind::Unless {
+        condition: Box::new(condition),
+        false_case,
+        true_case,
+        redirect: vec![],
+        background: false,
+    };
+
+    Ok(Some(unit))
+}
+
+fn parse_else_clause(tokens: &mut TokenReader) -> Result<Option<Vec<UnitKind>>, ParseError> {
+    let mut units = vec![];
+    loop {
+        match parse_command(tokens)? {
+            Some(c) => units.push(c),
+            None => return Err(tokens.error_eof()),
+        };
+        tokens.skip_space();
+        match tokens.peek_token() {
+            Some(TokenKind::Fi) | Some(TokenKind::End) => {
+                tokens.next();
+                break Ok(Some(units));
+            }
+            None => return Err(tokens.error_eof()),
+            _ => (),
+        }
+    }
 }
 
 fn parse_simple_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
