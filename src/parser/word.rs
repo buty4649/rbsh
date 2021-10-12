@@ -1,5 +1,5 @@
-use super::{peek_token, Annotate, Location, ParseError, Token, TokenKind};
-use std::iter::Peekable;
+use super::{Annotate, Location, ParseError, Token, TokenKind};
+use crate::token::TokenReader;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum WordKind {
@@ -88,14 +88,11 @@ impl From<Vec<&str>> for WordList {
     }
 }
 
-pub fn parse_wordlist<T>(tokens: &mut Peekable<T>) -> Result<WordList, ParseError>
-where
-    T: Iterator<Item = Token>,
-{
+pub fn parse_wordlist(tokens: &mut TokenReader) -> Result<WordList, ParseError> {
     let mut result = WordList::new();
 
     loop {
-        match peek_token(tokens) {
+        match tokens.peek_token() {
             Some(TokenKind::Word(_, _)) => {
                 let token = tokens.next().unwrap();
                 result.push_word_token(token)

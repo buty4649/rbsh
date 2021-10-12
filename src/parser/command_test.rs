@@ -1,14 +1,16 @@
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::lexer::lex;
     use crate::parser::redirect::Redirect;
     use crate::parser::word::{WordKind, WordList};
     use crate::parser::Location;
+    use crate::token::Token;
     use crate::*;
 
     macro_rules! got {
         ($e: expr) => {
-            |t: Vec<Token>| $e(&mut t.into_iter().peekable())
+            |t: Vec<Token>| $e(&mut TokenReader::new(t))
         };
     }
 
@@ -16,7 +18,7 @@ mod test {
         ($e: expr) => {
             |t: Vec<Token>| {
                 let mut result = vec![];
-                let mut t = t.into_iter().peekable();
+                let mut t = TokenReader::new(t);
                 loop {
                     match $e(&mut t) {
                         Ok(None) => break result,
@@ -28,6 +30,12 @@ mod test {
                     }
                 }
             }
+        };
+    }
+
+    macro_rules! lex {
+        ($e: expr) => {
+            lex($e).unwrap()
         };
     }
 
@@ -44,6 +52,30 @@ mod test {
                 redirect: $r,
                 background: $b,
             }
+        };
+
+        ($c: expr) => {
+            simple_command!($c, vec![], false)
+        };
+    }
+
+    macro_rules! if_stmt {
+        ($c: expr, $t: expr, $f: expr, $r: expr, $b: expr) => {
+            UnitKind::If {
+                condition: Box::new($c),
+                true_case: $t,
+                false_case: $f,
+                redirect: $r,
+                background: $b,
+            }
+        };
+
+        ($c: expr, $t: expr) => {
+            if_stmt!($c, $t, None, vec![], false)
+        };
+
+        ($c: expr, $t: expr, $f: expr) => {
+            if_stmt!($c, $t, Some($f), vec![], false)
         };
     }
 
@@ -256,6 +288,35 @@ mod test {
                 ] => vec![
                     Err(ParseError::unexpected_token(Token::background(loc!(7, 1))))
                 ],
+
+                lex!("if foo; bar; end > baz 2>&1 &") => vec![ok![
+                    if_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]])),
+                        None,
+                        vec![
+                            Redirect::write_to(1, w![normal_word!("baz", loc!(20, 1))], false, loc!(18, 1)),
+                            Redirect::write_copy(1, 2, false, loc!(24, 1)),
+                        ],
+                        true
+                    ]
+                ]],
+
+                lex!("if foo; bar; end && if baz; foo; end") => vec![ok![
+                    connecter_and![
+                        if_stmt![
+                            simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                            vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]]))
+                        ],
+                        if_stmt![
+                            simple_command!(vec![w![normal_word!("baz", loc!(24, 1))]]),
+                            vec!(simple_command!(vec![w![normal_word!("foo", loc!(29, 1))]]))
+                        ],
+                        false
+                    ]
+                ]],
+
+
             },
         }
     }
@@ -264,18 +325,104 @@ mod test {
     fn test_parse_shell_command() {
         test_case! {
             got!(parse_shell_command) => {
-                // foo > bar 2>&1
-                vec![
-                    normal_word!("foo"),
-                    Token::space(loc!(4, 1)),
-                    Token::write_to(loc!(5, 1)),
-                    Token::space(loc!(6, 1)),
-                    normal_word!("bar", loc!(7, 1)),
-                    Token::space(loc!(10, 1)),
-                    number!("2", loc!(11, 1)),
-                    Token::write_copy(loc!(12, 1)),
-                    number!("1", loc!(15, 1)),
-                ] => ok![simple_command!(
+                lex!("if foo; then bar; fi") => ok![
+                    if_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(14, 1))]]))
+                    ]
+                ],
+                lex!("if foo
+                then bar
+                fi") => ok![
+                    if_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(22, 2))]]))
+                    ]
+                ],
+                lex!("if foo; bar; fi") => ok![
+                    if_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]]))
+                    ]
+                ],
+                lex!("if foo; bar; end") => ok![
+                    if_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]]))
+                    ]
+                ],
+                lex!("if foo;then if bar;then baz; fi; fi") => ok![
+                    if_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                        vec![if_stmt![
+                            simple_command!(vec![w![normal_word!("bar", loc!(16, 1))]]),
+                            vec!(simple_command!(vec![w![normal_word!("baz", loc!(25, 1))]]))
+                        ]]
+                    ]
+                ],
+                lex!("if foo;then if bar; baz; end; fi") => ok![
+                    if_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                        vec![if_stmt![
+                            simple_command!(vec![w![normal_word!("bar", loc!(16, 1))]]),
+                            vec!(simple_command!(vec![w![normal_word!("baz", loc!(21, 1))]]))
+                        ]]
+                    ]
+                ],
+                lex!("if if foo; bar; end; baz; end") => ok![
+                    if_stmt![
+                        if_stmt![
+                            simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                            vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]))
+                        ],
+                        vec![simple_command!(vec![w![normal_word!("baz", loc!(22, 1))]])]
+                    ]
+                ],
+                lex!("if foo; bar; else baz; fi") => ok![
+                    if_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]])),
+                        vec!(simple_command!(vec![w![normal_word!("baz", loc!(19, 1))]]))
+                    ]
+                ],
+                lex!("if foo; bar; else baz; end") => ok![
+                    if_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]])),
+                        vec!(simple_command!(vec![w![normal_word!("baz", loc!(19, 1))]]))
+                    ]
+                ],
+                lex!("if foo; bar; elif baz; foo; fi") => ok![
+                    if_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]])),
+                        vec![if_stmt![
+                            simple_command!(vec![w![normal_word!("baz", loc!(19, 1))]]),
+                            vec!(simple_command!(vec![w![normal_word!("foo", loc!(24, 1))]]))
+                        ]]
+                    ]
+                ],
+                lex!("if foo; bar; end > baz 2>&1") => ok![
+                    if_stmt![
+                        simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]])),
+                        None,
+                        vec![
+                            Redirect::write_to(1, w![normal_word!("baz", loc!(20, 1))], false, loc!(18, 1)),
+                            Redirect::write_copy(1, 2, false, loc!(24, 1)),
+                        ],
+                        false
+                    ]
+                ],
+
+                lex!("ifconfig") => ok![simple_command!(
+                    vec![w!["ifconfig"]], vec![], false
+                )],
+                lex!("echo if") => ok![simple_command!(
+                    vec![w!["echo"], w![normal_word!("if", loc!(6, 1))]], vec![], false
+                )],
+
+                lex!("foo > bar 2>&1") => ok![simple_command!(
                     vec![w!["foo"]],
                     vec![
                         Redirect::write_to(1, w![normal_word!("bar", loc!(7, 1))], false, loc!(5, 1)),

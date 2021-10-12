@@ -1,5 +1,7 @@
+use crate::loc;
 use crate::parser::word::WordKind;
-use crate::parser::{Annotate, Location};
+use crate::parser::{Annotate, Location, ParseError};
+use std::iter::Iterator;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenKind {
@@ -27,6 +29,13 @@ pub enum TokenKind {
     Hyphen,
     Termination, // ';'
     NewLine,
+    If,
+    Then,
+    Else,
+    ElIf,
+    ElsIf,
+    Fi,
+    End,
     Eof,
 }
 pub type Token = Annotate<TokenKind>;
@@ -128,8 +137,134 @@ impl Token {
         Self::new(TokenKind::NewLine, loc)
     }
 
-    pub fn eof(loc: Location) -> Self {
-        Self::new(TokenKind::Eof, loc)
+    pub fn if_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::If, loc)
+    }
+
+    pub fn then_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::Then, loc)
+    }
+
+    pub fn else_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::Else, loc)
+    }
+
+    pub fn elsif_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::ElsIf, loc)
+    }
+
+    pub fn elif_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::ElIf, loc)
+    }
+
+    pub fn fi_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::Fi, loc)
+    }
+
+    pub fn end_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::End, loc)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TokenReader {
+    tokens: Vec<Token>,
+    pos: usize,
+}
+
+impl TokenReader {
+    pub fn new(tokens: Vec<Token>) -> Self {
+        Self { tokens, pos: 0 }
+    }
+
+    pub fn current(&self) -> Option<Token> {
+        if self.is_eof() || self.pos == 0 {
+            None
+        } else {
+            Some(self.tokens[self.pos - 1].clone())
+        }
+    }
+
+    pub fn peek(&mut self) -> Option<Token> {
+        if self.is_eof() {
+            None
+        } else {
+            let result = self.tokens[self.pos].clone();
+            Some(result)
+        }
+    }
+
+    pub fn peek_token(&mut self) -> Option<TokenKind> {
+        match self.peek() {
+            Some(t) => Some(t.value),
+            None => None,
+        }
+    }
+
+    pub fn to_vec(&self) -> Vec<Token> {
+        self.tokens[self.pos..].to_vec()
+    }
+
+    pub fn skip_space(&mut self) -> Option<Token> {
+        let mut last_token: Option<Token> = None;
+        loop {
+            match self.peek_token() {
+                Some(TokenKind::Space) => {
+                    last_token = self.next();
+                }
+                _ => break last_token,
+            }
+        }
+    }
+
+    pub fn is_eof(&self) -> bool {
+        self.pos >= self.tokens.len()
+    }
+
+    pub fn location(&self) -> Location {
+        if self.tokens.is_empty() {
+            loc!(0, 0)
+        } else if self.is_eof() {
+            let loc = self.tokens.last().unwrap().location();
+            Location::new_from_offset(&loc, 1, 0)
+        } else {
+            self.tokens[self.pos].location()
+        }
+    }
+
+    pub fn error_unexpected_token(&self) -> ParseError {
+        if self.is_eof() {
+            self.error_eof()
+        } else {
+            let token = self.tokens[self.pos].clone();
+            ParseError::unexpected_token(token)
+        }
+    }
+
+    pub fn error_invalid_fd(&self, fd: &str) -> ParseError {
+        if self.is_eof() {
+            self.error_eof()
+        } else {
+            ParseError::invalid_fd(fd, self.location())
+        }
+    }
+
+    pub fn error_eof(&self) -> ParseError {
+        ParseError::eof(self.location())
+    }
+}
+
+impl Iterator for TokenReader {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Token> {
+        match self.peek() {
+            Some(v) => {
+                self.pos += 1;
+                Some(v)
+            }
+            None => None,
+        }
     }
 }
 

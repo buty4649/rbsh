@@ -3,11 +3,12 @@ mod test {
     use super::super::word::WordKind;
     use super::super::ParseError;
     use super::*;
+    use crate::token::Token;
     use crate::*;
 
     macro_rules! got {
         ($f: ident) => {{
-            |i: Vec<_>| $f(&mut i.into_iter().peekable())
+            |i: Vec<_>| $f(&mut TokenReader::new(i))
         }};
     }
 
@@ -54,7 +55,7 @@ mod test {
                     Token::read_from(loc!(4, 1)),
                     Token::space(loc!(5, 1)),
                     normal_word!("foobar", loc!(6, 1)),
-                ] => Err(ParseError::invalid_fd("12345678901234567890".to_string(), loc!(1, 1))),
+                ] => Err(ParseError::invalid_fd("12345678901234567890", loc!(1, 1))),
             },
         }
     }
@@ -105,14 +106,14 @@ mod test {
                 vec![
                     number!("12345678901234567890"),
                     Token::read_close(loc!(1, 1)),
-                ] => Err(ParseError::invalid_fd("12345678901234567890".to_string(), loc!(1, 1))),
+                ] => Err(ParseError::invalid_fd("12345678901234567890", loc!(1, 1))),
                 // 123>&-
                 vec![number!("123"), Token::write_close(loc!(1, 1))] => ok![close, 123, loc!(1, 1)],
                 // 12345678901234567890>&-
                 vec![
                     number!("12345678901234567890"),
                     Token::write_close(loc!(1, 1)),
-                ] => Err(ParseError::invalid_fd("12345678901234567890".to_string(), loc!(1, 1))),
+                ] => Err(ParseError::invalid_fd("12345678901234567890", loc!(1, 1))),
             },
         }
     }
@@ -153,7 +154,7 @@ mod test {
                     normal_word!("foobar", loc!(6, 1)),
                 ] => ok![read_copy, 123, 0, false, loc!(1, 1)],
                 // <&
-                vec![Token::read_copy(loc!(1, 1))] => Err(ParseError::eof(loc!(3, 1))),
+                vec![Token::read_copy(loc!(1, 1))] => Err(ParseError::eof(loc!(2, 1))),
                 // <& foobar
                 vec![
                     Token::read_copy(loc!(1, 1)),
@@ -164,7 +165,7 @@ mod test {
                 vec![
                     Token::read_copy(loc!(1, 1)),
                     number!("12345678901234567890", loc!(3, 1)),
-                ] => Err(ParseError::invalid_fd("12345678901234567890".to_string(), loc!(3, 1))),
+                ] => Err(ParseError::invalid_fd("12345678901234567890", loc!(3, 1))),
                 // <&123-
                 vec![
                     Token::read_copy(loc!(1, 1)),
@@ -205,7 +206,7 @@ mod test {
                 vec![
                     Token::write_copy(loc!(1, 1)),
                     number!("12345678901234567890", loc!(3, 1)),
-                ] => Err(ParseError::invalid_fd("12345678901234567890".to_string(), loc!(3, 1))),
+                ] => Err(ParseError::invalid_fd("12345678901234567890", loc!(3, 1))),
 
                 // >&123-
                 vec![
@@ -256,7 +257,7 @@ mod test {
                     Token::append(loc!(2, 1)),
                     Token::space(loc!(4, 1)),
                     normal_word!("foobar", loc!(5, 1)),
-                ] => Err(ParseError::invalid_fd("12345678901234567890".to_string(), loc!(1, 1))),
+                ] => Err(ParseError::invalid_fd("12345678901234567890", loc!(1, 1))),
             },
         }
     }
@@ -305,7 +306,7 @@ mod test {
                     Token::read_write(loc!(2, 1)),
                     Token::space(loc!(4, 1)),
                     normal_word!("foobar", loc!(5, 1)),
-                ] => Err(ParseError::invalid_fd("12345678901234567890".to_string(), loc!(1, 1))),
+                ] => Err(ParseError::invalid_fd("12345678901234567890", loc!(1, 1))),
             },
         }
     }

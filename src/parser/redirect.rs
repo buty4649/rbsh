@@ -1,7 +1,5 @@
-use super::{
-    parse_wordlist, peek_token, Annotate, Location, ParseError, Token, TokenKind, WordList,
-};
-use std::iter::Peekable;
+use super::{parse_wordlist, Annotate, Location, ParseError, TokenKind, WordList};
+use crate::token::TokenReader;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RedirectKind {
@@ -56,31 +54,22 @@ impl Redirect {
     }
 }
 
-pub fn parse_redirect<T>(tokens: &mut Peekable<T>) -> Result<Option<Redirect>, ParseError>
-where
-    T: Iterator<Item = Token> + Clone,
-{
+pub fn parse_redirect(tokens: &mut TokenReader) -> Result<Option<Redirect>, ParseError> {
+    let loc = tokens.location();
+
     // parse destination fd
-    let (fd, loc) = match tokens.peek() {
-        Some(token) => {
-            let loc = token.loc;
-            let fd = match &token.value {
-                TokenKind::Number(fd) => {
-                    let fd = fd.to_string();
-                    let loc = tokens.next().unwrap().loc;
-                    Some(
-                        fd.parse::<FdSize>()
-                            .map_err(|_| ParseError::invalid_fd(fd, loc))?,
-                    )
-                }
-                _ => None,
-            };
-            (fd, loc)
+    let fd = match tokens.peek_token() {
+        Some(TokenKind::Number(fd)) => {
+            let fd = fd
+                .parse::<FdSize>()
+                .map_err(|_| tokens.error_invalid_fd(&fd))?;
+            tokens.next();
+            Some(fd)
         }
-        None => return Ok(None), // EOF
+        _ => None,
     };
 
-    let redirect = match peek_token(tokens) {
+    let redirect = match tokens.peek_token() {
         Some(TokenKind::ReadFrom) => parse_redirect_read_from(tokens, fd.unwrap_or(0)),
         Some(TokenKind::WriteTo) => parse_redirect_write_to(tokens, fd.unwrap_or(1), false),
         Some(TokenKind::ForceWriteTo) => parse_redirect_write_to(tokens, fd.unwrap_or(1), true),
@@ -107,81 +96,59 @@ where
     Ok(Some(redirect))
 }
 
-fn parse_redirect_read_from<T>(
-    tokens: &mut Peekable<T>,
+fn parse_redirect_read_from(
+    tokens: &mut TokenReader,
     fd: FdSize,
-) -> Result<RedirectKind, ParseError>
-where
-    T: Iterator<Item = Token>,
-{
-    let loc = tokens.next().unwrap().loc; // Token::ReadFrom
-
-    match peek_token(tokens) {
-        Some(TokenKind::Space) | Some(TokenKind::Word(_, _)) => {
-            skip_space(tokens);
+) -> Result<RedirectKind, ParseError> {
+    tokens.next();
+    tokens.skip_space();
+    match tokens.peek_token() {
+        Some(TokenKind::Word(_, _)) => {
             let words = parse_wordlist(tokens)?;
             Ok(RedirectKind::ReadFrom(fd, words))
         }
-        None => Err(ParseError::eof(Location::new_from_offset(&loc, 1, 0))),
-        _ => Err(ParseError::unexpected_token(tokens.next().unwrap())),
+        _ => Err(tokens.error_unexpected_token()),
     }
 }
 
-fn parse_redirect_write_to<T>(
-    tokens: &mut Peekable<T>,
+fn parse_redirect_write_to(
+    tokens: &mut TokenReader,
     fd: FdSize,
     force: bool,
-) -> Result<RedirectKind, ParseError>
-where
-    T: Iterator<Item = Token>,
-{
-    let loc = tokens.next().unwrap().loc; // Token::WriteTo
-
-    match peek_token(tokens) {
-        Some(TokenKind::Space) | Some(TokenKind::Word(_, _)) => {
-            skip_space(tokens);
+) -> Result<RedirectKind, ParseError> {
+    tokens.next();
+    tokens.skip_space();
+    match tokens.peek_token() {
+        Some(TokenKind::Word(_, _)) => {
             let words = parse_wordlist(tokens)?;
             Ok(RedirectKind::WriteTo(fd, words, force))
         }
-        None => Err(ParseError::eof(Location::new_from_offset(&loc, 1, 0))),
-        _ => Err(ParseError::unexpected_token(tokens.next().unwrap())),
+        _ => Err(tokens.error_unexpected_token()),
     }
 }
 
-fn parse_redirect_write_both<T>(tokens: &mut Peekable<T>) -> Result<RedirectKind, ParseError>
-where
-    T: Iterator<Item = Token>,
-{
-    let loc = tokens.next().unwrap().loc; // Token::WriteBoth
-
-    match peek_token(tokens) {
-        Some(TokenKind::Space) | Some(TokenKind::Word(_, _)) => {
-            skip_space(tokens);
+fn parse_redirect_write_both(tokens: &mut TokenReader) -> Result<RedirectKind, ParseError> {
+    tokens.next();
+    tokens.skip_space();
+    match tokens.peek_token() {
+        Some(TokenKind::Word(_, _)) => {
+            tokens.skip_space();
             let words = parse_wordlist(tokens)?;
             Ok(RedirectKind::WriteBoth(words))
         }
-        None => Err(ParseError::eof(Location::new_from_offset(&loc, 1, 0))),
-        _ => Err(ParseError::unexpected_token(tokens.next().unwrap())),
+        _ => Err(tokens.error_unexpected_token()),
     }
 }
 
-fn parse_redirect_copy<T>(
-    tokens: &mut Peekable<T>,
-    dest: FdSize,
-) -> Result<RedirectKind, ParseError>
-where
-    T: Iterator<Item = Token>,
-{
-    let Token { value: kind, loc } = tokens.next().unwrap();
-
-    match peek_token(tokens) {
+fn parse_redirect_copy(tokens: &mut TokenReader, dest: FdSize) -> Result<RedirectKind, ParseError> {
+    let kind = tokens.next().unwrap().value;
+    match tokens.peek_token() {
         Some(TokenKind::Number(src)) => {
-            let src = src.to_string();
-            let loc = tokens.next().unwrap().loc;
             let src = src
                 .parse::<FdSize>()
-                .map_err(|_| ParseError::invalid_fd(src, loc))?;
-            let close = match peek_token(tokens) {
+                .map_err(|_| tokens.error_invalid_fd(&src))?;
+            tokens.next();
+            let close = match tokens.peek_token() {
                 Some(TokenKind::Hyphen) => true,
                 _ => false,
             };
@@ -192,83 +159,51 @@ where
             };
             Ok(redirect)
         }
-        None => Err(ParseError::eof(Location::new_from_offset(&loc, 2, 0))),
-        _ => Err(ParseError::unexpected_token(tokens.next().unwrap())),
+        _ => Err(tokens.error_unexpected_token()),
     }
 }
 
-fn parse_redirect_append<T>(
-    tokens: &mut Peekable<T>,
-    fd: FdSize,
-) -> Result<RedirectKind, ParseError>
-where
-    T: Iterator<Item = Token>,
-{
-    let loc = tokens.next().unwrap().loc; // Token::Append
-
-    match peek_token(tokens) {
-        Some(TokenKind::Space) | Some(TokenKind::Word(_, _)) => {
-            skip_space(tokens);
+fn parse_redirect_append(tokens: &mut TokenReader, fd: FdSize) -> Result<RedirectKind, ParseError> {
+    tokens.next();
+    tokens.skip_space();
+    match tokens.peek_token() {
+        Some(TokenKind::Word(_, _)) => {
             let words = parse_wordlist(tokens)?;
             Ok(RedirectKind::Append(fd, words))
         }
-        None => Err(ParseError::eof(Location::new_from_offset(&loc, 1, 0))),
-        _ => Err(ParseError::unexpected_token(tokens.next().unwrap())),
+        _ => Err(tokens.error_unexpected_token()),
     }
 }
 
-fn parse_redirect_append_both<T>(tokens: &mut Peekable<T>) -> Result<RedirectKind, ParseError>
-where
-    T: Iterator<Item = Token>,
-{
-    let loc = tokens.next().unwrap().loc; // Token::Append
-
-    match peek_token(tokens) {
-        Some(TokenKind::Space) | Some(TokenKind::Word(_, _)) => {
-            skip_space(tokens);
+fn parse_redirect_append_both(tokens: &mut TokenReader) -> Result<RedirectKind, ParseError> {
+    tokens.next();
+    tokens.skip_space();
+    match tokens.peek_token() {
+        Some(TokenKind::Word(_, _)) => {
             let words = parse_wordlist(tokens)?;
             Ok(RedirectKind::AppendBoth(words))
         }
-        None => Err(ParseError::eof(Location::new_from_offset(&loc, 1, 0))),
-        _ => Err(ParseError::unexpected_token(tokens.next().unwrap())),
+        _ => Err(tokens.error_unexpected_token()),
     }
 }
 
-fn parse_redirect_close<T>(tokens: &mut Peekable<T>, fd: FdSize) -> Result<RedirectKind, ParseError>
-where
-    T: Iterator<Item = Token>,
-{
-    tokens.next(); // Token::ReadClose or Token::WriteClose
+fn parse_redirect_close(tokens: &mut TokenReader, fd: FdSize) -> Result<RedirectKind, ParseError> {
+    tokens.next();
     Ok(RedirectKind::Close(fd))
 }
 
-fn parse_redirect_read_write<T>(
-    tokens: &mut Peekable<T>,
+fn parse_redirect_read_write(
+    tokens: &mut TokenReader,
     fd: FdSize,
-) -> Result<RedirectKind, ParseError>
-where
-    T: Iterator<Item = Token>,
-{
-    let loc = tokens.next().unwrap().loc; // Token::ReadWrite
-
-    match peek_token(tokens) {
-        Some(TokenKind::Space) | Some(TokenKind::Word(_, _)) => {
-            skip_space(tokens);
+) -> Result<RedirectKind, ParseError> {
+    tokens.next();
+    tokens.skip_space();
+    match tokens.peek_token() {
+        Some(TokenKind::Word(_, _)) => {
             let words = parse_wordlist(tokens)?;
             Ok(RedirectKind::ReadWrite(fd, words))
         }
-        None => Err(ParseError::eof(Location::new_from_offset(&loc, 1, 0))),
-        _ => Err(ParseError::unexpected_token(tokens.next().unwrap())),
-    }
-}
-
-pub fn skip_space<T>(tokens: &mut Peekable<T>) -> Option<Token>
-where
-    T: Iterator<Item = Token>,
-{
-    match peek_token(tokens) {
-        Some(TokenKind::Space) => tokens.next(),
-        _ => None,
+        _ => Err(tokens.error_unexpected_token()),
     }
 }
 

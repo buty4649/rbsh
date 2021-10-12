@@ -3,10 +3,10 @@ pub mod redirect;
 pub mod word;
 
 use crate::lexer::lex;
-use crate::token::{Token, TokenKind};
+use crate::token::{Token, TokenKind, TokenReader};
 use command::{parse_command, ConnecterKind};
 use redirect::Redirect;
-use std::iter::{Iterator, Peekable};
+use std::iter::Iterator;
 use std::str::Utf8Error;
 use word::{parse_wordlist, WordList};
 
@@ -54,6 +54,13 @@ pub enum UnitKind {
         kind: ConnecterKind,
         background: bool,
     },
+    If {
+        condition: Box<UnitKind>,
+        true_case: Vec<UnitKind>,
+        false_case: Option<Vec<UnitKind>>,
+        redirect: Vec<Redirect>,
+        background: bool,
+    },
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -93,6 +100,10 @@ impl<T> Annotate<T> {
     pub fn new(value: T, loc: Location) -> Self {
         Self { value, loc }
     }
+
+    pub fn location(&self) -> Location {
+        self.loc
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -116,8 +127,8 @@ impl ParseError {
         Self::new(ParseErrorKind::UnknownType(c), loc)
     }
 
-    pub fn invalid_fd(s: String, loc: Location) -> Self {
-        Self::new(ParseErrorKind::InvalidFd(s), loc)
+    pub fn invalid_fd(s: &str, loc: Location) -> Self {
+        Self::new(ParseErrorKind::InvalidFd(s.to_string()), loc)
     }
 
     pub fn ambiguous_redirect(loc: Location) -> Self {
@@ -139,16 +150,11 @@ impl ParseError {
 
 pub fn parse_command_line(s: &str) -> Result<CommandList, ParseError> {
     let tokens = lex(s)?;
-    let mut tokens = tokens.into_iter().peekable();
+    let mut tokens = TokenReader::new(tokens);
     let mut result = vec![];
 
-    let ignore_history = match peek_token(&mut tokens) {
-        Some(TokenKind::Space) => {
-            tokens.next();
-            true
-        }
-        _ => false,
-    };
+    // If it starts with a Space, ignore the command history.
+    let ignore_history = matches!(tokens.skip_space(), Some(_));
 
     loop {
         match parse_command(&mut tokens)? {
@@ -159,11 +165,4 @@ pub fn parse_command_line(s: &str) -> Result<CommandList, ParseError> {
 
     let result = CommandList::new(result, ignore_history);
     Ok(result)
-}
-
-fn peek_token<T>(tokens: &mut Peekable<T>) -> Option<&TokenKind>
-where
-    T: Iterator<Item = Token>,
-{
-    tokens.peek().map(|tok| &tok.value)
 }

@@ -1,7 +1,7 @@
 use super::redirect::parse_redirect;
 use super::word::parse_wordlist;
-use super::{peek_token, ParseError, Token, TokenKind, UnitKind};
-use std::iter::Peekable;
+use super::{ParseError, TokenKind, UnitKind};
+use crate::token::TokenReader;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConnecterKind {
@@ -11,13 +11,10 @@ pub enum ConnecterKind {
     Or,
 }
 
-pub fn parse_command<T>(tokens: &mut Peekable<T>) -> Result<Option<UnitKind>, ParseError>
-where
-    T: Iterator<Item = Token> + Clone,
-{
+pub fn parse_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
     match parse_connecter(tokens)? {
         None => Ok(None),
-        Some(c) => match peek_token(tokens) {
+        Some(c) => match tokens.peek_token() {
             Some(TokenKind::Background) => {
                 tokens.next();
                 let mut c = c;
@@ -32,6 +29,13 @@ where
                         right: _,
                         kind: _,
                         background,
+                    }
+                    | UnitKind::If {
+                        condition: _,
+                        true_case: _,
+                        false_case: _,
+                        redirect: _,
+                        background,
                     } => *background = true,
                 };
                 Ok(Some(c))
@@ -41,11 +45,8 @@ where
     }
 }
 
-pub fn parse_connecter<T>(tokens: &mut Peekable<T>) -> Result<Option<UnitKind>, ParseError>
-where
-    T: Iterator<Item = Token> + Clone,
-{
-    match peek_token(tokens) {
+pub fn parse_connecter(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
+    match tokens.peek_token() {
         None => Ok(None), // EOF
         Some(TokenKind::Space) => {
             tokens.next();
@@ -53,13 +54,10 @@ where
         }
         Some(_) => {
             match parse_shell_command(tokens)? {
-                None => {
-                    let token = tokens.next().unwrap();
-                    Err(ParseError::unexpected_token(token))
-                }
+                None => Err(tokens.error_unexpected_token()),
                 Some(left) => {
-                    match peek_token(tokens) {
-                        // Connecter
+                    tokens.skip_space();
+                    match tokens.peek_token() {
                         Some(kind)
                             if matches!(
                                 kind,
@@ -91,14 +89,11 @@ where
                             Ok(Some(connecter))
                         }
 
-                        Some(kind)
-                            if matches!(kind, TokenKind::Termination | TokenKind::NewLine) =>
-                        {
+                        Some(TokenKind::Termination) | Some(TokenKind::NewLine) => {
                             tokens.next();
                             Ok(Some(left))
                         }
 
-                        // Do not nothing.
                         // Set the background flag in the caller.
                         Some(TokenKind::Background) => Ok(Some(left)),
 
@@ -111,17 +106,111 @@ where
     }
 }
 
-pub fn parse_shell_command<T>(tokens: &mut Peekable<T>) -> Result<Option<UnitKind>, ParseError>
-where
-    T: Iterator<Item = Token> + Clone,
-{
-    parse_simple_command(tokens)
+pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
+    let mut unit = match tokens.peek_token() {
+        Some(TokenKind::If) => parse_if_statement(tokens)?,
+        _ => return parse_simple_command(tokens),
+    };
+
+    // parse redirection list
+    let unit = match &mut unit {
+        Some(UnitKind::If {
+            condition: _,
+            true_case: _,
+            false_case: _,
+            redirect,
+            background: _,
+        }) => {
+            tokens.skip_space();
+            loop {
+                match parse_redirect(tokens)? {
+                    Some(r) => redirect.push(r),
+                    None => break,
+                }
+            }
+            unit
+        }
+
+        _ => unit,
+    };
+    Ok(unit)
 }
 
-fn parse_simple_command<T>(tokens: &mut Peekable<T>) -> Result<Option<UnitKind>, ParseError>
-where
-    T: Iterator<Item = Token> + Clone,
-{
+fn parse_if_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
+    tokens.next(); // 'if'
+
+    // need space
+    match tokens.skip_space() {
+        Some(_) => (),
+        None => return Err(tokens.error_unexpected_token()),
+    };
+
+    let condition = match parse_command(tokens)? {
+        Some(c) => c,
+        None => return Err(tokens.error_unexpected_token()),
+    };
+
+    tokens.skip_space();
+    if matches!(tokens.peek_token(), Some(TokenKind::Then)) {
+        tokens.next();
+    }
+
+    let mut true_case = vec![];
+    let mut false_case: Option<_> = None;
+    loop {
+        match parse_command(tokens)? {
+            Some(c) => true_case.push(c),
+            None => return Err(tokens.error_eof()),
+        };
+
+        tokens.skip_space();
+        match tokens.peek_token() {
+            Some(TokenKind::Fi) | Some(TokenKind::End) => {
+                tokens.next();
+                break;
+            }
+            Some(TokenKind::Else) => {
+                tokens.next();
+                false_case = {
+                    let mut false_case = vec![];
+                    loop {
+                        match parse_command(tokens)? {
+                            Some(c) => false_case.push(c),
+                            None => return Err(tokens.error_eof()),
+                        };
+                        tokens.skip_space();
+                        match tokens.peek_token() {
+                            Some(TokenKind::Fi) | Some(TokenKind::End) => {
+                                tokens.next();
+                                break Some(false_case);
+                            }
+                            None => return Err(tokens.error_eof()),
+                            _ => (),
+                        }
+                    }
+                };
+                break;
+            }
+            Some(TokenKind::ElsIf) | Some(TokenKind::ElIf) => {
+                false_case = parse_if_statement(tokens).map(|c| Some(vec![c.unwrap()]))?;
+                break;
+            }
+            None => return Err(tokens.error_eof()),
+            _ => (),
+        };
+    }
+    let unit = UnitKind::If {
+        condition: Box::new(condition),
+        true_case,
+        false_case,
+        redirect: vec![],
+        background: false,
+    };
+
+    Ok(Some(unit))
+}
+
+fn parse_simple_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
     let mut command = vec![];
     let mut redirect = vec![];
 
@@ -134,7 +223,7 @@ where
             }
         }
 
-        match peek_token(tokens) {
+        match tokens.peek_token() {
             Some(TokenKind::Space) => {
                 tokens.next();
             }

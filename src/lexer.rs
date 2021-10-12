@@ -11,6 +11,7 @@ struct Lexer {
     line: usize,
     column: usize,
     token: Vec<Token>,
+    begin_command: bool,
 }
 
 macro_rules! lex_simple_token {
@@ -25,15 +26,14 @@ macro_rules! lex_simple_token {
 
 impl Lexer {
     fn new(input: &str) -> Self {
-        let mut v = input.as_bytes().to_vec();
-        let mut input = vec![0]; // dummy
-        input.append(&mut v);
+        let input = input.as_bytes().to_vec();
         Lexer {
             input,
             pos: 0,
             line: 1,
             column: 1,
             token: vec![],
+            begin_command: true,
         }
     }
 
@@ -46,6 +46,18 @@ impl Lexer {
             ($f: ident) => {{
                 let token = self.$f()?;
                 self.push(token);
+            }};
+        }
+
+        macro_rules! keyword {
+            ($s: expr, $ident: ident) => {{
+                let cnt = $s.len();
+                let loc = self.location();
+                (0..cnt).for_each(|_| {
+                    self.next();
+                });
+                let token = Token::$ident(loc);
+                self.push(token)
             }};
         }
 
@@ -67,7 +79,30 @@ impl Lexer {
                     let mut tokens = self.lex_double_quote()?;
                     self.token.append(&mut tokens)
                 }
+                _ if self.start_with("if") => keyword!("if", if_keyword),
+                _ if self.start_with("then") => keyword!("then", then_keyword),
+                _ if self.start_with("fi") => keyword!("fi", fi_keyword),
+                _ if self.start_with("else") => keyword!("else", else_keyword),
+                _ if self.start_with("elsif") => keyword!("elsif", elsif_keyword),
+                _ if self.start_with("elif") => keyword!("elif", elif_keyword),
+                _ if self.start_with("end") => keyword!("end", end_keyword),
                 _ => action!(lex_word),
+            }
+
+            self.begin_command = match self.before_token() {
+                Some(TokenKind::Termination)
+                | Some(TokenKind::NewLine)
+                | Some(TokenKind::If)
+                | Some(TokenKind::Then)
+                | Some(TokenKind::Else)
+                | Some(TokenKind::ElIf)
+                | Some(TokenKind::ElsIf)
+                | Some(TokenKind::Pipe)
+                | Some(TokenKind::PipeBoth)
+                | Some(TokenKind::And)
+                | Some(TokenKind::Or) => true,
+                Some(TokenKind::Space) if self.begin_command => true,
+                _ => false,
             }
         }
 
@@ -202,12 +237,12 @@ impl Lexer {
                 Some(b'-') => Token::write_close(loc),
                 // '>&'
                 _ => {
-                    let is_write_both = matches!(self.peek(), Some(c) if is_number(c))
-                        || !matches!(self.before_token(), Some(TokenKind::Number(_)));
-                    if is_write_both {
-                        Token::write_both(loc)
-                    } else {
+                    let is_write_copy = matches!(self.peek(), Some(c) if is_number(c))
+                        || matches!(self.before_token(), Some(TokenKind::Number(_)));
+                    if is_write_copy {
                         Token::write_copy(loc)
+                    } else {
+                        Token::write_both(loc)
                     }
                 }
             },
@@ -382,7 +417,6 @@ impl Lexer {
     }
 
     fn next(&mut self) -> Option<u8> {
-        self.pos += 1;
         if self.is_eof() {
             None
         } else {
@@ -391,6 +425,7 @@ impl Lexer {
                 self.line += 1;
                 self.column = 0;
             }
+            self.pos += 1;
             self.column += 1;
             Some(result)
         }
@@ -411,11 +446,23 @@ impl Lexer {
     }
 
     fn peek_nth(&self, offset: usize) -> Option<u8> {
+        let offset = offset - 1;
         if self.pos + offset >= self.input.len() {
             None
         } else {
             Some(self.input[self.pos + offset])
         }
+    }
+
+    fn start_with(&self, s: &str) -> bool {
+        let len = s.len();
+        self.begin_command
+            && self.input[self.pos..].starts_with(s.as_bytes())
+            && (self.pos + len >= self.input.len()
+                || (self.pos + len < self.input.len() && {
+                    let c = self.input[self.pos + len];
+                    is_space(c) || is_line_ending(c) || c == b';' || c == b'&'
+                }))
     }
 
     fn before_token(&self) -> Option<TokenKind> {
@@ -431,7 +478,7 @@ impl Lexer {
     }
 
     fn is_eof(&self) -> bool {
-        self.input.len() == 1 || self.pos >= self.input.len()
+        self.input.is_empty() || self.pos >= self.input.len()
     }
 
     fn error_invalid_utf8_sequence(&self, err: Utf8Error) -> ParseError {

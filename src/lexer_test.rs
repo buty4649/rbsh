@@ -31,6 +31,25 @@ mod test {
     }
 
     #[test]
+    fn test_lex_keyword() {
+        test_case! {
+            lex => {
+                "if"    => Ok(vec![Token::if_keyword(loc!(1, 1))]),
+                "then"  => Ok(vec![Token::then_keyword(loc!(1, 1))]),
+                "fi"    => Ok(vec![Token::fi_keyword(loc!(1, 1))]),
+                "elif"  => Ok(vec![Token::elif_keyword(loc!(1, 1))]),
+                "elsif" => Ok(vec![Token::elsif_keyword(loc!(1, 1))]),
+                "end"   => Ok(vec![Token::end_keyword(loc!(1, 1))]),
+                "echo if" => Ok(vec![
+                    normal_word!("echo"),
+                    Token::space(loc!(5, 1)),
+                    normal_word!("if", loc!(6, 1)),
+                ]),
+            },
+        }
+    }
+
+    #[test]
     fn test_lex_space() {
         test_case! {
             lex!(lex_space) => {
@@ -113,7 +132,24 @@ mod test {
     }
 
     #[test]
-    fn test_lex_redirect() {}
+    fn test_lex_redirect() {
+        test_case! {
+            lex!(lex_redirect) => {
+                "<"   => Ok((Token::read_from(loc!(1, 1)), loc!(2, 1)))
+                "<<"  => Ok((Token::here_document(loc!(1, 1)), loc!(3, 1)))
+                "<<<" => Ok((Token::here_string(loc!(1, 1)), loc!(4, 1)))
+                "<>"  => Ok((Token::read_write(loc!(1, 1)), loc!(3, 1))),
+                "<&-" => Ok((Token::read_close(loc!(1, 1)), loc!(4, 1))),
+                "<&"  => Ok((Token::read_copy(loc!(1, 1)), loc!(3, 1))),
+                ">"   => Ok((Token::write_to(loc!(1, 1)), loc!(2, 1)))
+                ">>"  => Ok((Token::append(loc!(1, 1)), loc!(3, 1)))
+                ">|"  => Ok((Token::force_write_to(loc!(1, 1)), loc!(3, 1)))
+                ">&-" => Ok((Token::write_close(loc!(1, 1)), loc!(4, 1))),
+                ">&"  => Ok((Token::write_both(loc!(1, 1)), loc!(3, 1))),
+                ">&1" => Ok((Token::write_copy(loc!(1, 1)), loc!(3, 1))),
+            },
+        }
+    }
 
     #[test]
     fn test_lex_redirect_less() {
@@ -132,13 +168,13 @@ mod test {
     #[test]
     fn test_redirect_grater() {
         test_case! {
-            lex!(lex_redirect_less) => {
-                "<"   => Ok((Token::read_from(loc!(1, 1)), loc!(2, 1)))
-                "<<"  => Ok((Token::here_document(loc!(1, 1)), loc!(3, 1)))
-                "<<<" => Ok((Token::here_string(loc!(1, 1)), loc!(4, 1)))
-                "<>"  => Ok((Token::read_write(loc!(1, 1)), loc!(3, 1))),
-                "<&-" => Ok((Token::read_close(loc!(1, 1)), loc!(4, 1))),
-                "<&"  => Ok((Token::read_copy(loc!(1, 1)), loc!(3, 1))),
+            lex!(lex_redirect_grater) => {
+                ">"   => Ok((Token::write_to(loc!(1, 1)), loc!(2, 1)))
+                ">>"  => Ok((Token::append(loc!(1, 1)), loc!(3, 1)))
+                ">|"  => Ok((Token::force_write_to(loc!(1, 1)), loc!(3, 1)))
+                ">&-" => Ok((Token::write_close(loc!(1, 1)), loc!(4, 1))),
+                ">&"  => Ok((Token::write_both(loc!(1, 1)), loc!(3, 1))),
+                ">&1" => Ok((Token::write_copy(loc!(1, 1)), loc!(3, 1))),
             },
         }
     }
