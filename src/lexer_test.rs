@@ -11,16 +11,9 @@ mod test {
                 lexer.$f().map(|t| (t, lexer.location()))
             }
         };
-        ($($b: ident)+, $f: ident) => {
-            |s| {
-                let mut lexer = Lexer::new(s);
-                $(let _ = lexer.$b();)+
-                lexer.$f().map(|t| (t, lexer.location()))
-            }
-        };
         ($f: ident, $s: expr, $t: expr) => {
             |s| {
-                let s = format!("{}{}",$s, s);
+                let s = format!("{}{}", $s, s);
                 let mut lexer = Lexer::new(&*s);
                 lexer.push($t($s.to_string(), loc!(1, 1)));
                 lexer.pos += $s.len();
@@ -33,24 +26,37 @@ mod test {
     #[test]
     fn test_lex_keyword() {
         test_case! {
-            lex => {
-                "if"     => Ok(vec![Token::if_keyword(loc!(1, 1))]),
-                "then"   => Ok(vec![Token::then_keyword(loc!(1, 1))]),
-                "fi"     => Ok(vec![Token::fi_keyword(loc!(1, 1))]),
-                "elif"   => Ok(vec![Token::elif_keyword(loc!(1, 1))]),
-                "elsif"  => Ok(vec![Token::elsif_keyword(loc!(1, 1))]),
-                "end"    => Ok(vec![Token::end_keyword(loc!(1, 1))]),
-                "unless" => Ok(vec![Token::unless_keyword(loc!(1, 1))]),
-                "while"  => Ok(vec![Token::while_keyword(loc!(1, 1))]),
-                "do"     => Ok(vec![Token::do_keyword(loc!(1, 1))]),
-                "done"   => Ok(vec![Token::done_keyword(loc!(1, 1))]),
-                "until"  => Ok(vec![Token::until_keyword(loc!(1, 1))]),
-                "echo if" => Ok(vec![
-                    normal_word!("echo"),
-                    Token::space(loc!(5, 1)),
-                    normal_word!("if", loc!(6, 1)),
+           lex => {
+               "if"     => Ok(vec![Token::if_keyword(loc!(1, 1))]),
+               "then"   => Ok(vec![Token::then_keyword(loc!(1, 1))]),
+               "fi"     => Ok(vec![Token::fi_keyword(loc!(1, 1))]),
+               "elif"   => Ok(vec![Token::elif_keyword(loc!(1, 1))]),
+               "elsif"  => Ok(vec![Token::elsif_keyword(loc!(1, 1))]),
+               "end"    => Ok(vec![Token::end_keyword(loc!(1, 1))]),
+               "unless" => Ok(vec![Token::unless_keyword(loc!(1, 1))]),
+               "while"  => Ok(vec![Token::while_keyword(loc!(1, 1))]),
+               "do"     => Ok(vec![Token::do_keyword(loc!(1, 1))]),
+               "done"   => Ok(vec![Token::done_keyword(loc!(1, 1))]),
+               "until"  => Ok(vec![Token::until_keyword(loc!(1, 1))]),
+               "for"    => Ok(vec![Token::for_keyword(loc!(1, 1))]),
+               "echo if" => Ok(vec![
+                   normal_word!("echo"),
+                   Token::space(loc!(5, 1)),
+                   normal_word!("if", loc!(6, 1)),
+               ]),
+           },
+           |s| {
+                let mut lexer = Lexer::new(s);
+                lexer.lex()
+           } => {
+               "for a in" => Ok(vec![
+                   Token::for_keyword(loc!(1, 1)),
+                   Token::space(loc!(4, 1)),
+                   normal_word!("a", loc!(5, 1)),
+                   Token::space(loc!(6, 1)),
+                   Token::in_keyword(loc!(7, 1))
                 ]),
-            },
+           },
         }
     }
 

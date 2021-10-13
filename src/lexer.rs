@@ -79,24 +79,29 @@ impl Lexer {
                     let mut tokens = self.lex_double_quote()?;
                     self.token.append(&mut tokens)
                 }
-                _ if self.start_with("if") => keyword!("if", if_keyword),
-                _ if self.start_with("then") => keyword!("then", then_keyword),
-                _ if self.start_with("fi") => keyword!("fi", fi_keyword),
-                _ if self.start_with("else") => keyword!("else", else_keyword),
-                _ if self.start_with("elsif") => keyword!("elsif", elsif_keyword),
-                _ if self.start_with("elif") => keyword!("elif", elif_keyword),
-                _ if self.start_with("end") => keyword!("end", end_keyword),
-                _ if self.start_with("unless") => keyword!("unless", unless_keyword),
-                _ if self.start_with("while") => keyword!("while", while_keyword),
-                _ if self.start_with("do") => keyword!("do", do_keyword),
-                _ if self.start_with("done") => keyword!("done", done_keyword),
-                _ if self.start_with("until") => keyword!("until", until_keyword),
+                _ if self.starts_with("{") => keyword!("{", group_start),
+                _ if self.starts_with("}") => keyword!("}", group_end),
+                _ if self.starts_with("if") => keyword!("if", if_keyword),
+                _ if self.starts_with("then") => keyword!("then", then_keyword),
+                _ if self.starts_with("fi") => keyword!("fi", fi_keyword),
+                _ if self.starts_with("else") => keyword!("else", else_keyword),
+                _ if self.starts_with("elsif") => keyword!("elsif", elsif_keyword),
+                _ if self.starts_with("elif") => keyword!("elif", elif_keyword),
+                _ if self.starts_with("end") => keyword!("end", end_keyword),
+                _ if self.starts_with("unless") => keyword!("unless", unless_keyword),
+                _ if self.starts_with("while") => keyword!("while", while_keyword),
+                _ if self.starts_with("do") => keyword!("do", do_keyword),
+                _ if self.starts_with("done") => keyword!("done", done_keyword),
+                _ if self.starts_with("until") => keyword!("until", until_keyword),
+                _ if self.starts_with("for") => keyword!("for", for_keyword),
+                _ if self.is_in_keyword() => keyword!("in", in_keyword),
                 _ => action!(lex_word),
             }
 
             self.begin_command = match self.before_token() {
                 Some(TokenKind::Termination)
                 | Some(TokenKind::NewLine)
+                | Some(TokenKind::GroupStart)
                 | Some(TokenKind::If)
                 | Some(TokenKind::Then)
                 | Some(TokenKind::Else)
@@ -116,6 +121,18 @@ impl Lexer {
         }
 
         Ok(self.token.to_vec())
+    }
+
+    fn is_in_keyword(&mut self) -> bool {
+        // "For" "Space" "Word" "Space" "In"
+        let len = self.token.len();
+        len >= 4 && self.token[len - 4].value == TokenKind::For && {
+            let tmp = self.begin_command;
+            self.begin_command = true;
+            let result = self.starts_with("in");
+            self.begin_command = tmp;
+            result
+        }
     }
 
     fn lex_space(&mut self) -> LexResult {
@@ -463,7 +480,7 @@ impl Lexer {
         }
     }
 
-    fn start_with(&self, s: &str) -> bool {
+    fn starts_with(&self, s: &str) -> bool {
         let len = s.len();
         self.begin_command
             && self.input[self.pos..].starts_with(s.as_bytes())

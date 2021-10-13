@@ -8,7 +8,7 @@ use command::{parse_command, ConnecterKind};
 use redirect::Redirect;
 use std::iter::Iterator;
 use std::str::Utf8Error;
-use word::{parse_wordlist, WordList};
+use word::{parse_wordlist, Word, WordList};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommandList {
@@ -80,6 +80,13 @@ pub enum UnitKind {
         redirect: Vec<Redirect>,
         background: bool,
     },
+    For {
+        identifier: Word,
+        list: Option<Vec<WordList>>,
+        command: Vec<UnitKind>,
+        redirect: Vec<Redirect>,
+        background: bool,
+    },
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -131,6 +138,7 @@ pub enum ParseErrorKind {
     UnknownType(char),
     InvalidFd(String),
     AmbiguousRedirect,
+    InvalidIdentifier(String),
     Unimplemented(TokenKind),
     InvalidUtf8Sequence(Utf8Error),
     Eof,
@@ -152,6 +160,10 @@ impl ParseError {
 
     pub fn ambiguous_redirect(loc: Location) -> Self {
         Self::new(ParseErrorKind::AmbiguousRedirect, loc)
+    }
+
+    pub fn invalid_identifier(s: String, loc: Location) -> Self {
+        Self::new(ParseErrorKind::InvalidIdentifier(s), loc)
     }
 
     pub fn unimplemented(t: Token) -> Self {

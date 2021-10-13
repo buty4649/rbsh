@@ -26,8 +26,10 @@ pub enum TokenKind {
     ReadWrite,    // '<>'
     HereDocument, // '<<'
     HereString,   // '<<<'
+    Termination,  // ';'
+    GroupStart,   // '{'
+    GroupEnd,     // '}'
     Hyphen,
-    Termination, // ';'
     NewLine,
     If,
     Then,
@@ -41,6 +43,8 @@ pub enum TokenKind {
     Do,
     Done,
     Until,
+    For,
+    In,
     Eof,
 }
 pub type Token = Annotate<TokenKind>;
@@ -138,6 +142,14 @@ impl Token {
         Self::new(TokenKind::Termination, loc)
     }
 
+    pub fn group_start(loc: Location) -> Self {
+        Self::new(TokenKind::GroupStart, loc)
+    }
+
+    pub fn group_end(loc: Location) -> Self {
+        Self::new(TokenKind::GroupEnd, loc)
+    }
+
     pub fn newline(loc: Location) -> Self {
         Self::new(TokenKind::NewLine, loc)
     }
@@ -188,6 +200,14 @@ impl Token {
 
     pub fn until_keyword(loc: Location) -> Self {
         Self::new(TokenKind::Until, loc)
+    }
+
+    pub fn for_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::For, loc)
+    }
+
+    pub fn in_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::In, loc)
     }
 }
 

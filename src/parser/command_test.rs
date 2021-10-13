@@ -129,6 +129,26 @@ mod test {
         };
     }
 
+    macro_rules! for_stmt {
+        ($i: expr, $l: expr, $c: expr, $r: expr, $b: expr) => {
+            UnitKind::For {
+                identifier: $i,
+                list: $l,
+                command: $c,
+                redirect: $r,
+                background: $b,
+            }
+        };
+
+        ($i: expr, $c: expr) => {
+            for_stmt!($i, None, $c, vec![], false)
+        };
+
+        ($i: expr, $l: expr, $c: expr) => {
+            for_stmt!($i, Some($l), $c, vec![], false)
+        };
+    }
+
     macro_rules! connecter_pipe {
         ($left: expr, $right: expr, $background: expr) => {
             UnitKind::Connecter {
@@ -636,6 +656,65 @@ mod test {
                         vec!(simple_command!(vec![w![normal_word!("bar", loc!(17, 2))]]))
                     ]
                 ],
+            },
+        }
+    }
+
+    #[test]
+    fn test_parse_for_statement() {
+        test_case! {
+            got!(parse_for_statement) => {
+                lex!("for foo; do bar; done") => ok![
+                    for_stmt![
+                        Word::new("foo".to_string(), WordKind::Normal, loc!(5, 1)),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(13, 1))]]))
+                    ]
+                ],
+                lex!("for foo; do bar; end") => ok![
+                    for_stmt![
+                        Word::new("foo".to_string(), WordKind::Normal, loc!(5, 1)),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(13, 1))]]))
+                    ]
+                ],
+                lex!("for foo; { bar; }") => ok![
+                    for_stmt![
+                        Word::new("foo".to_string(), WordKind::Normal, loc!(5, 1)),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]))
+                    ]
+                ],
+                lex!("for foo; bar; end") => ok![
+                    for_stmt![
+                        Word::new("foo".to_string(), WordKind::Normal, loc!(5, 1)),
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(10, 1))]]))
+                    ]
+                ],
+                lex!("for foo in a \"b\" 'c'; bar; end") => ok![
+                    for_stmt![
+                        Word::new("foo".to_string(), WordKind::Normal, loc!(5, 1)),
+                        vec![
+                            w![normal_word!("a", loc!(12, 1))],
+                            w![quote_word!("b", loc!(14, 1))],
+                            w![literal_word!("c", loc!(18, 1))],
+                        ],
+                        vec!(simple_command!(vec![w![normal_word!("bar", loc!(23, 1))]]))
+                    ]
+                ],
+
+                lex!("for \"foo\"; bar; end") => Err(
+                    ParseError::invalid_identifier("\"foo\"".to_string(), loc!(5, 1)),
+                ),
+                lex!("for 'foo'; bar; end") => Err(
+                    ParseError::invalid_identifier("'foo'".to_string(), loc!(5, 1)),
+                ),
+                lex!("for `foo`; bar; end") => Err(
+                    ParseError::invalid_identifier("`foo`".to_string(), loc!(5, 1)),
+                ),
+                lex!("for $foo; bar; end") => Err(
+                    ParseError::invalid_identifier("$foo".to_string(), loc!(5, 1)),
+                ),
+                lex!("for ${foo}; bar; end") => Err(
+                    ParseError::invalid_identifier("${foo}".to_string(), loc!(5, 1)),
+                ),
             },
         }
     }

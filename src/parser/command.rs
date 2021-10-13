@@ -1,5 +1,5 @@
 use super::redirect::parse_redirect;
-use super::word::parse_wordlist;
+use super::word::{parse_wordlist, Word, WordKind};
 use super::{ParseError, TokenKind, UnitKind};
 use crate::token::TokenReader;
 
@@ -52,6 +52,13 @@ pub fn parse_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, Parse
                     }
                     | UnitKind::Until {
                         condition: _,
+                        command: _,
+                        redirect: _,
+                        background,
+                    }
+                    | UnitKind::For {
+                        identifier: _,
+                        list: _,
                         command: _,
                         redirect: _,
                         background,
@@ -130,6 +137,7 @@ pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>,
         Some(TokenKind::If) => parse_if_statement(tokens)?,
         Some(TokenKind::Unless) => parse_unless_statement(tokens)?,
         Some(TokenKind::While) | Some(TokenKind::Until) => parse_while_or_until_statement(tokens)?,
+        Some(TokenKind::For) => parse_for_statement(tokens)?,
         _ => return parse_simple_command(tokens),
     };
 
@@ -157,6 +165,13 @@ pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>,
         })
         | Some(UnitKind::Until {
             condition: _,
+            command: _,
+            redirect,
+            background: _,
+        })
+        | Some(UnitKind::For {
+            identifier: _,
+            list: _,
             command: _,
             redirect,
             background: _,
@@ -196,7 +211,7 @@ fn parse_if_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, Pars
     }
 
     let mut true_case = vec![];
-    let mut false_case: Option<_> = None;
+    let mut false_case = None;
     loop {
         match parse_command(tokens)? {
             Some(c) => true_case.push(c),
@@ -253,7 +268,7 @@ fn parse_unless_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, 
     }
 
     let mut false_case = vec![];
-    let mut true_case: Option<_> = None;
+    let mut true_case = None;
     loop {
         match parse_command(tokens)? {
             Some(c) => false_case.push(c),
@@ -363,6 +378,112 @@ fn parse_while_or_until_statement(
     Ok(Some(unit))
 }
 
+fn parse_for_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
+    tokens.next(); // 'for'
+
+    // need space
+    match tokens.skip_space() {
+        Some(_) => (),
+        None => return Err(tokens.error_unexpected_token()),
+    };
+
+    // need word
+    let identifier = match tokens.peek_token() {
+        Some(TokenKind::Word(s, kind)) => {
+            let loc = tokens.location();
+            tokens.next();
+            match kind {
+                WordKind::Normal => Word::new(s, kind, loc),
+                _ => {
+                    let invalid_identifier = match kind {
+                        WordKind::Normal => unreachable![],
+                        WordKind::Quote => format!("\"{}\"", s),
+                        WordKind::Literal => format!("'{}'", s),
+                        WordKind::Command => format!("`{}`", s),
+                        WordKind::Variable => format!("${}", s),
+                        WordKind::Parameter => format!("${{{}}}", s),
+                    };
+                    return Err(ParseError::invalid_identifier(invalid_identifier, loc));
+                }
+            }
+        }
+        _ => return Err(tokens.error_unexpected_token()),
+    };
+
+    tokens.skip_space();
+    let list = match tokens.peek_token() {
+        Some(TokenKind::Termination) | Some(TokenKind::NewLine) => None,
+        Some(TokenKind::In) => {
+            tokens.next();
+            tokens.skip_space();
+            let mut wordlist = vec![];
+            loop {
+                match tokens.peek_token() {
+                    Some(TokenKind::Word(_, _)) => {
+                        let words = parse_wordlist(tokens)?;
+                        wordlist.push(words);
+                    }
+                    _ => break,
+                }
+            }
+            Some(wordlist)
+        }
+        _ => return Err(tokens.error_unexpected_token()),
+    };
+
+    tokens.skip_space();
+    loop {
+        match tokens.peek_token() {
+            Some(TokenKind::Termination) | Some(TokenKind::NewLine) => tokens.next(),
+            _ => break,
+        };
+    }
+
+    tokens.skip_space();
+    let terminate_group_end = match tokens.peek_token() {
+        Some(TokenKind::GroupStart) => {
+            tokens.next();
+            true
+        }
+        Some(TokenKind::Do) => {
+            tokens.next();
+            false
+        }
+        _ => false,
+    };
+
+    let mut command = vec![];
+    loop {
+        match parse_command(tokens)? {
+            Some(c) => command.push(c),
+            None => return Err(tokens.error_eof()),
+        };
+
+        tokens.skip_space();
+        match tokens.peek_token() {
+            Some(TokenKind::GroupEnd) if terminate_group_end => {
+                tokens.next();
+                break;
+            }
+            Some(TokenKind::Done) | Some(TokenKind::End) if !terminate_group_end => {
+                tokens.next();
+                break;
+            }
+            None => return Err(tokens.error_eof()),
+            _ => (),
+        };
+    }
+
+    let unit = UnitKind::For {
+        identifier,
+        list,
+        command,
+        redirect: vec![],
+        background: false,
+    };
+    Ok(Some(unit))
+}
+
 fn parse_simple_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
     let mut command = vec![];
     let mut redirect = vec![];
@@ -377,9 +498,6 @@ fn parse_simple_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, Pa
         }
 
         match tokens.peek_token() {
-            Some(TokenKind::Space) => {
-                tokens.next();
-            }
             Some(TokenKind::Word(_, _)) => {
                 let words = parse_wordlist(tokens)?;
                 command.push(words);
