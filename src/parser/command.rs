@@ -1,7 +1,9 @@
-use super::redirect::parse_redirect;
-use super::word::{parse_wordlist, Word, WordKind};
-use super::{ParseError, TokenKind, UnitKind};
-use crate::token::TokenReader;
+use super::{
+    redirect::parse_redirect,
+    token::TokenReader,
+    word::{parse_wordlist, Word, WordKind},
+    {ParseError, TokenKind, UnitKind},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConnecterKind {

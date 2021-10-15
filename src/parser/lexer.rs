@@ -1,6 +1,8 @@
-use crate::parser::word::WordKind;
-use crate::parser::{Location, ParseError};
-use crate::token::{Token, TokenKind};
+use super::{
+    token::{Token, TokenKind},
+    word::WordKind,
+    {Location, ParseError},
+};
 use std::str::{from_utf8, Utf8Error};
 type LexResult = Result<Token, ParseError>;
 

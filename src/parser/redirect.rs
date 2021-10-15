@@ -1,5 +1,8 @@
-use super::{parse_wordlist, Annotate, Location, ParseError, TokenKind, WordList};
-use crate::token::TokenReader;
+use super::{
+    parse_wordlist,
+    token::{TokenKind, TokenReader},
+    Annotate, Location, ParseError, WordList,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RedirectKind {

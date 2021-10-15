@@ -1,12 +1,16 @@
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::lexer::lex;
-    use crate::parser::redirect::Redirect;
-    use crate::parser::word::{WordKind, WordList};
-    use crate::parser::Location;
-    use crate::token::Token;
-    use crate::*;
+    use crate::{
+        parser::{
+            lexer::lex,
+            redirect::Redirect,
+            token::Token,
+            word::{WordKind, WordList},
+            Location,
+        },
+        {literal_word, loc, normal_word, quote_word},
+    };
 
     macro_rules! lex {
         ($e: expr) => {

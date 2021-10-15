@@ -1,13 +1,15 @@
-pub mod command;
-pub mod redirect;
-pub mod word;
+mod command;
+mod lexer;
+mod redirect;
+mod token;
+mod word;
 
-use crate::lexer::lex;
-use crate::token::{Token, TokenKind, TokenReader};
 use command::{parse_command, ConnecterKind};
+use lexer::lex;
 use redirect::Redirect;
 use std::iter::Iterator;
 use std::str::Utf8Error;
+use token::{Token, TokenKind, TokenReader};
 use word::{parse_wordlist, Word, WordList};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -1,6 +1,7 @@
-use crate::loc;
-use crate::parser::word::WordKind;
-use crate::parser::{Annotate, Location, ParseError};
+use super::{
+    word::WordKind,
+    {Annotate, Location, ParseError},
+};
 use std::iter::Iterator;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -222,14 +223,6 @@ impl TokenReader {
         Self { tokens, pos: 0 }
     }
 
-    pub fn current(&self) -> Option<Token> {
-        if self.is_eof() || self.pos == 0 {
-            None
-        } else {
-            Some(self.tokens[self.pos - 1].clone())
-        }
-    }
-
     pub fn peek(&mut self) -> Option<Token> {
         if self.is_eof() {
             None
@@ -244,10 +237,6 @@ impl TokenReader {
             Some(t) => Some(t.value),
             None => None,
         }
-    }
-
-    pub fn to_vec(&self) -> Vec<Token> {
-        self.tokens[self.pos..].to_vec()
     }
 
     pub fn skip_space(&mut self) -> Option<Token> {
@@ -268,7 +257,7 @@ impl TokenReader {
 
     pub fn location(&self) -> Location {
         if self.tokens.is_empty() {
-            loc!(0, 0)
+            Location::new(0, 0)
         } else if self.is_eof() {
             let loc = self.tokens.last().unwrap().location();
             Location::new_from_offset(&loc, 1, 0)
@@ -311,74 +300,4 @@ impl Iterator for TokenReader {
             None => None,
         }
     }
-}
-
-#[macro_export]
-macro_rules! normal_word {
-    ($s: expr, $l: expr) => {
-        Token::word($s.to_string(), WordKind::Normal, $l)
-    };
-    ($s: expr) => {
-        normal_word!($s, loc!(1, 1))
-    };
-}
-
-#[macro_export]
-macro_rules! quote_word {
-    ($s: expr, $l: expr) => {
-        Token::word($s.to_string(), WordKind::Quote, $l)
-    };
-    ($s: expr) => {
-        quote_word!($s, loc!(1, 1))
-    };
-}
-
-#[macro_export]
-macro_rules! literal_word {
-    ($s: expr, $l: expr) => {
-        Token::word($s.to_string(), WordKind::Literal, $l)
-    };
-    ($s: expr) => {
-        literal_word!($s, loc!(1, 1))
-    };
-}
-
-#[macro_export]
-macro_rules! cmd {
-    ($s: expr, $l: expr) => {
-        Token::word($s.to_string(), WordKind::Command, $l)
-    };
-    ($s: expr) => {
-        cmd!($s, loc!(1, 1))
-    };
-}
-
-#[macro_export]
-macro_rules! var {
-    ($s: expr, $l: expr) => {
-        Token::word($s.to_string(), WordKind::Variable, $l)
-    };
-    ($s: expr) => {
-        var!($s, loc!(1, 1))
-    };
-}
-
-#[macro_export]
-macro_rules! param {
-    ($s: expr, $l: expr) => {
-        Token::word($s.to_string(), WordKind::Parameter, $l)
-    };
-    ($s: expr) => {
-        param!($s, loc!(1, 1))
-    };
-}
-
-#[macro_export]
-macro_rules! number {
-    ($s: expr, $l: expr) => {
-        Token::number($s.to_string(), $l)
-    };
-    ($s: expr) => {
-        number!($s, loc!(1, 1))
-    };
 }

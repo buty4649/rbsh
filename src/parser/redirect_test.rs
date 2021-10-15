@@ -1,11 +1,10 @@
 #[cfg(test)]
 mod test {
-    use super::super::word::WordKind;
-    use super::super::ParseError;
     use super::*;
-    use crate::lexer::lex;
-    use crate::token::Token;
-    use crate::*;
+    use crate::{
+        loc, normal_word,
+        parser::{lexer::lex, token::Token, word::WordKind, ParseError},
+    };
 
     macro_rules! lex {
         ($e: expr) => {

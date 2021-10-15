@@ -1,8 +1,9 @@
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::parser::ParseError;
-    use crate::*;
+    use crate::{
+        cmd, literal_word, loc, normal_word, number, param, parser::ParseError, quote_word, var,
+    };
 
     macro_rules! assert_lex {
         ($f: ident, $s: expr, $expect: expr) => {{
