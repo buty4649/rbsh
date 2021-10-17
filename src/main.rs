@@ -1,5 +1,5 @@
 use anyhow::Result;
-use reddish_shell::parser::parse_command_line;
+use reddish_shell::{command::Executor, parser::parse_command_line};
 use rustyline::{error::ReadlineError, Editor};
 
 fn main() -> Result<()> {
@@ -9,9 +9,8 @@ fn main() -> Result<()> {
         match readline {
             Ok(line) => match parse_command_line(line.as_str()) {
                 Ok(cmds) => {
-                    for cmd in cmds {
-                        println!("{:?}", cmd);
-                    }
+                    let mut e = Executor::new(cmds);
+                    e.execute()
                 }
                 Err(e) => eprintln!("Error: {:?}", e),
             },

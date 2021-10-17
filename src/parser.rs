@@ -1,12 +1,13 @@
+pub mod redirect;
+pub mod word;
+
 mod command;
 mod lexer;
-mod redirect;
 mod token;
-mod word;
 
 use command::{parse_command, ConnecterKind};
 use lexer::lex;
-use redirect::Redirect;
+use redirect::RedirectList;
 use std::iter::Iterator;
 use std::str::Utf8Error;
 use token::{Token, TokenKind, TokenReader};
@@ -47,7 +48,7 @@ impl Iterator for CommandList {
 pub enum UnitKind {
     SimpleCommand {
         command: Vec<WordList>,
-        redirect: Vec<Redirect>,
+        redirect: RedirectList,
         background: bool,
     },
     Connecter {
@@ -60,33 +61,33 @@ pub enum UnitKind {
         condition: Box<UnitKind>,
         true_case: Vec<UnitKind>,
         false_case: Option<Vec<UnitKind>>,
-        redirect: Vec<Redirect>,
+        redirect: RedirectList,
         background: bool,
     },
     Unless {
         condition: Box<UnitKind>,
         false_case: Vec<UnitKind>,
         true_case: Option<Vec<UnitKind>>,
-        redirect: Vec<Redirect>,
+        redirect: RedirectList,
         background: bool,
     },
     While {
         condition: Box<UnitKind>,
         command: Vec<UnitKind>,
-        redirect: Vec<Redirect>,
+        redirect: RedirectList,
         background: bool,
     },
     Until {
         condition: Box<UnitKind>,
         command: Vec<UnitKind>,
-        redirect: Vec<Redirect>,
+        redirect: RedirectList,
         background: bool,
     },
     For {
         identifier: Word,
         list: Option<Vec<WordList>>,
         command: Vec<UnitKind>,
-        redirect: Vec<Redirect>,
+        redirect: RedirectList,
         background: bool,
     },
 }
@@ -120,13 +121,17 @@ macro_rules! loc {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Annotate<T> {
-    pub value: T,
+    value: T,
     loc: Location,
 }
 
 impl<T> Annotate<T> {
     pub fn new(value: T, loc: Location) -> Self {
         Self { value, loc }
+    }
+
+    pub fn take(self) -> (T, Location) {
+        (self.value, self.loc)
     }
 
     pub fn location(&self) -> Location {

@@ -144,11 +144,11 @@ mod test {
 
     #[test]
     fn test_readcopy() {
-        assert_redirect!("<&123", ok![read_copy, 123, 0, false, loc!(1, 1)]);
+        assert_redirect!("<&123", ok![copy, 123, 0, false, loc!(1, 1)]);
         assert_redirect!("<&", Err(ParseError::eof(loc!(2, 1))));
-        assert_redirect!("<&123-", ok!(read_copy, 123, 0, true, loc!(1, 1)));
-        assert_redirect!("123<&456", ok![read_copy, 456, 123, false, loc!(1, 1)]);
-        assert_redirect!("123<&456-", ok![read_copy, 456, 123, true, loc!(1, 1)]);
+        assert_redirect!("<&123-", ok!(copy, 123, 0, true, loc!(1, 1)));
+        assert_redirect!("123<&456", ok![copy, 456, 123, false, loc!(1, 1)]);
+        assert_redirect!("123<&456-", ok![copy, 456, 123, true, loc!(1, 1)]);
 
         assert_redirect!(
             "<& foobar",
@@ -163,10 +163,10 @@ mod test {
 
     #[test]
     fn test_writecopy() {
-        assert_redirect!(">&123", ok![write_copy, 123, 1, false, loc!(1, 1)]);
-        assert_redirect!(">&123-", ok![write_copy, 123, 1, true, loc!(1, 1)]);
-        assert_redirect!("123>&456", ok![write_copy, 456, 123, false, loc!(1, 1)]);
-        assert_redirect!("123>&456-", ok![write_copy, 456, 123, true, loc!(1, 1)]);
+        assert_redirect!(">&123", ok![copy, 123, 1, false, loc!(1, 1)]);
+        assert_redirect!(">&123-", ok![copy, 123, 1, true, loc!(1, 1)]);
+        assert_redirect!("123>&456", ok![copy, 456, 123, false, loc!(1, 1)]);
+        assert_redirect!("123>&456-", ok![copy, 456, 123, true, loc!(1, 1)]);
 
         assert_redirect!(
             "123>&foobar",

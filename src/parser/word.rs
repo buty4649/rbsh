@@ -24,6 +24,10 @@ impl Word {
     pub fn new(string: String, kind: WordKind, loc: Location) -> Self {
         Word { string, kind, loc }
     }
+
+    pub fn take(self) -> (String, WordKind, Location) {
+        (self.string, self.kind, self.loc)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -53,6 +57,14 @@ impl WordList {
             } => self.push_word(s, k, loc),
             _ => unimplemented![],
         }
+    }
+
+    pub fn first(&self) -> Word {
+        self.list.first().unwrap().clone()
+    }
+
+    pub fn to_vec(self) -> Vec<Word> {
+        self.list
     }
 
     pub fn is_empty(self) -> bool {

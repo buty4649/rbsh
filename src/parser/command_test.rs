@@ -290,7 +290,7 @@ mod test {
                 None,
                 vec![
                     Redirect::write_to(1, w![normal_word!("baz", loc!(20, 1))], false, loc!(18, 1)),
-                    Redirect::write_copy(1, 2, false, loc!(24, 1)),
+                    Redirect::copy(1, 2, false, loc!(24, 1)),
                 ],
                 true
             ]]
@@ -356,7 +356,7 @@ mod test {
                 None,
                 vec![
                     Redirect::write_to(1, w![normal_word!("baz", loc!(20, 1))], false, loc!(18, 1)),
-                    Redirect::write_copy(1, 2, false, loc!(24, 1)),
+                    Redirect::copy(1, 2, false, loc!(24, 1)),
                 ],
                 false
             ]]
@@ -371,7 +371,7 @@ mod test {
                 None,
                 vec![
                     Redirect::write_to(1, w![normal_word!("baz", loc!(24, 1))], false, loc!(22, 1)),
-                    Redirect::write_copy(1, 2, false, loc!(28, 1)),
+                    Redirect::copy(1, 2, false, loc!(28, 1)),
                 ],
                 false
             ]]
@@ -385,7 +385,7 @@ mod test {
                 vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]])),
                 vec![
                     Redirect::write_to(1, w![normal_word!("baz", loc!(23, 1))], false, loc!(21, 1)),
-                    Redirect::write_copy(1, 2, false, loc!(27, 1)),
+                    Redirect::copy(1, 2, false, loc!(27, 1)),
                 ],
                 false
             ]]
@@ -399,7 +399,7 @@ mod test {
                 vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]])),
                 vec![
                     Redirect::write_to(1, w![normal_word!("baz", loc!(23, 1))], false, loc!(21, 1)),
-                    Redirect::write_copy(1, 2, false, loc!(27, 1)),
+                    Redirect::copy(1, 2, false, loc!(27, 1)),
                 ],
                 false
             ]]
@@ -428,7 +428,7 @@ mod test {
                 vec![w!["foo"]],
                 vec![
                     Redirect::write_to(1, w![normal_word!("bar", loc!(7, 1))], false, loc!(5, 1)),
-                    Redirect::write_copy(1, 2, false, loc!(11, 1)),
+                    Redirect::copy(1, 2, false, loc!(11, 1)),
                 ],
                 false
             )]
@@ -813,7 +813,7 @@ end";
                 vec![w!["foo"]],
                 vec![
                     Redirect::write_to(1, w![normal_word!("bar", loc!(7, 1))], false, loc!(5, 1)),
-                    Redirect::write_copy(1, 2, false, loc!(11, 1)),
+                    Redirect::copy(1, 2, false, loc!(11, 1)),
                 ],
                 false
             )]

@@ -9,3 +9,9 @@ edition = "2018"
 anyhow = "1.0.44"
 #mruby =  { package = "rust-mruby", git = "https://github.com/buty4649/rust-mruby" }
 rustyline = "9.0.0"
+nix = "0.23.0"
+is_executable = "1.0.1"
+libc = "0.2.104"
+
+[dev-dependencies]
+mockall = "0.10.2"
