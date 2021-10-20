@@ -3,11 +3,9 @@ use crate::parser::{
     redirect::{FdSize, RedirectKind, RedirectList},
     word::WordList,
 };
-use nix::{
-    fcntl::{open, OFlag},
-    sys::stat::Mode,
-    unistd::{close, dup2},
-};
+use nix::{fcntl::OFlag, sys::stat::Mode};
+
+use super::syscall::{SysCallWrapper, Wrapper};
 
 pub trait ApplyRedirect {
     fn apply(self);
@@ -15,37 +13,16 @@ pub trait ApplyRedirect {
 
 impl ApplyRedirect for RedirectList {
     fn apply(self) {
-        RedirectApplier::new(Box::new(Wrapper {})).exec(self)
+        RedirectApplier::new(Wrapper::new()).exec(self)
     }
 }
 
-#[cfg(test)]
-use mockall::automock;
-
-#[cfg_attr(test, automock)]
-trait FsWrapper {
-    fn close(&self, fd: FdSize) -> nix::Result<()> {
-        close(fd)
-    }
-
-    fn dup2(&self, oldfd: FdSize, newfd: FdSize) -> nix::Result<FdSize> {
-        dup2(oldfd, newfd)
-    }
-
-    fn open(&self, path: &str, oflag: OFlag, mode: Mode) -> nix::Result<FdSize> {
-        open(path, oflag, mode)
-    }
+struct RedirectApplier {
+    wrapper: Wrapper,
 }
 
-struct Wrapper {}
-impl FsWrapper for Wrapper {}
-
-struct RedirectApplier<'a> {
-    wrapper: Box<dyn FsWrapper + 'a>,
-}
-
-impl<'a> RedirectApplier<'a> {
-    fn new(wrapper: Box<dyn FsWrapper + 'a>) -> Self {
+impl RedirectApplier {
+    fn new(wrapper: Wrapper) -> Self {
         Self { wrapper }
     }
 

@@ -26,13 +26,13 @@ mod test {
 
     macro_rules! r {
         ($m: expr ) => {
-            RedirectApplier::new(Box::new($m))
+            RedirectApplier::new($m)
         };
     }
 
     #[test]
     fn test_read_from() {
-        let mut mock = MockFsWrapper::new();
+        let mut mock = Wrapper::new();
         mock.expect_open()
             .times(1)
             .with(
@@ -47,7 +47,7 @@ mod test {
             Location::new(1, 1),
         )]);
 
-        let mut mock = MockFsWrapper::new();
+        let mut mock = Wrapper::new();
         mock.expect_open()
             .times(1)
             .with(
@@ -73,7 +73,7 @@ mod test {
 
     #[test]
     fn test_write_to() {
-        let mut mock = MockFsWrapper::new();
+        let mut mock = Wrapper::new();
         mock.expect_open()
             .times(1)
             .with(
@@ -89,7 +89,7 @@ mod test {
             Location::new(1, 1),
         )]);
 
-        let mut mock = MockFsWrapper::new();
+        let mut mock = Wrapper::new();
         mock.expect_open()
             .times(1)
             .with(
@@ -116,7 +116,7 @@ mod test {
 
     #[test]
     fn test_write_both() {
-        let mut mock = MockFsWrapper::new();
+        let mut mock = Wrapper::new();
         mock.expect_open()
             .times(1)
             .with(
@@ -145,14 +145,14 @@ mod test {
 
     #[test]
     fn test_copy() {
-        let mut mock = MockFsWrapper::new();
+        let mut mock = Wrapper::new();
         mock.expect_dup2()
             .times(1)
             .with(eq(3), eq(4))
             .return_const(Ok(4));
         r!(mock).exec(vec![Redirect::copy(3, 4, false, Location::new(1, 1))]);
 
-        let mut mock = MockFsWrapper::new();
+        let mut mock = Wrapper::new();
         mock.expect_dup2()
             .times(1)
             .with(eq(3), eq(4))
@@ -166,7 +166,7 @@ mod test {
 
     #[test]
     fn test_append() {
-        let mut mock = MockFsWrapper::new();
+        let mut mock = Wrapper::new();
         mock.expect_open()
             .times(1)
             .with(
@@ -181,7 +181,7 @@ mod test {
             Location::new(1, 1),
         )]);
 
-        let mut mock = MockFsWrapper::new();
+        let mut mock = Wrapper::new();
         mock.expect_open()
             .times(1)
             .with(
@@ -207,7 +207,7 @@ mod test {
 
     #[test]
     fn test_append_both() {
-        let mut mock = MockFsWrapper::new();
+        let mut mock = Wrapper::new();
         mock.expect_open()
             .times(1)
             .with(
@@ -236,7 +236,7 @@ mod test {
 
     #[test]
     fn test_close() {
-        let mut mock = MockFsWrapper::new();
+        let mut mock = Wrapper::new();
         mock.expect_close()
             .times(1)
             .with(eq(1))
@@ -246,7 +246,7 @@ mod test {
 
     #[test]
     fn test_read_write() {
-        let mut mock = MockFsWrapper::new();
+        let mut mock = Wrapper::new();
         mock.expect_open()
             .times(1)
             .with(
@@ -261,7 +261,7 @@ mod test {
             Location::new(1, 1),
         )]);
 
-        let mut mock = MockFsWrapper::new();
+        let mut mock = Wrapper::new();
         mock.expect_open()
             .times(1)
             .with(

@@ -1,4 +1,5 @@
 mod redirect;
+mod syscall;
 
 use crate::{
     error::ShellError,

@@ -322,6 +322,7 @@ name = "reddish-shell"
 version = "0.11.0"
 dependencies = [
  "anyhow",
+ "cfg-if",
  "is_executable",
  "libc",
  "mockall",
