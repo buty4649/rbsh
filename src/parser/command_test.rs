@@ -2,14 +2,14 @@
 mod test {
     use super::*;
     use crate::{
+        literal_word, loc, normal_word,
         parser::{
             lexer::lex,
             redirect::Redirect,
             token::Token,
             word::{WordKind, WordList},
-            Location,
         },
-        {literal_word, loc, normal_word, quote_word},
+        quote_word, Location,
     };
 
     macro_rules! lex {
@@ -260,25 +260,25 @@ mod test {
         assert_parse!(
             parse_command,
             "& foo",
-            Err(ParseError::unexpected_token(Token::background(loc!(1, 1))))
+            Err(ShellError::unexpected_token(Token::background(loc!(1, 1))))
         );
 
         assert_parse!(
             parse_command,
             "&&",
-            Err(ParseError::unexpected_token(Token::and(loc!(1, 1))))
+            Err(ShellError::unexpected_token(Token::and(loc!(1, 1))))
         );
 
         assert_parse!(
             parse_command,
             "foo &&",
-            Err(ParseError::unexpected_token(Token::and(loc!(5, 1))))
+            Err(ShellError::unexpected_token(Token::and(loc!(5, 1))))
         );
 
         assert_parse!(
             parse_command,
             "foo && &",
-            Err(ParseError::unexpected_token(Token::background(loc!(8, 1))))
+            Err(ShellError::unexpected_token(Token::background(loc!(8, 1))))
         );
 
         assert_parse!(
@@ -589,7 +589,7 @@ end";
         assert_parse!(
             parse_unless_statement,
             "unless foo; then bar; fi",
-            Err(ParseError::unexpected_token(Token::fi_keyword(loc!(23, 1))),)
+            Err(ShellError::unexpected_token(Token::fi_keyword(loc!(23, 1))),)
         );
     }
 
@@ -745,7 +745,7 @@ end";
         assert_parse!(
             parse_for_statement,
             "for \"foo\"; bar; end",
-            Err(ParseError::invalid_identifier(
+            Err(ShellError::invalid_identifier(
                 "\"foo\"".to_string(),
                 loc!(5, 1)
             ),)
@@ -754,7 +754,7 @@ end";
         assert_parse!(
             parse_for_statement,
             "for 'foo'; bar; end",
-            Err(ParseError::invalid_identifier(
+            Err(ShellError::invalid_identifier(
                 "'foo'".to_string(),
                 loc!(5, 1)
             ),)
@@ -763,7 +763,7 @@ end";
         assert_parse!(
             parse_for_statement,
             "for `foo`; bar; end",
-            Err(ParseError::invalid_identifier(
+            Err(ShellError::invalid_identifier(
                 "`foo`".to_string(),
                 loc!(5, 1)
             ),)
@@ -772,7 +772,7 @@ end";
         assert_parse!(
             parse_for_statement,
             "for $foo; bar; end",
-            Err(ParseError::invalid_identifier(
+            Err(ShellError::invalid_identifier(
                 "$foo".to_string(),
                 loc!(5, 1)
             ),)
@@ -781,7 +781,7 @@ end";
         assert_parse!(
             parse_for_statement,
             "for ${foo}; bar; end",
-            Err(ParseError::invalid_identifier(
+            Err(ShellError::invalid_identifier(
                 "${foo}".to_string(),
                 loc!(5, 1)
             ),)

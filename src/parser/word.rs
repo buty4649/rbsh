@@ -1,7 +1,8 @@
 use super::{
     token::TokenReader,
-    {Annotate, Location, ParseError, Token, TokenKind},
+    {Token, TokenKind},
 };
+use crate::{Annotate, Location, Result};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum WordKind {
@@ -102,7 +103,7 @@ impl From<Vec<&str>> for WordList {
     }
 }
 
-pub fn parse_wordlist(tokens: &mut TokenReader) -> Result<WordList, ParseError> {
+pub fn parse_wordlist(tokens: &mut TokenReader) -> Result<WordList> {
     let mut result = WordList::new();
 
     loop {

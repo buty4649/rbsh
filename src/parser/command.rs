@@ -2,8 +2,9 @@ use super::{
     redirect::parse_redirect,
     token::TokenReader,
     word::{parse_wordlist, Word, WordKind},
-    {ParseError, TokenKind, UnitKind},
+    {TokenKind, UnitKind},
 };
+use crate::{error::ShellError, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConnecterKind {
@@ -13,7 +14,7 @@ pub enum ConnecterKind {
     Or,
 }
 
-pub fn parse_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
+pub fn parse_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
     match parse_connecter(tokens)? {
         None => Ok(None),
         Some(c) => match tokens.peek_token() {
@@ -73,7 +74,7 @@ pub fn parse_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, Parse
     }
 }
 
-pub fn parse_connecter(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
+pub fn parse_connecter(tokens: &mut TokenReader) -> Result<Option<UnitKind>,> {
     match tokens.peek_token() {
         None => Ok(None), // EOF
         Some(TokenKind::Space) => {
@@ -106,7 +107,7 @@ pub fn parse_connecter(tokens: &mut TokenReader) -> Result<Option<UnitKind>, Par
                             let left = Box::new(left);
                             let right = match parse_connecter(tokens)? {
                                 Some(c) => Box::new(c),
-                                None => return Err(ParseError::unexpected_token(token)),
+                                None => return Err(ShellError::unexpected_token(token)),
                             };
                             let connecter = UnitKind::Connecter {
                                 left,
@@ -134,7 +135,7 @@ pub fn parse_connecter(tokens: &mut TokenReader) -> Result<Option<UnitKind>, Par
     }
 }
 
-pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
+pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
     let mut unit = match tokens.peek_token() {
         Some(TokenKind::If) => parse_if_statement(tokens)?,
         Some(TokenKind::Unless) => parse_unless_statement(tokens)?,
@@ -193,7 +194,7 @@ pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>,
     Ok(unit)
 }
 
-fn parse_if_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
+fn parse_if_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
     tokens.next(); // 'if'
 
     // need space
@@ -250,7 +251,7 @@ fn parse_if_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, Pars
     Ok(Some(unit))
 }
 
-fn parse_unless_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
+fn parse_unless_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
     tokens.next(); // 'unless'
 
     // need space
@@ -303,7 +304,7 @@ fn parse_unless_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, 
     Ok(Some(unit))
 }
 
-fn parse_else_clause(tokens: &mut TokenReader) -> Result<Option<Vec<UnitKind>>, ParseError> {
+fn parse_else_clause(tokens: &mut TokenReader) -> Result<Option<Vec<UnitKind>>> {
     let mut units = vec![];
     loop {
         match parse_command(tokens)? {
@@ -324,7 +325,7 @@ fn parse_else_clause(tokens: &mut TokenReader) -> Result<Option<Vec<UnitKind>>, 
 
 fn parse_while_or_until_statement(
     tokens: &mut TokenReader,
-) -> Result<Option<UnitKind>, ParseError> {
+) -> Result<Option<UnitKind>> {
     let token = tokens.next().unwrap().value; // 'while' or 'until'
 
     // need space
@@ -380,7 +381,7 @@ fn parse_while_or_until_statement(
     Ok(Some(unit))
 }
 
-fn parse_for_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
+fn parse_for_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
     tokens.next(); // 'for'
 
     // need space
@@ -405,7 +406,7 @@ fn parse_for_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, Par
                         WordKind::Variable => format!("${}", s),
                         WordKind::Parameter => format!("${{{}}}", s),
                     };
-                    return Err(ParseError::invalid_identifier(invalid_identifier, loc));
+                    return Err(ShellError::invalid_identifier(invalid_identifier, loc));
                 }
             }
         }
@@ -486,7 +487,7 @@ fn parse_for_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>, Par
     Ok(Some(unit))
 }
 
-fn parse_simple_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>, ParseError> {
+fn parse_simple_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
     let mut command = vec![];
     let mut redirect = vec![];
 

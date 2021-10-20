@@ -1,9 +1,11 @@
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::parser::{
-        redirect::Redirect,
-        word::{Word, WordKind},
+    use crate::{
+        parser::{
+            redirect::Redirect,
+            word::{Word, WordKind},
+        },
         Location,
     };
     use mockall::predicate::eq;

@@ -1,15 +1,15 @@
 pub mod redirect;
+pub mod token;
 pub mod word;
 
 mod command;
 mod lexer;
-mod token;
 
+use super::Result;
 use command::{parse_command, ConnecterKind};
 use lexer::lex;
 use redirect::RedirectList;
 use std::iter::Iterator;
-use std::str::Utf8Error;
 use token::{Token, TokenKind, TokenReader};
 use word::{parse_wordlist, Word, WordList};
 
@@ -92,101 +92,7 @@ pub enum UnitKind {
     },
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Location {
-    column: usize,
-    line: usize,
-}
-
-impl Location {
-    pub fn new(column: usize, line: usize) -> Self {
-        Self { column, line }
-    }
-
-    pub fn new_from(other: &Self) -> Self {
-        Self::new_from_offset(other, 0, 0)
-    }
-
-    pub fn new_from_offset(other: &Self, column_offset: usize, line_offset: usize) -> Self {
-        Self::new(other.column + column_offset, other.line + line_offset)
-    }
-}
-
-#[macro_export]
-macro_rules! loc {
-    ($c: expr, $l: expr) => {
-        Location::new($c, $l)
-    };
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Annotate<T> {
-    value: T,
-    loc: Location,
-}
-
-impl<T> Annotate<T> {
-    pub fn new(value: T, loc: Location) -> Self {
-        Self { value, loc }
-    }
-
-    pub fn take(self) -> (T, Location) {
-        (self.value, self.loc)
-    }
-
-    pub fn location(&self) -> Location {
-        self.loc
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ParseErrorKind {
-    UnexpectedToken(TokenKind),
-    UnknownType(char),
-    InvalidFd(String),
-    AmbiguousRedirect,
-    InvalidIdentifier(String),
-    Unimplemented(TokenKind),
-    InvalidUtf8Sequence(Utf8Error),
-    Eof,
-}
-pub type ParseError = Annotate<ParseErrorKind>;
-
-impl ParseError {
-    pub fn unexpected_token(t: Token) -> Self {
-        Self::new(ParseErrorKind::UnexpectedToken(t.value), t.loc)
-    }
-
-    pub fn unknown_type(c: char, loc: Location) -> Self {
-        Self::new(ParseErrorKind::UnknownType(c), loc)
-    }
-
-    pub fn invalid_fd(s: &str, loc: Location) -> Self {
-        Self::new(ParseErrorKind::InvalidFd(s.to_string()), loc)
-    }
-
-    pub fn ambiguous_redirect(loc: Location) -> Self {
-        Self::new(ParseErrorKind::AmbiguousRedirect, loc)
-    }
-
-    pub fn invalid_identifier(s: String, loc: Location) -> Self {
-        Self::new(ParseErrorKind::InvalidIdentifier(s), loc)
-    }
-
-    pub fn unimplemented(t: Token) -> Self {
-        Self::new(ParseErrorKind::Unimplemented(t.value), t.loc)
-    }
-
-    pub fn invalid_utf8_sequence(err: Utf8Error, loc: Location) -> Self {
-        Self::new(ParseErrorKind::InvalidUtf8Sequence(err), loc)
-    }
-
-    pub fn eof(loc: Location) -> Self {
-        Self::new(ParseErrorKind::Eof, loc)
-    }
-}
-
-pub fn parse_command_line(s: &str) -> Result<CommandList, ParseError> {
+pub fn parse_command_line(s: &str) -> Result<CommandList> {
     let tokens = lex(s)?;
     let mut tokens = TokenReader::new(tokens);
     let mut result = vec![];

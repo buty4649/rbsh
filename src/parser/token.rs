@@ -1,7 +1,5 @@
-use super::{
-    word::WordKind,
-    {Annotate, Location, ParseError},
-};
+use super::word::WordKind;
+use crate::{error::ShellError, Annotate, Location};
 use std::iter::Iterator;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -266,25 +264,25 @@ impl TokenReader {
         }
     }
 
-    pub fn error_unexpected_token(&self) -> ParseError {
+    pub fn error_unexpected_token(&self) -> ShellError {
         if self.is_eof() {
             self.error_eof()
         } else {
             let token = self.tokens[self.pos].clone();
-            ParseError::unexpected_token(token)
+            ShellError::unexpected_token(token)
         }
     }
 
-    pub fn error_invalid_fd(&self, fd: &str) -> ParseError {
+    pub fn error_invalid_fd(&self, fd: &str) -> ShellError {
         if self.is_eof() {
             self.error_eof()
         } else {
-            ParseError::invalid_fd(fd, self.location())
+            ShellError::invalid_fd(fd, self.location())
         }
     }
 
-    pub fn error_eof(&self) -> ParseError {
-        ParseError::eof(self.location())
+    pub fn error_eof(&self) -> ShellError {
+        ShellError::eof(self.location())
     }
 }
 

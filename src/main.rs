@@ -10,7 +10,7 @@ fn main() -> Result<()> {
             Ok(line) => match parse_command_line(line.as_str()) {
                 Ok(cmds) => {
                     let mut e = Executor::new(cmds);
-                    e.execute()
+                    e.execute().unwrap();
                 }
                 Err(e) => eprintln!("Error: {:?}", e),
             },

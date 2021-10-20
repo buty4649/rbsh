@@ -1,14 +1,18 @@
 mod redirect;
 
-use crate::parser::{
-    redirect::RedirectList,
-    word::{Word, WordKind, WordList},
-    CommandList, UnitKind,
+use crate::{
+    error::ShellError,
+    parser::{
+        redirect::RedirectList,
+        word::{Word, WordKind, WordList},
+        CommandList, UnitKind,
+    },
+    ExitStatus, Location, Result,
 };
 use is_executable::IsExecutable;
 use nix::{
     errno::Errno,
-    sys::wait::waitpid,
+    sys::wait::{waitpid, WaitStatus},
     unistd::{execve, fork, ForkResult},
 };
 use redirect::ApplyRedirect;
@@ -111,21 +115,29 @@ impl Executor {
         Self { list }
     }
 
-    pub fn execute(&mut self) {
-        match self.list.next() {
+    pub fn execute(&mut self) -> Result<ExitStatus> {
+        let status = match self.list.next() {
             Some(c) => self.execute_command(c),
-            None => (),
+            None => Ok(ExitStatus::new(0)), // noop
+        };
+
+        match status {
+            Err(e) => {
+                println!("Error: {:?}", e);
+                Err(e)
+            }
+            Ok(s) => Ok(s),
         }
     }
 
-    fn execute_command(&self, cmd: UnitKind) {
+    fn execute_command(&self, cmd: UnitKind) -> Result<ExitStatus> {
         match cmd {
             UnitKind::SimpleCommand {
                 command,
                 redirect,
                 background,
             } => self.execute_simple_command(command, redirect, background),
-            _ => (),
+            _ => unimplemented![],
         }
     }
 
@@ -134,19 +146,14 @@ impl Executor {
         command: Vec<WordList>,
         redirect: RedirectList,
         _background: bool,
-    ) {
+    ) -> Result<ExitStatus> {
         match unsafe { fork() } {
-            Err(e) => eprintln!("fork faile: {}", e),
-            Ok(ForkResult::Parent { child }) => {
-                let status = match waitpid(child, None) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        eprintln!("waitpid failed: {}", e);
-                        return;
-                    }
-                };
-                println!("status: {:?}", status);
-            }
+            Err(e) => Err(ShellError::syscall_error("fork", e, Location::new(1, 1))),
+            Ok(ForkResult::Parent { child }) => match waitpid(child, None) {
+                Ok(WaitStatus::Exited(_, status)) => Ok(ExitStatus::new(status)),
+                Err(e) => Err(ShellError::syscall_error("waitpid", e, Location::new(1, 1))),
+                _ => unimplemented![],
+            },
             Ok(ForkResult::Child) => {
                 let (temp_env, cmds) = split_env_and_commands(command);
                 if cmds.is_empty() && temp_env.is_present() {

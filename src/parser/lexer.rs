@@ -1,10 +1,10 @@
 use super::{
     token::{Token, TokenKind},
     word::WordKind,
-    {Location, ParseError},
 };
+use crate::{error::ShellError, Location, Result};
 use std::str::{from_utf8, Utf8Error};
-type LexResult = Result<Token, ParseError>;
+type LexResult = Result<Token>;
 
 #[derive(Debug, Clone)]
 struct Lexer {
@@ -39,7 +39,7 @@ impl Lexer {
         }
     }
 
-    fn lex(&mut self) -> Result<Vec<Token>, ParseError> {
+    fn lex(&mut self) -> Result<Vec<Token>> {
         if self.is_eof() {
             return Err(self.error_eof());
         }
@@ -328,7 +328,7 @@ impl Lexer {
         &mut self,
         allow_eof: bool,
         terminator: impl Fn(u8) -> bool,
-    ) -> Result<String, ParseError> {
+    ) -> Result<String> {
         let mut result = vec![];
         loop {
             match self.peek() {
@@ -348,14 +348,14 @@ impl Lexer {
                     result.push(c);
                 }
                 None if allow_eof => break,
-                None => return Err(ParseError::eof(self.location())),
+                None => return Err(ShellError::eof(self.location())),
             }
         }
         let result = from_utf8(&*result).map_err(|e| self.error_invalid_utf8_sequence(e))?;
         Ok(result.to_string())
     }
 
-    fn lex_double_quote(&mut self) -> Result<Vec<Token>, ParseError> {
+    fn lex_double_quote(&mut self) -> Result<Vec<Token>> {
         let mut loc = self.location();
         self.next(); // '"'
         let mut result = vec![];
@@ -509,16 +509,16 @@ impl Lexer {
         self.input.is_empty() || self.pos >= self.input.len()
     }
 
-    fn error_invalid_utf8_sequence(&self, err: Utf8Error) -> ParseError {
-        ParseError::invalid_utf8_sequence(err, self.location())
+    fn error_invalid_utf8_sequence(&self, err: Utf8Error) -> ShellError {
+        ShellError::invalid_utf8_sequence(err, self.location())
     }
 
-    fn error_eof(&self) -> ParseError {
-        ParseError::eof(self.location())
+    fn error_eof(&self) -> ShellError {
+        ShellError::eof(self.location())
     }
 }
 
-pub fn lex(input: &str) -> Result<Vec<Token>, ParseError> {
+pub fn lex(input: &str) -> Result<Vec<Token>> {
     Lexer::new(input).lex()
 }
 

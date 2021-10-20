@@ -1,8 +1,9 @@
 use super::{
     parse_wordlist,
     token::{TokenKind, TokenReader},
-    Annotate, Location, ParseError, WordList,
+    WordList,
 };
+use crate::{error::ShellError, Annotate, Location, Result};
 use std::os::unix::io::RawFd;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -54,7 +55,7 @@ impl Redirect {
     }
 }
 
-pub fn parse_redirect(tokens: &mut TokenReader) -> Result<Option<Redirect>, ParseError> {
+pub fn parse_redirect(tokens: &mut TokenReader) -> Result<Option<Redirect>> {
     let loc = tokens.location();
 
     // parse destination fd
@@ -83,11 +84,11 @@ pub fn parse_redirect(tokens: &mut TokenReader) -> Result<Option<Redirect>, Pars
         Some(TokenKind::ReadWrite) => parse_redirect_read_write(tokens, fd.unwrap_or(0)),
         Some(TokenKind::HereDocument) => {
             // <<: Here Document
-            Err(ParseError::unimplemented(tokens.next().unwrap()))
+            Err(ShellError::unimplemented(tokens.next().unwrap()))
         }
         Some(TokenKind::HereString) => {
             // <<: Here String
-            Err(ParseError::unimplemented(tokens.next().unwrap()))
+            Err(ShellError::unimplemented(tokens.next().unwrap()))
         }
         _ => return Ok(None),
     }?;
@@ -99,7 +100,7 @@ pub fn parse_redirect(tokens: &mut TokenReader) -> Result<Option<Redirect>, Pars
 fn parse_redirect_read_from(
     tokens: &mut TokenReader,
     fd: FdSize,
-) -> Result<RedirectKind, ParseError> {
+) -> Result<RedirectKind> {
     tokens.next();
     tokens.skip_space();
     match tokens.peek_token() {
@@ -115,7 +116,7 @@ fn parse_redirect_write_to(
     tokens: &mut TokenReader,
     fd: FdSize,
     force: bool,
-) -> Result<RedirectKind, ParseError> {
+) -> Result<RedirectKind> {
     tokens.next();
     tokens.skip_space();
     match tokens.peek_token() {
@@ -127,7 +128,7 @@ fn parse_redirect_write_to(
     }
 }
 
-fn parse_redirect_write_both(tokens: &mut TokenReader) -> Result<RedirectKind, ParseError> {
+fn parse_redirect_write_both(tokens: &mut TokenReader) -> Result<RedirectKind> {
     tokens.next();
     tokens.skip_space();
     match tokens.peek_token() {
@@ -140,7 +141,7 @@ fn parse_redirect_write_both(tokens: &mut TokenReader) -> Result<RedirectKind, P
     }
 }
 
-fn parse_redirect_copy(tokens: &mut TokenReader, dest: FdSize) -> Result<RedirectKind, ParseError> {
+fn parse_redirect_copy(tokens: &mut TokenReader, dest: FdSize) -> Result<RedirectKind> {
     tokens.next();
     match tokens.peek_token() {
         Some(TokenKind::Number(src)) => {
@@ -159,7 +160,7 @@ fn parse_redirect_copy(tokens: &mut TokenReader, dest: FdSize) -> Result<Redirec
     }
 }
 
-fn parse_redirect_append(tokens: &mut TokenReader, fd: FdSize) -> Result<RedirectKind, ParseError> {
+fn parse_redirect_append(tokens: &mut TokenReader, fd: FdSize) -> Result<RedirectKind> {
     tokens.next();
     tokens.skip_space();
     match tokens.peek_token() {
@@ -171,7 +172,7 @@ fn parse_redirect_append(tokens: &mut TokenReader, fd: FdSize) -> Result<Redirec
     }
 }
 
-fn parse_redirect_append_both(tokens: &mut TokenReader) -> Result<RedirectKind, ParseError> {
+fn parse_redirect_append_both(tokens: &mut TokenReader) -> Result<RedirectKind> {
     tokens.next();
     tokens.skip_space();
     match tokens.peek_token() {
@@ -183,7 +184,7 @@ fn parse_redirect_append_both(tokens: &mut TokenReader) -> Result<RedirectKind, 
     }
 }
 
-fn parse_redirect_close(tokens: &mut TokenReader, fd: FdSize) -> Result<RedirectKind, ParseError> {
+fn parse_redirect_close(tokens: &mut TokenReader, fd: FdSize) -> Result<RedirectKind> {
     tokens.next();
     Ok(RedirectKind::Close(fd))
 }
@@ -191,7 +192,7 @@ fn parse_redirect_close(tokens: &mut TokenReader, fd: FdSize) -> Result<Redirect
 fn parse_redirect_read_write(
     tokens: &mut TokenReader,
     fd: FdSize,
-) -> Result<RedirectKind, ParseError> {
+) -> Result<RedirectKind> {
     tokens.next();
     tokens.skip_space();
     match tokens.peek_token() {

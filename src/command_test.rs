@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::parser::Location;
+    use crate::Location;
 
     macro_rules! word {
         ($e: expr) => {
