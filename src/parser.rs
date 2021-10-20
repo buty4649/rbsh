@@ -9,7 +9,6 @@ use super::Result;
 use command::{parse_command, ConnecterKind};
 use lexer::lex;
 use redirect::RedirectList;
-use std::iter::Iterator;
 use token::{Token, TokenKind, TokenReader};
 use word::{parse_wordlist, Word, WordList};
 
@@ -28,19 +27,9 @@ impl CommandList {
             current: 0,
         }
     }
-}
 
-impl Iterator for CommandList {
-    type Item = UnitKind;
-
-    fn next(&mut self) -> Option<UnitKind> {
-        if self.current >= self.list.len() {
-            None
-        } else {
-            let result = self.list[self.current].clone();
-            self.current += 1;
-            Some(result)
-        }
+    pub fn to_vec(&self) -> Vec<UnitKind> {
+        self.list.clone()
     }
 }
 

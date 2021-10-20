@@ -48,7 +48,8 @@ impl WordParser for WordList {
 }
 
 pub struct Executor {
-    list: CommandList,
+    list: Vec<UnitKind>,
+    pos: usize,
 }
 
 pub trait IsPresent {
@@ -111,23 +112,38 @@ impl IsVarName for WordList {
 }
 
 impl Executor {
-    pub fn new(list: CommandList) -> Self {
-        Self { list }
+    pub fn new(list: Vec<UnitKind>) -> Self {
+        Self { list, pos: 0 }
+    }
+
+    pub fn new_from(list: CommandList) -> Self {
+        Self::new(list.to_vec())
+    }
+
+    fn next(&mut self) -> Option<UnitKind> {
+        if self.pos >= self.list.len() {
+            None
+        } else {
+            self.pos += 1;
+            Some(self.list[self.pos - 1].clone())
+        }
     }
 
     pub fn execute(&mut self) -> Result<ExitStatus> {
-        let status = match self.list.next() {
-            Some(c) => self.execute_command(c),
-            None => Ok(ExitStatus::new(0)), // noop
-        };
-
-        match status {
-            Err(e) => {
-                println!("Error: {:?}", e);
-                Err(e)
-            }
-            Ok(s) => Ok(s),
+        let mut status = ExitStatus::new(0); // noop
+        loop {
+            match self.next() {
+                Some(c) => match self.execute_command(c) {
+                    Ok(s) => status = s,
+                    Err(e) => {
+                        println!("Error: {:?}", e);
+                        return Err(e);
+                    }
+                },
+                None => break, // noop
+            };
         }
+        Ok(status)
     }
 
     fn execute_command(&self, cmd: UnitKind) -> Result<ExitStatus> {
@@ -137,6 +153,35 @@ impl Executor {
                 redirect,
                 background,
             } => self.execute_simple_command(command, redirect, background),
+            UnitKind::If {
+                condition,
+                true_case,
+                false_case,
+                redirect,
+                background,
+            } => self.execute_if_command(
+                condition, true_case, false_case, redirect, background, false,
+            ),
+            UnitKind::Unless {
+                condition,
+                false_case,
+                true_case,
+                redirect,
+                background,
+            } => self
+                .execute_if_command(condition, false_case, true_case, redirect, background, true),
+            UnitKind::While {
+                condition,
+                command,
+                redirect,
+                background,
+            } => self.execute_while_command(condition, command, redirect, background, false),
+            UnitKind::Until {
+                condition,
+                command,
+                redirect,
+                background,
+            } => self.execute_while_command(condition, command, redirect, background, true),
             _ => unimplemented![],
         }
     }
@@ -200,6 +245,43 @@ impl Executor {
                 exit(1)
             }
         }
+    }
+
+    fn execute_if_command(
+        &self,
+        condition: Box<UnitKind>,
+        true_case: Vec<UnitKind>,
+        false_case: Option<Vec<UnitKind>>,
+        _redirect: RedirectList,
+        _background: bool,
+        inverse: bool,
+    ) -> Result<ExitStatus> {
+        match self.execute_command(*condition)? {
+            status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
+                Executor::new(true_case).execute()
+            }
+            status if false_case.is_none() => Ok(status),
+            _ => Executor::new(false_case.unwrap()).execute(),
+        }
+    }
+
+    fn execute_while_command(
+        &self,
+        condition: Box<UnitKind>,
+        command: Vec<UnitKind>,
+        _redirect: RedirectList,
+        _background: bool,
+        inverse: bool,
+    ) -> Result<ExitStatus> {
+        loop {
+            match self.execute_command(*condition.clone())? {
+                status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
+                    Executor::new(command.clone()).execute()?;
+                }
+                _ => break,
+            }
+        }
+        Ok(ExitStatus::new(0))
     }
 }
 

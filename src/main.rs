@@ -9,7 +9,7 @@ fn main() -> Result<()> {
         match readline {
             Ok(line) => match parse_command_line(line.as_str()) {
                 Ok(cmds) => {
-                    let mut e = Executor::new(cmds);
+                    let mut e = Executor::new_from(cmds);
                     e.execute().unwrap();
                 }
                 Err(e) => eprintln!("Error: {:?}", e),
