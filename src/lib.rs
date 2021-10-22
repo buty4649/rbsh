@@ -31,18 +31,22 @@ macro_rules! loc {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Annotate<T> {
+pub struct Annotate<T: Clone> {
     value: T,
     loc: Location,
 }
 
-impl<T> Annotate<T> {
+impl<T: Clone> Annotate<T> {
     pub fn new(value: T, loc: Location) -> Self {
         Self { value, loc }
     }
 
     pub fn take(self) -> (T, Location) {
         (self.value, self.loc)
+    }
+
+    pub fn value(&self) -> T {
+        self.value.clone()
     }
 
     pub fn location(&self) -> Location {
@@ -66,10 +70,6 @@ impl ExitStatus {
 
     fn is_error(self) -> bool {
         !self.is_success()
-    }
-
-    fn code(self) -> i32 {
-        self.code
     }
 }
 

@@ -2,7 +2,7 @@ mod redirect;
 mod syscall;
 
 use crate::{
-    error::ShellError,
+    error::{ShellError, ShellErrorKind},
     parser::{
         redirect::RedirectList,
         word::{Word, WordKind, WordList},
@@ -234,7 +234,16 @@ impl Executor {
             .map(|(k, v)| format!("{}={}", k, v).to_cstring())
             .collect::<Vec<_>>();
 
-        redirect.apply();
+        if let Err(e) = redirect.apply() {
+            match e.value() {
+                ShellErrorKind::SysCallError(f, e) => {
+                    eprintln!("{}: {}", f, e.desc());
+                    exit(1)
+                }
+                _ => unimplemented![],
+            }
+        }
+
         match execve(&cmdpath, &cmds, &env) {
             Ok(_) => unreachable![],
             Err(Errno::ENOENT) => {

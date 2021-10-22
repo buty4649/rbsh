@@ -9,7 +9,7 @@ pub enum ShellErrorKind {
     InvalidFd(String),
     InvalidIdentifier(String),
     InvalidUtf8Sequence(Utf8Error),
-    SyscallError(String, nix::Error),
+    SysCallError(String, nix::Error),
     UnexpectedToken(TokenKind),
     Unimplemented(TokenKind),
 }
@@ -37,7 +37,7 @@ impl ShellError {
     }
 
     pub fn syscall_error(function: &str, e: nix::Error, loc: Location) -> Self {
-        Self::new(ShellErrorKind::SyscallError(function.to_string(), e), loc)
+        Self::new(ShellErrorKind::SysCallError(function.to_string(), e), loc)
     }
 
     pub fn unexpected_token(t: Token) -> Self {
