@@ -1,6 +1,9 @@
 pub mod exec;
 pub mod error;
 pub mod parser;
+pub mod config;
+
+static APP_NAME: &str = "reddish";
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Location {

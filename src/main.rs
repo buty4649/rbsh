@@ -1,14 +1,21 @@
 use anyhow::Result;
-use reddish_shell::{exec::Executor, parser::parse_command_line};
+use reddish::{config::Config, exec::Executor, parser::parse_command_line};
 use rustyline::{error::ReadlineError, Editor};
 
 fn main() -> Result<()> {
+    let config = Config::new();
+
     let mut rl = Editor::<()>::new();
+    rl.load_history(&*config.history_file()).unwrap_or_default();
+
     loop {
-        let readline = rl.readline(">> ");
+        let readline = rl.readline("reddish> ");
         match readline {
             Ok(line) => match parse_command_line(line.as_str()) {
                 Ok(cmds) => {
+                    if !cmds.ignore_history() {
+                        rl.add_history_entry(line.as_str());
+                    }
                     let mut e = Executor::from(cmds);
                     e.execute().unwrap();
                 }
@@ -28,5 +35,7 @@ fn main() -> Result<()> {
             }
         }
     }
+
+    rl.save_history(&*config.history_file())?;
     Ok(())
 }

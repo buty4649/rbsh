@@ -31,6 +31,10 @@ impl CommandList {
     pub fn to_vec(&self) -> Vec<UnitKind> {
         self.list.clone()
     }
+
+    pub fn ignore_history(&self) -> bool {
+        self.ignore_history
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
