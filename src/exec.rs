@@ -192,6 +192,13 @@ impl<'a> Executor<'a> {
                 redirect,
                 background,
             } => self.execute_while_command(condition, command, redirect, background, true),
+            UnitKind::For {
+                identifier,
+                list,
+                command,
+                redirect,
+                background,
+            } => self.execute_for_command(identifier, list, command, redirect, background),
             _ => unimplemented![],
         }
     }
@@ -206,7 +213,7 @@ impl<'a> Executor<'a> {
         if cmds.is_empty() && temp_env.is_present() {
             temp_env
                 .iter()
-                .for_each(|(k, v)| self.context.set_var(k.to_string(), v.to_string()));
+                .for_each(|(k, v)| self.context.set_var(k, v));
             Ok(ExitStatus::new(0))
         } else if cmds.is_present() {
             match unsafe { fork() } {
@@ -305,6 +312,46 @@ impl<'a> Executor<'a> {
                 _ => break,
             }
         }
+        Ok(ExitStatus::new(0))
+    }
+
+    fn execute_for_command(
+        &self,
+        identifier: Word,
+        list: Option<Vec<WordList>>,
+        command: Vec<UnitKind>,
+        _redirect: RedirectList,
+        _background: bool,
+    ) -> Result<ExitStatus> {
+        let identifier = match identifier.take() {
+            (string, kind, _) if kind == WordKind::Normal => string.to_string(),
+            (string, kind, loc) => {
+                let invalid_identifier = match kind {
+                    WordKind::Normal => unreachable![],
+                    WordKind::Quote => format!("\"{}\"", string),
+                    WordKind::Literal => format!("'{}'", string),
+                    WordKind::Command => format!("`{}`", string),
+                    WordKind::Variable => format!("${}", string),
+                    WordKind::Parameter => format!("${{{}}}", string),
+                };
+                return Err(ShellError::invalid_identifier(invalid_identifier, loc));
+            }
+        };
+
+        let list = match list {
+            None => vec![], // Normally, it returns $0.
+            Some(list) => list
+                .into_iter()
+                .map(|w| w.to_string(self.context))
+                .collect::<Vec<_>>(),
+        };
+
+        for word in list.iter() {
+            let context = self.context.clone();
+            context.set_var(&*identifier, word);
+            Executor::new(command.clone(), &context).execute()?;
+        }
+
         Ok(ExitStatus::new(0))
     }
 }

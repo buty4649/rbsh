@@ -18,11 +18,13 @@ impl Context {
         env::vars().collect::<HashMap<_, _>>()
     }
 
-    pub fn set_var(&self, name: String, value: String) {
+    pub fn set_var(&self, name: &str, value: &str) {
         match env::var(&name) {
             Ok(_) => env::set_var(name, value),
             Err(_) => {
-                self.local_vars.borrow_mut().insert(name, value);
+                self.local_vars
+                    .borrow_mut()
+                    .insert(name.to_string(), value.to_string());
             }
         };
     }

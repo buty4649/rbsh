@@ -742,6 +742,7 @@ end";
             ]]
         );
 
+        /*
         assert_parse!(
             parse_for_statement,
             "for \"foo\"; bar; end",
@@ -786,6 +787,7 @@ end";
                 loc!(5, 1)
             ),)
         );
+        */
     }
 
     #[test]

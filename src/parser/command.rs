@@ -1,7 +1,7 @@
 use super::{
     redirect::parse_redirect,
     token::TokenReader,
-    word::{parse_wordlist, Word, WordKind},
+    word::{parse_wordlist, Word},
     {TokenKind, UnitKind},
 };
 use crate::{error::ShellError, Result};
@@ -74,7 +74,7 @@ pub fn parse_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
     }
 }
 
-pub fn parse_connecter(tokens: &mut TokenReader) -> Result<Option<UnitKind>,> {
+pub fn parse_connecter(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
     match tokens.peek_token() {
         None => Ok(None), // EOF
         Some(TokenKind::Space) => {
@@ -323,9 +323,7 @@ fn parse_else_clause(tokens: &mut TokenReader) -> Result<Option<Vec<UnitKind>>> 
     }
 }
 
-fn parse_while_or_until_statement(
-    tokens: &mut TokenReader,
-) -> Result<Option<UnitKind>> {
+fn parse_while_or_until_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
     let token = tokens.next().unwrap().value; // 'while' or 'until'
 
     // need space
@@ -395,20 +393,7 @@ fn parse_for_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
         Some(TokenKind::Word(s, kind)) => {
             let loc = tokens.location();
             tokens.next();
-            match kind {
-                WordKind::Normal => Word::new(s, kind, loc),
-                _ => {
-                    let invalid_identifier = match kind {
-                        WordKind::Normal => unreachable![],
-                        WordKind::Quote => format!("\"{}\"", s),
-                        WordKind::Literal => format!("'{}'", s),
-                        WordKind::Command => format!("`{}`", s),
-                        WordKind::Variable => format!("${}", s),
-                        WordKind::Parameter => format!("${{{}}}", s),
-                    };
-                    return Err(ShellError::invalid_identifier(invalid_identifier, loc));
-                }
-            }
+            Word::new(s, kind, loc)
         }
         _ => return Err(tokens.error_unexpected_token()),
     };
