@@ -6,7 +6,7 @@ mod command;
 mod lexer;
 
 use super::Result;
-use command::{parse_command, ConnecterKind};
+pub use command::{parse_command, ConnecterKind};
 use lexer::lex;
 use redirect::RedirectList;
 use token::{Token, TokenKind, TokenReader};

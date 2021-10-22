@@ -1,5 +1,5 @@
 use anyhow::Result;
-use reddish::{config::Config, context::Context, exec::Executor, parser::parse_command_line};
+use reddish::{config::Config, context::Context, exec::ShellExecute, parser::parse_command_line};
 use rustyline::{error::ReadlineError, Editor};
 
 fn main() -> Result<()> {
@@ -17,8 +17,7 @@ fn main() -> Result<()> {
                     if !cmds.ignore_history() {
                         rl.add_history_entry(line.as_str());
                     }
-                    let mut e = Executor::new_from(cmds, &context);
-                    e.execute().unwrap();
+                    cmds.execute(&context).unwrap();
                 }
                 Err(e) => eprintln!("Error: {:?}", e),
             },

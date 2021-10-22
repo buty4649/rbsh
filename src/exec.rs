@@ -7,7 +7,7 @@ use crate::{
     parser::{
         redirect::RedirectList,
         word::{Word, WordKind, WordList},
-        CommandList, UnitKind,
+        CommandList, ConnecterKind, UnitKind,
     },
     ExitStatus, Location, Result,
 };
@@ -117,6 +117,22 @@ impl IsVarName for WordList {
     }
 }
 
+pub trait ShellExecute {
+    fn execute(&self, context: &Context) -> Result<ExitStatus>;
+}
+
+impl ShellExecute for Vec<UnitKind> {
+    fn execute(&self, context: &Context) -> Result<ExitStatus> {
+        Executor::new(self.to_vec(), context).execute()
+    }
+}
+
+impl ShellExecute for CommandList {
+    fn execute(&self, context: &Context) -> Result<ExitStatus> {
+        self.to_vec().execute(context)
+    }
+}
+
 impl<'a> Executor<'a> {
     pub fn new(list: Vec<UnitKind>, context: &'a Context) -> Self {
         Self {
@@ -124,10 +140,6 @@ impl<'a> Executor<'a> {
             pos: 0,
             context,
         }
-    }
-
-    pub fn new_from(list: CommandList, context: &'a Context) -> Self {
-        Self::new(list.to_vec(), context)
     }
 
     fn next(&mut self) -> Option<UnitKind> {
@@ -163,6 +175,12 @@ impl<'a> Executor<'a> {
                 redirect,
                 background,
             } => self.execute_simple_command(command, redirect, background),
+            UnitKind::Connecter {
+                left,
+                right,
+                kind,
+                background,
+            } => self.execute_connecter(left, right, kind, background),
             UnitKind::If {
                 condition,
                 true_case,
@@ -199,7 +217,6 @@ impl<'a> Executor<'a> {
                 redirect,
                 background,
             } => self.execute_for_command(identifier, list, command, redirect, background),
-            _ => unimplemented![],
         }
     }
 
@@ -278,6 +295,27 @@ impl<'a> Executor<'a> {
         }
     }
 
+    fn execute_connecter(
+        &self,
+        left: Box<UnitKind>,
+        right: Box<UnitKind>,
+        kind: ConnecterKind,
+        _background: bool,
+    ) -> Result<ExitStatus> {
+        match kind {
+            ConnecterKind::And => match vec![*left].execute(self.context)? {
+                st if st.is_error() => Ok(st),
+                _ => vec![*right].execute(self.context),
+            },
+            ConnecterKind::Or => match vec![*left].execute(self.context)? {
+                st if st.is_success() => Ok(st),
+                _ => vec![*right].execute(self.context),
+            },
+            ConnecterKind::Pipe => unimplemented![],
+            ConnecterKind::PipeBoth => unimplemented![],
+        }
+    }
+
     fn execute_if_command(
         &self,
         condition: Box<UnitKind>,
@@ -289,10 +327,10 @@ impl<'a> Executor<'a> {
     ) -> Result<ExitStatus> {
         match self.execute_command(*condition)? {
             status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
-                Executor::new(true_case, self.context).execute()
+                true_case.execute(self.context)
             }
             status if false_case.is_none() => Ok(status),
-            _ => Executor::new(false_case.unwrap(), self.context).execute(),
+            _ => false_case.unwrap().execute(self.context),
         }
     }
 
@@ -307,7 +345,7 @@ impl<'a> Executor<'a> {
         loop {
             match self.execute_command(*condition.clone())? {
                 status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
-                    Executor::new(command.clone(), self.context).execute()?;
+                    command.execute(self.context)?;
                 }
                 _ => break,
             }
@@ -349,7 +387,7 @@ impl<'a> Executor<'a> {
         for word in list.iter() {
             let context = self.context.clone();
             context.set_var(&*identifier, word);
-            Executor::new(command.clone(), &context).execute()?;
+            command.execute(&context)?;
         }
 
         Ok(ExitStatus::new(0))
