@@ -2,6 +2,7 @@ mod redirect;
 mod syscall;
 
 use crate::{
+    context::Context,
     error::{ShellError, ShellErrorKind},
     parser::{
         redirect::RedirectList,
@@ -24,33 +25,37 @@ use std::path::PathBuf;
 use std::process::exit;
 
 pub trait WordParser {
-    fn to_string(self) -> String;
+    fn to_string<'a>(self, context: &Context) -> String;
 }
 
 impl WordParser for Word {
-    fn to_string(self) -> String {
+    fn to_string(self, context: &Context) -> String {
         let (s, k, _) = self.take();
         match k {
             WordKind::Normal | WordKind::Quote | WordKind::Literal => s,
-            WordKind::Command | WordKind::Variable | WordKind::Parameter => "".to_string(),
+            WordKind::Command => "".to_string(), // unimplemented
+            WordKind::Variable | WordKind::Parameter => {
+                context.get_var(s).unwrap_or("".to_string())
+            }
         }
     }
 }
 
 impl WordParser for WordList {
-    fn to_string(self) -> String {
+    fn to_string(self, context: &Context) -> String {
         self.to_vec()
             .into_iter()
             .fold(String::new(), |mut result, word| {
-                result.push_str(&*word.to_string());
+                result.push_str(&*word.to_string(context));
                 result
             })
     }
 }
 
-pub struct Executor {
+pub struct Executor<'a> {
     list: Vec<UnitKind>,
     pos: usize,
+    context: &'a Context,
 }
 
 pub trait IsPresent {
@@ -112,9 +117,17 @@ impl IsVarName for WordList {
     }
 }
 
-impl Executor {
-    fn new(list: Vec<UnitKind>) -> Self {
-        Self { list, pos: 0 }
+impl<'a> Executor<'a> {
+    pub fn new(list: Vec<UnitKind>, context: &'a Context) -> Self {
+        Self {
+            list,
+            pos: 0,
+            context,
+        }
+    }
+
+    pub fn new_from(list: CommandList, context: &'a Context) -> Self {
+        Self::new(list.to_vec(), context)
     }
 
     fn next(&mut self) -> Option<UnitKind> {
@@ -189,24 +202,29 @@ impl Executor {
         redirect: RedirectList,
         _background: bool,
     ) -> Result<ExitStatus> {
-        match unsafe { fork() } {
-            Err(e) => Err(ShellError::syscall_error("fork", e, Location::new(1, 1))),
-            Ok(ForkResult::Parent { child }) => match waitpid(child, None) {
-                Ok(WaitStatus::Exited(_, status)) => Ok(ExitStatus::new(status)),
-                Err(e) => Err(ShellError::syscall_error("waitpid", e, Location::new(1, 1))),
-                _ => unimplemented![],
-            },
-            Ok(ForkResult::Child) => {
-                let (temp_env, cmds) = split_env_and_commands(command);
-                if cmds.is_empty() && temp_env.is_present() {
-                    // Env set
-                } else if cmds.is_present() {
+        let (temp_env, cmds) = split_env_and_commands(command, self.context);
+        if cmds.is_empty() && temp_env.is_present() {
+            temp_env
+                .iter()
+                .for_each(|(k, v)| self.context.set_var(k.to_string(), v.to_string()));
+            Ok(ExitStatus::new(0))
+        } else if cmds.is_present() {
+            match unsafe { fork() } {
+                Err(e) => Err(ShellError::syscall_error("fork", e, Location::new(1, 1))),
+                Ok(ForkResult::Parent { child }) => match waitpid(child, None) {
+                    Ok(WaitStatus::Exited(_, status)) => Ok(ExitStatus::new(status)),
+                    Err(e) => Err(ShellError::syscall_error("waitpid", e, Location::new(1, 1))),
+                    _ => unimplemented![],
+                },
+                Ok(ForkResult::Child) => {
                     let cmdpath = cmds.first().unwrap().to_string();
                     self.execute_external_command(&*cmdpath, cmds, temp_env, redirect);
+                    unreachable![]
                 }
-                // noop
-                exit(0)
             }
+        } else {
+            // noop
+            Ok(ExitStatus::new(0))
         }
     }
 
@@ -230,7 +248,7 @@ impl Executor {
             .map(|(k, v)| format!("{}={}", k, v).to_cstring())
             .collect::<Vec<_>>();
 
-        if let Err(e) = redirect.apply() {
+        if let Err(e) = redirect.apply(self.context) {
             match e.value() {
                 ShellErrorKind::SysCallError(f, e) => {
                     eprintln!("{}: {}", f, e.desc());
@@ -264,10 +282,10 @@ impl Executor {
     ) -> Result<ExitStatus> {
         match self.execute_command(*condition)? {
             status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
-                Executor::new(true_case).execute()
+                Executor::new(true_case, self.context).execute()
             }
             status if false_case.is_none() => Ok(status),
-            _ => Executor::new(false_case.unwrap()).execute(),
+            _ => Executor::new(false_case.unwrap(), self.context).execute(),
         }
     }
 
@@ -282,7 +300,7 @@ impl Executor {
         loop {
             match self.execute_command(*condition.clone())? {
                 status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
-                    Executor::new(command.clone()).execute()?;
+                    Executor::new(command.clone(), self.context).execute()?;
                 }
                 _ => break,
             }
@@ -291,13 +309,10 @@ impl Executor {
     }
 }
 
-impl From<CommandList> for Executor {
-    fn from(list: CommandList) -> Self {
-        Self::new(list.to_vec())
-    }
-}
-
-fn split_env_and_commands(list: Vec<WordList>) -> (HashMap<String, String>, Vec<String>) {
+fn split_env_and_commands(
+    list: Vec<WordList>,
+    context: &Context,
+) -> (HashMap<String, String>, Vec<String>) {
     let (env, cmds) = {
         let mut env = vec![];
         let mut cmds = vec![];
@@ -327,7 +342,7 @@ fn split_env_and_commands(list: Vec<WordList>) -> (HashMap<String, String>, Vec<
         .into_iter()
         .map(|wordlist| {
             wordlist
-                .to_string()
+                .to_string(context)
                 .split_once("=")
                 .map(|(k, v)| (k.to_string(), v.to_string()))
                 .unwrap()
@@ -335,7 +350,7 @@ fn split_env_and_commands(list: Vec<WordList>) -> (HashMap<String, String>, Vec<
         .collect::<HashMap<_, _>>();
     let cmds = cmds
         .into_iter()
-        .map(|wordlist| wordlist.to_string())
+        .map(|wordlist| wordlist.to_string(context))
         .collect::<Vec<_>>();
     (env, cmds)
 }

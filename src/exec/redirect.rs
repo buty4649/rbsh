@@ -1,6 +1,7 @@
 use super::syscall::{SysCallWrapper, Wrapper};
 use super::WordParser;
 use crate::{
+    context::Context,
     error::ShellError,
     parser::{
         redirect::{FdSize, RedirectKind, RedirectList},
@@ -11,23 +12,24 @@ use crate::{
 use nix::{fcntl::OFlag, sys::stat::Mode};
 
 pub trait ApplyRedirect {
-    fn apply(self) -> Result<()>;
+    fn apply(self, context: &Context) -> Result<()>;
 }
 
 impl ApplyRedirect for RedirectList {
-    fn apply(self) -> Result<()> {
-        RedirectApplier::new(Wrapper::new()).exec(self)
+    fn apply(self, context: &Context) -> Result<()> {
+        RedirectApplier::new(Wrapper::new(), context).exec(self)
     }
 }
 
-struct RedirectApplier {
+struct RedirectApplier<'a> {
     wrapper: Wrapper,
+    context: &'a Context,
 }
 type SysCallResult = super::syscall::SysCallResult<()>;
 
-impl RedirectApplier {
-    fn new(wrapper: Wrapper) -> Self {
-        Self { wrapper }
+impl<'a> RedirectApplier<'a> {
+    fn new(wrapper: Wrapper, context: &'a Context) -> Self {
+        Self { wrapper, context }
     }
 
     fn exec(self, list: RedirectList) -> Result<()> {
@@ -57,7 +59,7 @@ impl RedirectApplier {
     }
 
     fn read_from(&self, fd: FdSize, file: WordList) -> SysCallResult {
-        let file = file.to_string();
+        let file = file.to_string(self.context);
         let flag = OFlag::O_RDONLY;
         let mode = Mode::from_bits(0o666).unwrap();
         let new_fd = self.wrapper.open(&*file, flag, mode)?;
@@ -69,7 +71,7 @@ impl RedirectApplier {
     }
 
     fn write_to(&self, fd: FdSize, file: WordList) -> SysCallResult {
-        let file = file.to_string();
+        let file = file.to_string(self.context);
         let flag = OFlag::O_WRONLY | OFlag::O_CREAT | OFlag::O_TRUNC;
         let mode = Mode::from_bits(0o666).unwrap();
         let new_fd = self.wrapper.open(&*file, flag, mode)?;
@@ -86,7 +88,7 @@ impl RedirectApplier {
     }
 
     fn append(&self, fd: FdSize, file: WordList) -> SysCallResult {
-        let file = file.to_string();
+        let file = file.to_string(self.context);
         let flag = OFlag::O_WRONLY | OFlag::O_CREAT | OFlag::O_APPEND;
         let mode = Mode::from_bits(0o666).unwrap();
         let new_fd = self.wrapper.open(&*file, flag, mode)?;
@@ -103,7 +105,7 @@ impl RedirectApplier {
     }
 
     fn read_write(&self, fd: FdSize, file: WordList) -> SysCallResult {
-        let file = file.to_string();
+        let file = file.to_string(self.context);
         let flag = OFlag::O_RDWR | OFlag::O_CREAT;
         let mode = Mode::from_bits(0o666).unwrap();
         let new_fd = self.wrapper.open(&*file, flag, mode)?;

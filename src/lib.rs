@@ -1,7 +1,8 @@
-pub mod exec;
-pub mod error;
-pub mod parser;
 pub mod config;
+pub mod context;
+pub mod error;
+pub mod exec;
+pub mod parser;
 
 static APP_NAME: &str = "reddish";
 

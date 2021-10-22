@@ -27,9 +27,10 @@ mod test {
 
     #[test]
     fn test_split_env_and_commands() {
+        let ctx = Context::new();
         assert_eq!(
             (HashMap::new(), vec!["foo".to_string()]),
-            split_env_and_commands(vec![wordlist![word!("foo")]])
+            split_env_and_commands(vec![wordlist![word!("foo")]], &ctx)
         );
 
         assert_eq!(
@@ -37,11 +38,14 @@ mod test {
                 hashmap![("foo", "bar"), ("baz", "foo")],
                 vec!["bar".to_string()]
             ),
-            split_env_and_commands(vec![
-                wordlist![word!("foo=bar")],
-                wordlist![word!("baz=foo")],
-                wordlist![word!("bar")]
-            ])
+            split_env_and_commands(
+                vec![
+                    wordlist![word!("foo=bar")],
+                    wordlist![word!("baz=foo")],
+                    wordlist![word!("bar")]
+                ],
+                &ctx
+            )
         );
 
         assert_eq!(
@@ -49,11 +53,14 @@ mod test {
                 hashmap![("foo", "bar")],
                 vec!["baz".to_string(), "hoge=fuga".to_string()]
             ),
-            split_env_and_commands(vec![
-                wordlist![word!("foo=bar")],
-                wordlist![word!("baz")],
-                wordlist![word!("hoge=fuga")]
-            ])
+            split_env_and_commands(
+                vec![
+                    wordlist![word!("foo=bar")],
+                    wordlist![word!("baz")],
+                    wordlist![word!("hoge=fuga")]
+                ],
+                &ctx
+            )
         );
     }
 }

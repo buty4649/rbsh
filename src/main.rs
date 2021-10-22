@@ -1,9 +1,10 @@
 use anyhow::Result;
-use reddish::{config::Config, exec::Executor, parser::parse_command_line};
+use reddish::{config::Config, context::Context, exec::Executor, parser::parse_command_line};
 use rustyline::{error::ReadlineError, Editor};
 
 fn main() -> Result<()> {
     let config = Config::new();
+    let context = Context::new();
 
     let mut rl = Editor::<()>::new();
     rl.load_history(&*config.history_file()).unwrap_or_default();
@@ -16,7 +17,7 @@ fn main() -> Result<()> {
                     if !cmds.ignore_history() {
                         rl.add_history_entry(line.as_str());
                     }
-                    let mut e = Executor::from(cmds);
+                    let mut e = Executor::new_from(cmds, &context);
                     e.execute().unwrap();
                 }
                 Err(e) => eprintln!("Error: {:?}", e),
