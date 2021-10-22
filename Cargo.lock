@@ -324,7 +324,6 @@ dependencies = [
  "anyhow",
  "cfg-if",
  "is_executable",
- "libc",
  "mockall",
  "nix 0.23.0",
  "rustyline",

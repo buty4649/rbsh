@@ -9,7 +9,6 @@ anyhow = "1.0.44"
 rustyline = "9.0.0"
 nix = "0.23.0"
 is_executable = "1.0.1"
-libc = "0.2.104"
 cfg-if = "1.0.0"
 
 [dev-dependencies]
