@@ -1,4 +1,4 @@
-pub mod command;
+pub mod exec;
 pub mod error;
 pub mod parser;
 

@@ -113,12 +113,8 @@ impl IsVarName for WordList {
 }
 
 impl Executor {
-    pub fn new(list: Vec<UnitKind>) -> Self {
+    fn new(list: Vec<UnitKind>) -> Self {
         Self { list, pos: 0 }
-    }
-
-    pub fn new_from(list: CommandList) -> Self {
-        Self::new(list.to_vec())
     }
 
     fn next(&mut self) -> Option<UnitKind> {
@@ -295,6 +291,12 @@ impl Executor {
     }
 }
 
+impl From<CommandList> for Executor {
+    fn from(list: CommandList) -> Self {
+        Self::new(list.to_vec())
+    }
+}
+
 fn split_env_and_commands(list: Vec<WordList>) -> (HashMap<String, String>, Vec<String>) {
     let (env, cmds) = {
         let mut env = vec![];
@@ -365,4 +367,4 @@ fn assume_command(command: &str) -> PathBuf {
     }
 }
 
-include!("command_test.rs");
+include!("exec_test.rs");
