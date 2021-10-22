@@ -41,8 +41,8 @@ impl<T: Clone> Annotate<T> {
         Self { value, loc }
     }
 
-    pub fn take(self) -> (T, Location) {
-        (self.value, self.loc)
+    pub fn take(&self) -> (T, Location) {
+        (self.value.clone(), self.loc)
     }
 
     pub fn value(&self) -> T {

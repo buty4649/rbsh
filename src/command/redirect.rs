@@ -31,7 +31,7 @@ impl RedirectApplier {
     }
 
     fn exec(self, list: RedirectList) -> Result<()> {
-        for redirect in list.into_iter() {
+        for redirect in list.iter() {
             let (redirect, _) = redirect.take();
 
             match redirect {
