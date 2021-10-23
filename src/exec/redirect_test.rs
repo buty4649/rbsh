@@ -2,11 +2,11 @@
 mod test {
     use super::*;
     use crate::{
+        location::Location,
         parser::{
             redirect::Redirect,
             word::{Word, WordKind},
         },
-        Location,
     };
     use mockall::predicate::eq;
 

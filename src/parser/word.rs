@@ -2,7 +2,7 @@ use super::{
     token::TokenReader,
     {Token, TokenKind},
 };
-use crate::{Annotate, Location, Result};
+use crate::{location::Location, Result};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum WordKind {
@@ -51,11 +51,8 @@ impl WordList {
     }
 
     pub fn push_word_token(&mut self, token: Token) {
-        match token {
-            Annotate {
-                value: TokenKind::Word(s, k),
-                loc,
-            } => self.push_word(s, k, loc),
+        match token.take() {
+            (TokenKind::Word(s, k), loc) => self.push_word(s, k, loc),
             _ => unimplemented![],
         }
     }

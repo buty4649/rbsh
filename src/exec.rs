@@ -4,12 +4,13 @@ mod syscall;
 use crate::{
     context::Context,
     error::{ShellError, ShellErrorKind},
+    location::Location,
     parser::{
         redirect::RedirectList,
         word::{Word, WordKind, WordList},
         CommandList, ConnecterKind, UnitKind,
     },
-    ExitStatus, Location, Result,
+    ExitStatus, Result,
 };
 use is_executable::IsExecutable;
 use nix::{

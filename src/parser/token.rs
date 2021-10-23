@@ -1,5 +1,8 @@
 use super::word::WordKind;
-use crate::{error::ShellError, Annotate, Location};
+use crate::{
+    error::ShellError,
+    location::{Annotate, Location},
+};
 use std::iter::Iterator;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -232,7 +235,7 @@ impl TokenReader {
 
     pub fn peek_token(&mut self) -> Option<TokenKind> {
         match self.peek() {
-            Some(t) => Some(t.value),
+            Some(t) => Some(t.value()),
             None => None,
         }
     }

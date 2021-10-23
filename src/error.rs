@@ -1,5 +1,5 @@
+use crate::location::{Annotate, Location};
 use crate::parser::token::{Token, TokenKind};
-use crate::{Annotate, Location};
 use std::str::Utf8Error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,10 +41,10 @@ impl ShellError {
     }
 
     pub fn unexpected_token(t: Token) -> Self {
-        Self::new(ShellErrorKind::UnexpectedToken(t.value), t.loc)
+        Self::new(ShellErrorKind::UnexpectedToken(t.value()), t.location())
     }
 
     pub fn unimplemented(t: Token) -> Self {
-        Self::new(ShellErrorKind::Unimplemented(t.value), t.loc)
+        Self::new(ShellErrorKind::Unimplemented(t.value()), t.location())
     }
 }

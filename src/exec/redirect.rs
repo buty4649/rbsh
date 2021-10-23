@@ -3,11 +3,12 @@ use super::WordParser;
 use crate::{
     context::Context,
     error::ShellError,
+    location::Location,
     parser::{
         redirect::{FdSize, RedirectKind, RedirectList},
         word::WordList,
     },
-    Location, Result,
+    Result,
 };
 use nix::{fcntl::OFlag, sys::stat::Mode};
 

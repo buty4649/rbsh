@@ -2,7 +2,7 @@ use super::{
     token::{Token, TokenKind},
     word::WordKind,
 };
-use crate::{error::ShellError, Location, Result};
+use crate::{error::ShellError, location::Location, Result};
 use std::str::{from_utf8, Utf8Error};
 type LexResult = Result<Token>;
 
@@ -128,7 +128,7 @@ impl Lexer {
     fn is_in_keyword(&mut self) -> bool {
         // "For" "Space" "Word" "Space" "In"
         let len = self.token.len();
-        len >= 4 && self.token[len - 4].value == TokenKind::For && {
+        len >= 4 && self.token[len - 4].value() == TokenKind::For && {
             let tmp = self.begin_command;
             self.begin_command = true;
             let result = self.starts_with("in");
@@ -494,7 +494,7 @@ impl Lexer {
     }
 
     fn before_token(&self) -> Option<TokenKind> {
-        self.token.last().map(|t| t.value.clone())
+        self.token.last().map(|t| t.value())
     }
 
     fn push(&mut self, t: Token) {

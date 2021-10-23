@@ -2,14 +2,16 @@
 mod test {
     use super::*;
     use crate::{
-        literal_word, loc, normal_word,
+        literal_word, loc,
+        location::Location,
+        normal_word,
         parser::{
             lexer::lex,
             redirect::Redirect,
             token::Token,
             word::{WordKind, WordList},
         },
-        quote_word, Location,
+        quote_word,
     };
 
     macro_rules! lex {
