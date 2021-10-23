@@ -1,5 +1,5 @@
 use anyhow::Result;
-use reddish::{config::Config, context::Context, exec::ShellExecute, parser::parse_command_line};
+use reddish::{Config, Context, ShellExecute, parse_command_line};
 use rustyline::{error::ReadlineError, Editor};
 
 fn main() -> Result<()> {

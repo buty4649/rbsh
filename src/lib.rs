@@ -1,8 +1,13 @@
-pub mod config;
-pub mod context;
+mod config;
+mod context;
+mod exec;
+mod parser;
+
 pub mod error;
-pub mod exec;
-pub mod parser;
+pub use config::Config;
+pub use context::Context;
+pub use exec::ShellExecute;
+pub use parser::parse_command_line;
 
 static APP_NAME: &str = "reddish";
 
