@@ -2,7 +2,7 @@ use super::{
     token::{Token, TokenKind},
     word::WordKind,
 };
-use crate::{error::ShellError, location::Location, Result};
+use crate::{error::ShellError, location::Location, status::Result};
 use std::str::{from_utf8, Utf8Error};
 type LexResult = Result<Token>;
 

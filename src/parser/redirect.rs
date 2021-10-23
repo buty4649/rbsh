@@ -6,7 +6,7 @@ use super::{
 use crate::{
     error::ShellError,
     location::{Annotate, Location},
-    Result,
+    status::Result,
 };
 use std::os::unix::io::RawFd;
 

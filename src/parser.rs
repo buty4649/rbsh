@@ -1,12 +1,12 @@
 pub mod redirect;
 pub mod token;
 pub mod word;
+pub use command::{parse_command, ConnecterKind};
 
 mod command;
 mod lexer;
 
-use super::Result;
-pub use command::{parse_command, ConnecterKind};
+use super::status::Result;
 use lexer::lex;
 use redirect::RedirectList;
 use token::{Token, TokenKind, TokenReader};

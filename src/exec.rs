@@ -10,7 +10,7 @@ use crate::{
         word::{Word, WordKind, WordList},
         CommandList, ConnecterKind, UnitKind,
     },
-    ExitStatus, Result,
+    status::{ExitStatus, Result},
 };
 use is_executable::IsExecutable;
 use nix::{

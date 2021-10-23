@@ -8,7 +8,7 @@ use crate::{
         redirect::{FdSize, RedirectKind, RedirectList},
         word::WordList,
     },
-    Result,
+    status::Result,
 };
 use nix::{fcntl::OFlag, sys::stat::Mode};
 

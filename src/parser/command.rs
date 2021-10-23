@@ -4,7 +4,7 @@ use super::{
     word::{parse_wordlist, Word},
     {TokenKind, UnitKind},
 };
-use crate::{error::ShellError, Result};
+use crate::{error::ShellError, status::Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConnecterKind {
