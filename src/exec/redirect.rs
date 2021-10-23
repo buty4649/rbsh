@@ -54,7 +54,7 @@ impl<'a> RedirectApplier<'a> {
                 RedirectKind::Close(fd) => self.close(fd),
                 RedirectKind::ReadWrite(fd, wordlist) => self.read_write(fd, wordlist),
             }
-            .map_err(|e| ShellError::syscall_error(e.name(), e.errno(), Location::new(1, 1)))?;
+            .map_err(|e| ShellError::syscall_error(e, Location::new(1, 1)))?;
         }
         Ok(())
     }

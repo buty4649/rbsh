@@ -1,7 +1,14 @@
 #[cfg(test)]
 mod test {
+    use super::syscall::SysCallError;
     use super::*;
     use crate::location::Location;
+    use mockall::predicate::{always, eq};
+    use nix::{
+        errno::Errno,
+        sys::wait::WaitStatus,
+        unistd::{ForkResult, Pid},
+    };
 
     macro_rules! word {
         ($e: expr) => {
@@ -23,6 +30,93 @@ mod test {
             $(h.insert($k.to_string(), $v.to_string());)+
             h
         }};
+    }
+
+    #[test]
+    fn test_simple_command() {
+        let context = Context::new();
+
+        let mock = Wrapper::new();
+        let mut e = Executor::new(vec![], &context);
+        e.set_wrapper(mock);
+        assert_eq!(
+            Ok(ExitStatus::new(0)),
+            e.execute_simple_command(vec![], RedirectList::new(), false)
+        );
+
+        /* parent */
+        let mut mock = Wrapper::new();
+        mock.expect_fork()
+            .times(1)
+            .return_const(Ok(ForkResult::Parent {
+                child: Pid::from_raw(1000),
+            }));
+        mock.expect_waitpid()
+            .times(1)
+            .with(eq(Pid::from_raw(1000)), eq(None))
+            .return_const(Ok(WaitStatus::Exited(Pid::from_raw(1000), 0)));
+        let mut e = Executor::new(vec![], &context);
+        e.set_wrapper(mock);
+        assert_eq!(
+            Ok(ExitStatus::new(0)),
+            e.execute_command(UnitKind::SimpleCommand {
+                command: vec![wordlist![word!["/foo/bar"]]],
+                redirect: RedirectList::new(),
+                background: false,
+            })
+        );
+
+        let mut mock = Wrapper::new();
+        mock.expect_fork()
+            .times(1)
+            .return_const(Ok(ForkResult::Parent {
+                child: Pid::from_raw(1000),
+            }));
+        mock.expect_waitpid()
+            .times(1)
+            .with(eq(Pid::from_raw(1000)), eq(None))
+            .return_const(Err(SysCallError::new("waitpid", Errno::EINVAL)));
+        let mut e = Executor::new(vec![], &context);
+        e.set_wrapper(mock);
+        assert_eq!(
+            Err(ShellError::syscall_error(
+                SysCallError::new("waitpid", Errno::EINVAL),
+                Location::new(1, 1)
+            )),
+            e.execute_command(UnitKind::SimpleCommand {
+                command: vec![wordlist![word!["/foo/bar"]]],
+                redirect: RedirectList::new(),
+                background: false,
+            })
+        );
+
+        /* child */
+        let mut mock = Wrapper::new();
+        mock.expect_fork()
+            .times(1)
+            .return_const(Ok(ForkResult::Child));
+        mock.expect_execve()
+            .times(1)
+            .with(
+                eq("/foo/bar".to_cstring()),
+                eq(vec!["/foo/bar".to_cstring()]),
+                always(),
+            )
+            .return_const(Err(SysCallError::new("execve", Errno::ENOENT)));
+        mock.expect_exit()
+            .times(1)
+            .with(eq(127))
+            .return_const(ExitStatus::new(127));
+        let mut e = Executor::new(vec![], &context);
+        e.set_wrapper(mock);
+        assert_eq!(
+            Ok(ExitStatus::new(127)),
+            e.execute_command(UnitKind::SimpleCommand {
+                command: vec![wordlist![word!["/foo/bar"]]],
+                redirect: RedirectList::new(),
+                background: false,
+            })
+        );
     }
 
     #[test]

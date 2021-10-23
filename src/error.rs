@@ -1,5 +1,8 @@
-use crate::location::{Annotate, Location};
-use crate::parser::token::{Token, TokenKind};
+use super::{
+    exec::SysCallError,
+    location::{Annotate, Location},
+    parser::token::{Token, TokenKind},
+};
 use std::str::Utf8Error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,8 +39,11 @@ impl ShellError {
         Self::new(ShellErrorKind::InvalidUtf8Sequence(err), loc)
     }
 
-    pub fn syscall_error(function: &str, e: nix::Error, loc: Location) -> Self {
-        Self::new(ShellErrorKind::SysCallError(function.to_string(), e), loc)
+    pub fn syscall_error(e: SysCallError, loc: Location) -> Self {
+        Self::new(
+            ShellErrorKind::SysCallError(e.name().to_string(), e.errno()),
+            loc,
+        )
     }
 
     pub fn unexpected_token(t: Token) -> Self {

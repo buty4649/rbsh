@@ -1,7 +1,9 @@
 mod redirect;
 mod syscall;
 
-use crate::{
+pub use syscall::SysCallError;
+
+use super::{
     context::Context,
     error::{ShellError, ShellErrorKind},
     location::Location,
@@ -12,18 +14,12 @@ use crate::{
     },
     status::{ExitStatus, Result},
 };
-use is_executable::IsExecutable;
-use nix::{
-    errno::Errno,
-    sys::wait::{waitpid, WaitStatus},
-    unistd::{execve, fork, ForkResult},
-};
+use nix::{errno::Errno, sys::wait::WaitStatus, unistd::ForkResult};
 use redirect::ApplyRedirect;
-use std::collections::HashMap;
-use std::env;
-use std::ffi::CString;
-use std::path::PathBuf;
-use std::process::exit;
+use syscall::{SysCallWrapper, Wrapper};
+
+use is_executable::IsExecutable;
+use std::{collections::HashMap, env, ffi::CString, path::PathBuf};
 
 pub trait WordParser {
     fn to_string<'a>(self, context: &Context) -> String;
@@ -57,6 +53,7 @@ pub struct Executor<'a> {
     list: Vec<UnitKind>,
     pos: usize,
     context: &'a Context,
+    wrapper: Wrapper,
 }
 
 pub trait IsPresent {
@@ -140,7 +137,13 @@ impl<'a> Executor<'a> {
             list,
             pos: 0,
             context,
+            wrapper: Wrapper::new(),
         }
+    }
+
+    #[cfg(test)]
+    fn set_wrapper(&mut self, wrapper: Wrapper) {
+        self.wrapper = wrapper
     }
 
     fn next(&mut self) -> Option<UnitKind> {
@@ -234,17 +237,17 @@ impl<'a> Executor<'a> {
                 .for_each(|(k, v)| self.context.set_var(k, v));
             Ok(ExitStatus::new(0))
         } else if cmds.is_present() {
-            match unsafe { fork() } {
-                Err(e) => Err(ShellError::syscall_error("fork", e, Location::new(1, 1))),
-                Ok(ForkResult::Parent { child }) => match waitpid(child, None) {
+            match self.wrapper.fork() {
+                Err(e) => Err(ShellError::syscall_error(e, Location::new(1, 1))),
+                Ok(ForkResult::Parent { child }) => match self.wrapper.waitpid(child, None) {
                     Ok(WaitStatus::Exited(_, status)) => Ok(ExitStatus::new(status)),
-                    Err(e) => Err(ShellError::syscall_error("waitpid", e, Location::new(1, 1))),
+                    Err(e) => Err(ShellError::syscall_error(e, Location::new(1, 1))),
                     _ => unimplemented![],
                 },
                 Ok(ForkResult::Child) => {
                     let cmdpath = cmds.first().unwrap().to_string();
-                    self.execute_external_command(&*cmdpath, cmds, temp_env, redirect);
-                    unreachable![]
+                    let status = self.execute_external_command(&*cmdpath, cmds, temp_env, redirect);
+                    Ok(status) // Only reachable with cfg(test).
                 }
             }
         } else {
@@ -259,7 +262,7 @@ impl<'a> Executor<'a> {
         cmds: Vec<String>,
         temp_env: HashMap<String, String>,
         redirect: RedirectList,
-    ) {
+    ) -> ExitStatus {
         let cmdpath = assume_command(path).to_str().unwrap().to_cstring();
         let cmds = cmds.to_cstring();
 
@@ -277,21 +280,21 @@ impl<'a> Executor<'a> {
             match e.value() {
                 ShellErrorKind::SysCallError(f, e) => {
                     eprintln!("{}: {}", f, e.desc());
-                    exit(1)
+                    return self.wrapper.exit(1);
                 }
-                _ => unimplemented![],
+                _ => unreachable![],
             }
         }
 
-        match execve(&cmdpath, &cmds, &env) {
+        match self.wrapper.execve(cmdpath, &cmds, &env) {
             Ok(_) => unreachable![],
-            Err(Errno::ENOENT) => {
+            Err(e) if e.errno() == Errno::ENOENT => {
                 eprintln!("{}: command not found", path);
-                exit(127)
+                self.wrapper.exit(127)
             }
             Err(e) => {
-                eprintln!("execve faile: {:?}", e);
-                exit(1)
+                eprintln!("execve faile: {}", e.errno());
+                self.wrapper.exit(1)
             }
         }
     }
