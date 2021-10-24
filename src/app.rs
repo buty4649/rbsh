@@ -28,7 +28,7 @@ impl<'a, 'b> App<'a, 'b> {
         self.app.get_matches_from(args);
 
         let config = Config::new();
-        let context = Context::new();
+        let mut context = Context::new();
 
         let mut rl = Editor::<()>::new();
 
@@ -45,7 +45,7 @@ impl<'a, 'b> App<'a, 'b> {
                         if !cmds.ignore_history() {
                             rl.add_history_entry(line.as_str());
                         }
-                        status = cmds.execute(&context).unwrap();
+                        status = cmds.execute(&mut context).unwrap();
                     }
                     Err(e) => eprintln!("Error: {:?}", e),
                 },

@@ -1,16 +1,15 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Context {
-    local_vars: RefCell<HashMap<String, String>>,
+    local_vars: HashMap<String, String>,
 }
 
 impl Context {
     pub fn new() -> Self {
         Self {
-            local_vars: RefCell::new(HashMap::new()),
+            local_vars: HashMap::new(),
         }
     }
 
@@ -18,13 +17,11 @@ impl Context {
         env::vars().collect::<HashMap<_, _>>()
     }
 
-    pub fn set_var(&self, name: &str, value: &str) {
+    pub fn set_var(&mut self, name: &str, value: &str) {
         match env::var(&name) {
             Ok(_) => env::set_var(name, value),
             Err(_) => {
-                self.local_vars
-                    .borrow_mut()
-                    .insert(name.to_string(), value.to_string());
+                self.local_vars.insert(name.to_string(), value.to_string());
             }
         };
     }
@@ -32,6 +29,6 @@ impl Context {
     pub fn get_var(&self, name: String) -> Option<String> {
         env::var(&name)
             .ok()
-            .or_else(|| self.local_vars.borrow().get(&name).map(|s| s.to_string()))
+            .or_else(|| self.local_vars.get(&name).map(|s| s.to_string()))
     }
 }

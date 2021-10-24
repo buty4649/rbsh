@@ -49,10 +49,9 @@ impl WordParser for WordList {
     }
 }
 
-pub struct Executor<'a> {
+pub struct Executor {
     list: Vec<UnitKind>,
     pos: usize,
-    context: &'a Context,
     wrapper: Wrapper,
 }
 
@@ -116,27 +115,26 @@ impl IsVarName for WordList {
 }
 
 pub trait ShellExecute {
-    fn execute(&self, context: &Context) -> Result<ExitStatus>;
+    fn execute(&self, ctx: &mut Context) -> Result<ExitStatus>;
 }
 
 impl ShellExecute for Vec<UnitKind> {
-    fn execute(&self, context: &Context) -> Result<ExitStatus> {
-        Executor::new(self.to_vec(), context).execute()
+    fn execute(&self, ctx: &mut Context) -> Result<ExitStatus> {
+        Executor::new(self.to_vec()).execute(ctx)
     }
 }
 
 impl ShellExecute for CommandList {
-    fn execute(&self, context: &Context) -> Result<ExitStatus> {
-        self.to_vec().execute(context)
+    fn execute(&self, ctx: &mut Context) -> Result<ExitStatus> {
+        self.to_vec().execute(ctx)
     }
 }
 
-impl<'a> Executor<'a> {
-    pub fn new(list: Vec<UnitKind>, context: &'a Context) -> Self {
+impl Executor {
+    pub fn new(list: Vec<UnitKind>) -> Self {
         Self {
             list,
             pos: 0,
-            context,
             wrapper: Wrapper::new(),
         }
     }
@@ -155,11 +153,11 @@ impl<'a> Executor<'a> {
         }
     }
 
-    pub fn execute(&mut self) -> Result<ExitStatus> {
+    pub fn execute(&mut self, ctx: &mut Context) -> Result<ExitStatus> {
         let mut status = ExitStatus::new(0); // noop
         loop {
             match self.next() {
-                Some(c) => match self.execute_command(c) {
+                Some(c) => match self.execute_command(ctx, c) {
                     Ok(s) => status = s,
                     Err(e) => {
                         println!("Error: {:?}", e);
@@ -172,19 +170,19 @@ impl<'a> Executor<'a> {
         Ok(status)
     }
 
-    fn execute_command(&self, cmd: UnitKind) -> Result<ExitStatus> {
+    fn execute_command(&self, ctx: &mut Context, cmd: UnitKind) -> Result<ExitStatus> {
         match cmd {
             UnitKind::SimpleCommand {
                 command,
                 redirect,
                 background,
-            } => self.execute_simple_command(command, redirect, background),
+            } => self.execute_simple_command(ctx, command, redirect, background),
             UnitKind::Connecter {
                 left,
                 right,
                 kind,
                 background,
-            } => self.execute_connecter(left, right, kind, background),
+            } => self.execute_connecter(ctx, left, right, kind, background),
             UnitKind::If {
                 condition,
                 true_case,
@@ -192,7 +190,7 @@ impl<'a> Executor<'a> {
                 redirect,
                 background,
             } => self.execute_if_command(
-                condition, true_case, false_case, redirect, background, false,
+                ctx, condition, true_case, false_case, redirect, background, false,
             ),
             UnitKind::Unless {
                 condition,
@@ -200,41 +198,41 @@ impl<'a> Executor<'a> {
                 true_case,
                 redirect,
                 background,
-            } => self
-                .execute_if_command(condition, false_case, true_case, redirect, background, true),
+            } => self.execute_if_command(
+                ctx, condition, false_case, true_case, redirect, background, true,
+            ),
             UnitKind::While {
                 condition,
                 command,
                 redirect,
                 background,
-            } => self.execute_while_command(condition, command, redirect, background, false),
+            } => self.execute_while_command(ctx, condition, command, redirect, background, false),
             UnitKind::Until {
                 condition,
                 command,
                 redirect,
                 background,
-            } => self.execute_while_command(condition, command, redirect, background, true),
+            } => self.execute_while_command(ctx, condition, command, redirect, background, true),
             UnitKind::For {
                 identifier,
                 list,
                 command,
                 redirect,
                 background,
-            } => self.execute_for_command(identifier, list, command, redirect, background),
+            } => self.execute_for_command(ctx, identifier, list, command, redirect, background),
         }
     }
 
     fn execute_simple_command(
         &self,
+        ctx: &mut Context,
         command: Vec<WordList>,
         redirect: RedirectList,
         _background: bool,
     ) -> Result<ExitStatus> {
-        let (temp_env, cmds) = split_env_and_commands(command, self.context);
+        let (temp_env, cmds) = split_env_and_commands(ctx, command);
         if cmds.is_empty() && temp_env.is_present() {
-            temp_env
-                .iter()
-                .for_each(|(k, v)| self.context.set_var(k, v));
+            temp_env.iter().for_each(|(k, v)| ctx.set_var(k, v));
             Ok(ExitStatus::new(0))
         } else if cmds.is_present() {
             match self.wrapper.fork() {
@@ -246,7 +244,8 @@ impl<'a> Executor<'a> {
                 },
                 Ok(ForkResult::Child) => {
                     let cmdpath = cmds.first().unwrap().to_string();
-                    let status = self.execute_external_command(&*cmdpath, cmds, temp_env, redirect);
+                    let status =
+                        self.execute_external_command(ctx, cmdpath, cmds, temp_env, redirect);
                     Ok(status) // Only reachable with cfg(test).
                 }
             }
@@ -256,13 +255,15 @@ impl<'a> Executor<'a> {
         }
     }
 
-    fn execute_external_command(
+    fn execute_external_command<T: AsRef<str>>(
         &self,
-        path: &str,
+        ctx: &mut Context,
+        path: T,
         cmds: Vec<String>,
         temp_env: HashMap<String, String>,
         redirect: RedirectList,
     ) -> ExitStatus {
+        let path = path.as_ref();
         let cmdpath = assume_command(path).to_str().unwrap().to_cstring();
         let cmds = cmds.to_cstring();
 
@@ -276,7 +277,7 @@ impl<'a> Executor<'a> {
             .map(|(k, v)| format!("{}={}", k, v).to_cstring())
             .collect::<Vec<_>>();
 
-        if let Err(e) = redirect.apply(self.context) {
+        if let Err(e) = redirect.apply(ctx) {
             match e.value() {
                 ShellErrorKind::SysCallError(f, e) => {
                     eprintln!("{}: {}", f, e.desc());
@@ -301,19 +302,20 @@ impl<'a> Executor<'a> {
 
     fn execute_connecter(
         &self,
+        ctx: &mut Context,
         left: Box<UnitKind>,
         right: Box<UnitKind>,
         kind: ConnecterKind,
         _background: bool,
     ) -> Result<ExitStatus> {
         match kind {
-            ConnecterKind::And => match vec![*left].execute(self.context)? {
+            ConnecterKind::And => match vec![*left].execute(ctx)? {
                 st if st.is_error() => Ok(st),
-                _ => vec![*right].execute(self.context),
+                _ => vec![*right].execute(ctx),
             },
-            ConnecterKind::Or => match vec![*left].execute(self.context)? {
+            ConnecterKind::Or => match vec![*left].execute(ctx)? {
                 st if st.is_success() => Ok(st),
-                _ => vec![*right].execute(self.context),
+                _ => vec![*right].execute(ctx),
             },
             ConnecterKind::Pipe => unimplemented![],
             ConnecterKind::PipeBoth => unimplemented![],
@@ -322,6 +324,7 @@ impl<'a> Executor<'a> {
 
     fn execute_if_command(
         &self,
+        ctx: &mut Context,
         condition: Box<UnitKind>,
         true_case: Vec<UnitKind>,
         false_case: Option<Vec<UnitKind>>,
@@ -329,17 +332,18 @@ impl<'a> Executor<'a> {
         _background: bool,
         inverse: bool,
     ) -> Result<ExitStatus> {
-        match self.execute_command(*condition)? {
+        match self.execute_command(ctx, *condition)? {
             status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
-                true_case.execute(self.context)
+                true_case.execute(ctx)
             }
             status if false_case.is_none() => Ok(status),
-            _ => false_case.unwrap().execute(self.context),
+            _ => false_case.unwrap().execute(ctx),
         }
     }
 
     fn execute_while_command(
         &self,
+        ctx: &mut Context,
         condition: Box<UnitKind>,
         command: Vec<UnitKind>,
         _redirect: RedirectList,
@@ -347,9 +351,9 @@ impl<'a> Executor<'a> {
         inverse: bool,
     ) -> Result<ExitStatus> {
         loop {
-            match self.execute_command(*condition.clone())? {
+            match self.execute_command(ctx, *condition.clone())? {
                 status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
-                    command.execute(self.context)?;
+                    command.execute(ctx)?;
                 }
                 _ => break,
             }
@@ -359,6 +363,7 @@ impl<'a> Executor<'a> {
 
     fn execute_for_command(
         &self,
+        ctx: &mut Context,
         identifier: Word,
         list: Option<Vec<WordList>>,
         command: Vec<UnitKind>,
@@ -384,14 +389,13 @@ impl<'a> Executor<'a> {
             None => vec![], // Normally, it returns $0.
             Some(list) => list
                 .into_iter()
-                .map(|w| w.to_string(self.context))
+                .map(|w| w.to_string(ctx))
                 .collect::<Vec<_>>(),
         };
 
         for word in list.iter() {
-            let context = self.context.clone();
-            context.set_var(&*identifier, word);
-            command.execute(&context)?;
+            ctx.set_var(&*identifier, word);
+            command.execute(ctx)?;
         }
 
         Ok(ExitStatus::new(0))
@@ -399,8 +403,8 @@ impl<'a> Executor<'a> {
 }
 
 fn split_env_and_commands(
-    list: Vec<WordList>,
     context: &Context,
+    list: Vec<WordList>,
 ) -> (HashMap<String, String>, Vec<String>) {
     let (env, cmds) = {
         let mut env = vec![];

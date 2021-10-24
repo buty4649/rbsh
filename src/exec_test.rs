@@ -34,14 +34,14 @@ mod test {
 
     #[test]
     fn test_simple_command() {
-        let context = Context::new();
+        let mut ctx = Context::new();
 
         let mock = Wrapper::new();
-        let mut e = Executor::new(vec![], &context);
+        let mut e = Executor::new(vec![]);
         e.set_wrapper(mock);
         assert_eq!(
             Ok(ExitStatus::new(0)),
-            e.execute_simple_command(vec![], RedirectList::new(), false)
+            e.execute_simple_command(&mut ctx, vec![], RedirectList::new(), false)
         );
 
         /* parent */
@@ -55,15 +55,18 @@ mod test {
             .times(1)
             .with(eq(Pid::from_raw(1000)), eq(None))
             .return_const(Ok(WaitStatus::Exited(Pid::from_raw(1000), 0)));
-        let mut e = Executor::new(vec![], &context);
+        let mut e = Executor::new(vec![]);
         e.set_wrapper(mock);
         assert_eq!(
             Ok(ExitStatus::new(0)),
-            e.execute_command(UnitKind::SimpleCommand {
-                command: vec![wordlist![word!["/foo/bar"]]],
-                redirect: RedirectList::new(),
-                background: false,
-            })
+            e.execute_command(
+                &mut ctx,
+                UnitKind::SimpleCommand {
+                    command: vec![wordlist![word!["/foo/bar"]]],
+                    redirect: RedirectList::new(),
+                    background: false,
+                }
+            )
         );
 
         let mut mock = Wrapper::new();
@@ -76,18 +79,21 @@ mod test {
             .times(1)
             .with(eq(Pid::from_raw(1000)), eq(None))
             .return_const(Err(SysCallError::new("waitpid", Errno::EINVAL)));
-        let mut e = Executor::new(vec![], &context);
+        let mut e = Executor::new(vec![]);
         e.set_wrapper(mock);
         assert_eq!(
             Err(ShellError::syscall_error(
                 SysCallError::new("waitpid", Errno::EINVAL),
                 Location::new(1, 1)
             )),
-            e.execute_command(UnitKind::SimpleCommand {
-                command: vec![wordlist![word!["/foo/bar"]]],
-                redirect: RedirectList::new(),
-                background: false,
-            })
+            e.execute_command(
+                &mut ctx,
+                UnitKind::SimpleCommand {
+                    command: vec![wordlist![word!["/foo/bar"]]],
+                    redirect: RedirectList::new(),
+                    background: false,
+                }
+            )
         );
 
         /* child */
@@ -107,15 +113,18 @@ mod test {
             .times(1)
             .with(eq(127))
             .return_const(ExitStatus::new(127));
-        let mut e = Executor::new(vec![], &context);
+        let mut e = Executor::new(vec![]);
         e.set_wrapper(mock);
         assert_eq!(
             Ok(ExitStatus::new(127)),
-            e.execute_command(UnitKind::SimpleCommand {
-                command: vec![wordlist![word!["/foo/bar"]]],
-                redirect: RedirectList::new(),
-                background: false,
-            })
+            e.execute_command(
+                &mut ctx,
+                UnitKind::SimpleCommand {
+                    command: vec![wordlist![word!["/foo/bar"]]],
+                    redirect: RedirectList::new(),
+                    background: false,
+                }
+            )
         );
     }
 
@@ -124,7 +133,7 @@ mod test {
         let ctx = Context::new();
         assert_eq!(
             (HashMap::new(), vec!["foo".to_string()]),
-            split_env_and_commands(vec![wordlist![word!("foo")]], &ctx)
+            split_env_and_commands(&ctx, vec![wordlist![word!("foo")]])
         );
 
         assert_eq!(
@@ -133,12 +142,12 @@ mod test {
                 vec!["bar".to_string()]
             ),
             split_env_and_commands(
+                &ctx,
                 vec![
                     wordlist![word!("foo=bar")],
                     wordlist![word!("baz=foo")],
                     wordlist![word!("bar")]
-                ],
-                &ctx
+                ]
             )
         );
 
@@ -148,12 +157,12 @@ mod test {
                 vec!["baz".to_string(), "hoge=fuga".to_string()]
             ),
             split_env_and_commands(
+                &ctx,
                 vec![
                     wordlist![word!("foo=bar")],
                     wordlist![word!("baz")],
                     wordlist![word!("hoge=fuga")]
-                ],
-                &ctx
+                ]
             )
         );
     }
