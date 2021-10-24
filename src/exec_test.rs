@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod test {
-    use super::syscall::SysCallError;
+    use super::syscall::{SysCallError, Wrapper};
     use super::*;
     use crate::location::Location;
     use mockall::predicate::{always, eq};
@@ -34,11 +34,9 @@ mod test {
 
     #[test]
     fn test_simple_command() {
-        let mut ctx = Context::new();
-
         let mock = Wrapper::new();
-        let mut e = Executor::new(vec![]);
-        e.set_wrapper(mock);
+        let e = Executor::new(vec![]);
+        let mut ctx = Context::new_at(mock);
         assert_eq!(
             Ok(ExitStatus::new(0)),
             e.execute_simple_command(&mut ctx, vec![], RedirectList::new(), false)
@@ -55,8 +53,8 @@ mod test {
             .times(1)
             .with(eq(Pid::from_raw(1000)), eq(None))
             .return_const(Ok(WaitStatus::Exited(Pid::from_raw(1000), 0)));
-        let mut e = Executor::new(vec![]);
-        e.set_wrapper(mock);
+        let e = Executor::new(vec![]);
+        let mut ctx = Context::new_at(mock);
         assert_eq!(
             Ok(ExitStatus::new(0)),
             e.execute_command(
@@ -79,8 +77,8 @@ mod test {
             .times(1)
             .with(eq(Pid::from_raw(1000)), eq(None))
             .return_const(Err(SysCallError::new("waitpid", Errno::EINVAL)));
-        let mut e = Executor::new(vec![]);
-        e.set_wrapper(mock);
+        let e = Executor::new(vec![]);
+        let mut ctx = Context::new_at(mock);
         assert_eq!(
             Err(ShellError::syscall_error(
                 SysCallError::new("waitpid", Errno::EINVAL),
@@ -113,8 +111,8 @@ mod test {
             .times(1)
             .with(eq(127))
             .return_const(ExitStatus::new(127));
-        let mut e = Executor::new(vec![]);
-        e.set_wrapper(mock);
+        let e = Executor::new(vec![]);
+        let mut ctx = Context::new_at(mock);
         assert_eq!(
             Ok(ExitStatus::new(127)),
             e.execute_command(

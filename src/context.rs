@@ -1,25 +1,35 @@
+use super::exec::syscall::{SysCallWrapper, Wrapper};
 use std::collections::HashMap;
-use std::env;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Context {
     local_vars: HashMap<String, String>,
+    wrapper: Wrapper,
 }
 
 impl Context {
     pub fn new() -> Self {
+        Self::new_at(Wrapper::new())
+    }
+
+    pub fn new_at(wrapper: Wrapper) -> Self {
         Self {
             local_vars: HashMap::new(),
+            wrapper,
         }
     }
 
+    pub fn wrapper(&self) -> &Wrapper {
+        &self.wrapper
+    }
+
     pub fn env_vars(&self) -> HashMap<String, String> {
-        env::vars().collect::<HashMap<_, _>>()
+        self.wrapper.env_vars()
     }
 
     pub fn set_var(&mut self, name: &str, value: &str) {
-        match env::var(&name) {
-            Ok(_) => env::set_var(name, value),
+        match self.wrapper.env_get(name) {
+            Ok(_) => self.wrapper.env_set(name, value),
             Err(_) => {
                 self.local_vars.insert(name.to_string(), value.to_string());
             }
@@ -27,7 +37,8 @@ impl Context {
     }
 
     pub fn get_var(&self, name: String) -> Option<String> {
-        env::var(&name)
+        self.wrapper
+            .env_get(&name)
             .ok()
             .or_else(|| self.local_vars.get(&name).map(|s| s.to_string()))
     }

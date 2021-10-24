@@ -16,7 +16,7 @@ use super::{
 };
 use nix::{errno::Errno, sys::wait::WaitStatus, unistd::ForkResult};
 use redirect::ApplyRedirect;
-use syscall::{SysCallWrapper, Wrapper};
+use syscall::SysCallWrapper;
 
 use is_executable::IsExecutable;
 use std::{collections::HashMap, env, ffi::CString, path::PathBuf};
@@ -47,12 +47,6 @@ impl WordParser for WordList {
                 result
             })
     }
-}
-
-pub struct Executor {
-    list: Vec<UnitKind>,
-    pos: usize,
-    wrapper: Wrapper,
 }
 
 pub trait IsPresent {
@@ -118,6 +112,12 @@ pub trait ShellExecute {
     fn execute(&self, ctx: &mut Context) -> Result<ExitStatus>;
 }
 
+impl ShellExecute for UnitKind {
+    fn execute(&self, ctx: &mut Context) -> Result<ExitStatus> {
+        vec![(*self).clone()].execute(ctx)
+    }
+}
+
 impl ShellExecute for Vec<UnitKind> {
     fn execute(&self, ctx: &mut Context) -> Result<ExitStatus> {
         Executor::new(self.to_vec()).execute(ctx)
@@ -130,18 +130,14 @@ impl ShellExecute for CommandList {
     }
 }
 
+pub struct Executor {
+    list: Vec<UnitKind>,
+    pos: usize,
+}
+
 impl Executor {
     pub fn new(list: Vec<UnitKind>) -> Self {
-        Self {
-            list,
-            pos: 0,
-            wrapper: Wrapper::new(),
-        }
-    }
-
-    #[cfg(test)]
-    fn set_wrapper(&mut self, wrapper: Wrapper) {
-        self.wrapper = wrapper
+        Self { list, pos: 0 }
     }
 
     fn next(&mut self) -> Option<UnitKind> {
@@ -235,9 +231,9 @@ impl Executor {
             temp_env.iter().for_each(|(k, v)| ctx.set_var(k, v));
             Ok(ExitStatus::new(0))
         } else if cmds.is_present() {
-            match self.wrapper.fork() {
+            match ctx.wrapper().fork() {
                 Err(e) => Err(ShellError::syscall_error(e, Location::new(1, 1))),
-                Ok(ForkResult::Parent { child }) => match self.wrapper.waitpid(child, None) {
+                Ok(ForkResult::Parent { child }) => match ctx.wrapper().waitpid(child, None) {
                     Ok(WaitStatus::Exited(_, status)) => Ok(ExitStatus::new(status)),
                     Err(e) => Err(ShellError::syscall_error(e, Location::new(1, 1))),
                     _ => unimplemented![],
@@ -281,21 +277,21 @@ impl Executor {
             match e.value() {
                 ShellErrorKind::SysCallError(f, e) => {
                     eprintln!("{}: {}", f, e.desc());
-                    return self.wrapper.exit(1);
+                    return ctx.wrapper().exit(1);
                 }
                 _ => unreachable![],
             }
         }
 
-        match self.wrapper.execve(cmdpath, &cmds, &env) {
+        match ctx.wrapper().execve(cmdpath, &cmds, &env) {
             Ok(_) => unreachable![],
             Err(e) if e.errno() == Errno::ENOENT => {
                 eprintln!("{}: command not found", path);
-                self.wrapper.exit(127)
+                ctx.wrapper().exit(127)
             }
             Err(e) => {
                 eprintln!("execve faile: {}", e.errno());
-                self.wrapper.exit(1)
+                ctx.wrapper().exit(1)
             }
         }
     }
@@ -309,13 +305,13 @@ impl Executor {
         _background: bool,
     ) -> Result<ExitStatus> {
         match kind {
-            ConnecterKind::And => match vec![*left].execute(ctx)? {
+            ConnecterKind::And => match (*left).execute(ctx)? {
                 st if st.is_error() => Ok(st),
-                _ => vec![*right].execute(ctx),
+                _ => (*right).execute(ctx),
             },
-            ConnecterKind::Or => match vec![*left].execute(ctx)? {
+            ConnecterKind::Or => match (*left).execute(ctx)? {
                 st if st.is_success() => Ok(st),
-                _ => vec![*right].execute(ctx),
+                _ => (*right).execute(ctx),
             },
             ConnecterKind::Pipe => unimplemented![],
             ConnecterKind::PipeBoth => unimplemented![],
@@ -332,7 +328,7 @@ impl Executor {
         _background: bool,
         inverse: bool,
     ) -> Result<ExitStatus> {
-        match self.execute_command(ctx, *condition)? {
+        match (*condition).execute(ctx)? {
             status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
                 true_case.execute(ctx)
             }
@@ -351,7 +347,7 @@ impl Executor {
         inverse: bool,
     ) -> Result<ExitStatus> {
         loop {
-            match self.execute_command(ctx, *condition.clone())? {
+            match (*condition).execute(ctx)? {
                 status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
                     command.execute(ctx)?;
                 }
@@ -403,7 +399,7 @@ impl Executor {
 }
 
 fn split_env_and_commands(
-    context: &Context,
+    ctx: &Context,
     list: Vec<WordList>,
 ) -> (HashMap<String, String>, Vec<String>) {
     let (env, cmds) = {
@@ -435,7 +431,7 @@ fn split_env_and_commands(
         .into_iter()
         .map(|wordlist| {
             wordlist
-                .to_string(context)
+                .to_string(ctx)
                 .split_once("=")
                 .map(|(k, v)| (k.to_string(), v.to_string()))
                 .unwrap()
@@ -443,7 +439,7 @@ fn split_env_and_commands(
         .collect::<HashMap<_, _>>();
     let cmds = cmds
         .into_iter()
-        .map(|wordlist| wordlist.to_string(context))
+        .map(|wordlist| wordlist.to_string(ctx))
         .collect::<Vec<_>>();
     (env, cmds)
 }

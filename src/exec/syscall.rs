@@ -28,7 +28,10 @@ mod mockable {
         sys::wait::{WaitPidFlag, WaitStatus},
         unistd::{close, dup2, execve, fork, isatty, ForkResult, Pid},
     };
-    use std::{convert::Infallible, ffi::CString, os::unix::io::RawFd, process::exit};
+    use std::{
+        collections::HashMap, convert::Infallible, env, ffi::CString, os::unix::io::RawFd,
+        process::exit,
+    };
 
     #[cfg(test)]
     use mockall::automock;
@@ -47,6 +50,18 @@ mod mockable {
 
         fn dup2(&self, oldfd: FdSize, newfd: FdSize) -> SysCallResult<FdSize> {
             syscall!(dup2, oldfd, newfd)
+        }
+
+        fn env_get(&self, key: &str) -> Result<String, env::VarError> {
+            env::var(key)
+        }
+
+        fn env_set(&self, key: &str, value: &str) {
+            env::set_var(key, value)
+        }
+
+        fn env_vars(&self) -> HashMap<String, String> {
+            env::vars().collect::<HashMap<_, _>>()
         }
 
         fn execve(
@@ -85,8 +100,13 @@ pub use mockable::SysCallWrapper;
 cfg_if::cfg_if! {
     if #[cfg(test)] {
         pub use mockable::MockSysCallWrapper as Wrapper;
+        impl Clone for Wrapper {
+            fn clone(&self) -> Self {
+                Self::new()
+            }
+        }
     } else {
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Debug, Clone)]
         pub struct Wrapper {}
         impl Wrapper {
             pub fn new() -> Self {
