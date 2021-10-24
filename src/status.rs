@@ -10,6 +10,10 @@ impl ExitStatus {
         ExitStatus { code }
     }
 
+    pub fn code(self) -> i32 {
+        self.code
+    }
+
     pub fn is_success(self) -> bool {
         self.code == 0
     }

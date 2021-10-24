@@ -1,22 +1,34 @@
 use crate::APP_NAME;
-use std::fs::create_dir_all;
+use std::{fs::create_dir_all, path::PathBuf};
 use xdg::BaseDirectories;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Config {
-    dirs: BaseDirectories,
+    history_file: String,
 }
 
 impl Config {
     pub fn new() -> Self {
-        Config {
-            dirs: BaseDirectories::with_prefix(APP_NAME).unwrap(),
+        let dirs = BaseDirectories::with_prefix(APP_NAME).unwrap();
+
+        macro_rules! path2string {
+            ($e: expr) => {
+                dirs.place_data_file($e)
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default()
+                    .to_string()
+            };
         }
+
+        let history_file = path2string!("history.txt");
+        Config { history_file }
     }
 
     pub fn history_file(&self) -> String {
-        let path = self.dirs.place_data_file("history.txt").unwrap();
+        let mut path = PathBuf::new();
+        path.push(&*self.history_file);
         create_dir_all(path.parent().unwrap()).unwrap();
-        path.to_str().unwrap().to_string()
+        self.history_file.to_string()
     }
 }

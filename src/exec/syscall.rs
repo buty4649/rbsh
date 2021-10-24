@@ -26,9 +26,9 @@ mod mockable {
         sys::stat::Mode,
         sys::wait::waitpid,
         sys::wait::{WaitPidFlag, WaitStatus},
-        unistd::{close, dup2, execve, fork, ForkResult, Pid},
+        unistd::{close, dup2, execve, fork, isatty, ForkResult, Pid},
     };
-    use std::{convert::Infallible, ffi::CString, process::exit};
+    use std::{convert::Infallible, ffi::CString, os::unix::io::RawFd, process::exit};
 
     #[cfg(test)]
     use mockall::automock;
@@ -66,6 +66,10 @@ mod mockable {
             unsafe { syscall!(fork) }
         }
 
+        fn isatty(&self, fd: RawFd) -> SysCallResult<bool> {
+            syscall!(isatty, fd)
+        }
+
         fn open(&self, path: &str, oflag: OFlag, mode: Mode) -> SysCallResult<FdSize> {
             syscall!(open, path, oflag, mode)
         }
@@ -82,6 +86,7 @@ cfg_if::cfg_if! {
     if #[cfg(test)] {
         pub use mockable::MockSysCallWrapper as Wrapper;
     } else {
+        #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct Wrapper {}
         impl Wrapper {
             pub fn new() -> Self {

@@ -1,6 +1,6 @@
 mod redirect;
-mod syscall;
 
+pub mod syscall;
 pub use syscall::SysCallError;
 
 use super::{
