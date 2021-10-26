@@ -2,7 +2,7 @@
 mod test {
     use super::syscall::{SysCallError, Wrapper};
     use super::*;
-    use crate::location::Location;
+    use crate::{location::Location, signal::test::mock_restore_tty_signals};
     use mockall::predicate::{always, eq};
     use nix::{
         errno::Errno,
@@ -35,7 +35,7 @@ mod test {
     #[test]
     fn test_simple_command() {
         let mock = Wrapper::new();
-        let e = Executor::new(vec![]);
+        let mut e = Executor::new(vec![]);
         let mut ctx = Context::new_at(mock);
         assert_eq!(
             Ok(ExitStatus::new(0)),
@@ -49,41 +49,38 @@ mod test {
             .return_const(Ok(ForkResult::Parent {
                 child: Pid::from_raw(1000),
             }));
+        mock.expect_setpgid()
+            .times(1)
+            .with(eq(Pid::from_raw(1000)), eq(Pid::from_raw(1000)))
+            .return_const(Ok(()));
+        mock.expect_tcgetsid()
+            .times(1)
+            .with(eq(0))
+            .return_const(Ok(Pid::from_raw(900)));
+        mock.expect_tcsetpgrp()
+            .times(1)
+            .with(eq(0), eq(Pid::from_raw(1000)))
+            .return_const(Ok(()));
         mock.expect_waitpid()
             .times(1)
-            .with(eq(Pid::from_raw(1000)), eq(None))
+            .with(eq(Pid::from_raw(-1000)), eq(None))
             .return_const(Ok(WaitStatus::Exited(Pid::from_raw(1000), 0)));
-        let e = Executor::new(vec![]);
+        mock.expect_getpgid()
+            .times(1)
+            .with(eq(None))
+            .return_const(Ok(Pid::from_raw(900)));
+        mock.expect_tcgetsid()
+            .times(1)
+            .with(eq(0))
+            .return_const(Ok(Pid::from_raw(1000)));
+        mock.expect_tcsetpgrp()
+            .times(1)
+            .with(eq(0), eq(Pid::from_raw(900)))
+            .return_const(Ok(()));
+        let mut e = Executor::new(vec![]);
         let mut ctx = Context::new_at(mock);
         assert_eq!(
             Ok(ExitStatus::new(0)),
-            e.execute_command(
-                &mut ctx,
-                UnitKind::SimpleCommand {
-                    command: vec![wordlist![word!["/foo/bar"]]],
-                    redirect: RedirectList::new(),
-                    background: false,
-                }
-            )
-        );
-
-        let mut mock = Wrapper::new();
-        mock.expect_fork()
-            .times(1)
-            .return_const(Ok(ForkResult::Parent {
-                child: Pid::from_raw(1000),
-            }));
-        mock.expect_waitpid()
-            .times(1)
-            .with(eq(Pid::from_raw(1000)), eq(None))
-            .return_const(Err(SysCallError::new("waitpid", Errno::EINVAL)));
-        let e = Executor::new(vec![]);
-        let mut ctx = Context::new_at(mock);
-        assert_eq!(
-            Err(ShellError::syscall_error(
-                SysCallError::new("waitpid", Errno::EINVAL),
-                Location::new(1, 1)
-            )),
             e.execute_command(
                 &mut ctx,
                 UnitKind::SimpleCommand {
@@ -111,7 +108,8 @@ mod test {
             .times(1)
             .with(eq(127))
             .return_const(ExitStatus::new(127));
-        let e = Executor::new(vec![]);
+        mock_restore_tty_signals(&mut mock);
+        let mut e = Executor::new(vec![]);
         let mut ctx = Context::new_at(mock);
         assert_eq!(
             Ok(ExitStatus::new(127)),

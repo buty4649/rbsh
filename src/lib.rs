@@ -5,6 +5,7 @@ mod error;
 mod exec;
 mod location;
 mod parser;
+mod signal;
 mod status;
 
 pub use app::App;

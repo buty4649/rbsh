@@ -23,10 +23,15 @@ mod mockable {
     use crate::{parser::redirect::FdSize, status::ExitStatus};
     use nix::{
         fcntl::{open, OFlag},
-        sys::stat::Mode,
-        sys::wait::waitpid,
-        sys::wait::{WaitPidFlag, WaitStatus},
-        unistd::{close, dup2, execve, fork, isatty, ForkResult, Pid},
+        sys::{
+            signal::{sigaction, SigAction, Signal},
+            stat::Mode,
+            termios::tcgetsid,
+            wait::{waitpid, WaitPidFlag, WaitStatus},
+        },
+        unistd::{
+            close, dup2, execve, fork, getpgid, getpid, isatty, setpgid, tcsetpgrp, ForkResult, Pid,
+        },
     };
     use std::{
         collections::HashMap, convert::Infallible, env, ffi::CString, os::unix::io::RawFd,
@@ -81,12 +86,36 @@ mod mockable {
             unsafe { syscall!(fork) }
         }
 
+        fn getpgid(&self, pid: Option<Pid>) -> SysCallResult<Pid> {
+            syscall!(getpgid, pid)
+        }
+
+        fn getpid(&self) -> Pid {
+            getpid()
+        }
+
         fn isatty(&self, fd: RawFd) -> SysCallResult<bool> {
             syscall!(isatty, fd)
         }
 
         fn open(&self, path: &str, oflag: OFlag, mode: Mode) -> SysCallResult<FdSize> {
             syscall!(open, path, oflag, mode)
+        }
+
+        fn setpgid(&self, pid: Pid, pgid: Pid) -> SysCallResult<()> {
+            syscall!(setpgid, pid, pgid)
+        }
+
+        fn sigaction(&self, sig: Signal, act: &SigAction) -> SysCallResult<SigAction> {
+            unsafe { syscall!(sigaction, sig, act) }
+        }
+
+        fn tcgetsid(&self, fd: RawFd) -> SysCallResult<Pid> {
+            syscall!(tcgetsid, fd)
+        }
+
+        fn tcsetpgrp(&self, fd: RawFd, pgrp: Pid) -> SysCallResult<()> {
+            syscall!(tcsetpgrp, fd, pgrp)
         }
 
         fn waitpid(&self, pid: Pid, options: Option<WaitPidFlag>) -> SysCallResult<WaitStatus> {

@@ -1,6 +1,7 @@
 use super::{
     exec::syscall::{SysCallWrapper, Wrapper},
     parse_command_line,
+    signal::{ignore_tty_signals, recognize_sigpipe},
     status::ExitStatus,
     Config, Context, ShellExecute, APP_NAME, VERSION,
 };
@@ -28,11 +29,16 @@ impl<'a, 'b> App<'a, 'b> {
         self.app.get_matches_from(args);
 
         let config = Config::new();
-        let mut context = Context::new();
+        let mut ctx = Context::new();
 
         let mut rl = Editor::<()>::new();
 
+        // Ignore SIGPIPE by default
+        // https://github.com/rust-lang/rust/pull/13158
+        recognize_sigpipe(&ctx).unwrap();
+
         if self.tty_avaliable {
+            ignore_tty_signals(&ctx).unwrap();
             rl.load_history(&*config.history_file()).unwrap_or_default();
         }
 
@@ -45,7 +51,7 @@ impl<'a, 'b> App<'a, 'b> {
                         if !cmds.ignore_history() {
                             rl.add_history_entry(line.as_str());
                         }
-                        status = cmds.execute(&mut context).unwrap();
+                        status = cmds.execute(&mut ctx).unwrap();
                     }
                     Err(e) => eprintln!("Error: {:?}", e),
                 },

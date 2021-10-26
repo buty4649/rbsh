@@ -12,9 +12,14 @@ use super::{
         word::{Word, WordKind, WordList},
         CommandList, ConnecterKind, UnitKind,
     },
+    signal::restore_tty_signals,
     status::{ExitStatus, Result},
 };
-use nix::{errno::Errno, sys::wait::WaitStatus, unistd::ForkResult};
+use nix::{
+    errno::Errno,
+    sys::wait::WaitStatus,
+    unistd::{ForkResult, Pid},
+};
 use redirect::ApplyRedirect;
 use syscall::SysCallWrapper;
 
@@ -133,11 +138,16 @@ impl ShellExecute for CommandList {
 pub struct Executor {
     list: Vec<UnitKind>,
     pos: usize,
+    pgid: Option<Pid>,
 }
 
 impl Executor {
     pub fn new(list: Vec<UnitKind>) -> Self {
-        Self { list, pos: 0 }
+        Self {
+            list,
+            pos: 0,
+            pgid: None,
+        }
     }
 
     fn next(&mut self) -> Option<UnitKind> {
@@ -166,7 +176,7 @@ impl Executor {
         Ok(status)
     }
 
-    fn execute_command(&self, ctx: &mut Context, cmd: UnitKind) -> Result<ExitStatus> {
+    fn execute_command(&mut self, ctx: &mut Context, cmd: UnitKind) -> Result<ExitStatus> {
         match cmd {
             UnitKind::SimpleCommand {
                 command,
@@ -220,7 +230,7 @@ impl Executor {
     }
 
     fn execute_simple_command(
-        &self,
+        &mut self,
         ctx: &mut Context,
         command: Vec<WordList>,
         redirect: RedirectList,
@@ -233,11 +243,31 @@ impl Executor {
         } else if cmds.is_present() {
             match ctx.wrapper().fork() {
                 Err(e) => Err(ShellError::syscall_error(e, Location::new(1, 1))),
-                Ok(ForkResult::Parent { child }) => match ctx.wrapper().waitpid(child, None) {
-                    Ok(WaitStatus::Exited(_, status)) => Ok(ExitStatus::new(status)),
-                    Err(e) => Err(ShellError::syscall_error(e, Location::new(1, 1))),
-                    _ => unimplemented![],
-                },
+                Ok(ForkResult::Parent { child }) => {
+                    self.pgid = self.pgid.or(Some(child));
+                    let pgid = self.pgid.unwrap();
+                    ctx.wrapper().setpgid(child, pgid).unwrap();
+
+                    if !is_current_sid(ctx, pgid) {
+                        ctx.wrapper().tcsetpgrp(0, pgid).unwrap();
+                    }
+
+                    let pgid = Pid::from_raw(-pgid.as_raw());
+                    let ret = match ctx.wrapper().waitpid(pgid, None) {
+                        Ok(WaitStatus::Exited(_, status)) => Ok(ExitStatus::new(status)),
+                        Err(e) => Err(ShellError::syscall_error(e, Location::new(1, 1))),
+                        _ => unimplemented![],
+                    };
+
+                    let pid = ctx
+                        .wrapper()
+                        .getpgid(None)
+                        .unwrap_or_else(|_| ctx.wrapper().getpid());
+                    if !is_current_sid(ctx, pid) {
+                        ctx.wrapper().tcsetpgrp(0, pid).unwrap();
+                    }
+                    ret
+                }
                 Ok(ForkResult::Child) => {
                     let cmdpath = cmds.first().unwrap().to_string();
                     let status =
@@ -282,6 +312,8 @@ impl Executor {
                 _ => unreachable![],
             }
         }
+
+        restore_tty_signals(ctx).unwrap();
 
         match ctx.wrapper().execve(cmdpath, &cmds, &env) {
             Ok(_) => unreachable![],
@@ -469,6 +501,11 @@ fn assume_command(command: &str) -> PathBuf {
                 .unwrap_or(buf),
         }
     }
+}
+
+fn is_current_sid(ctx: &Context, pid: Pid) -> bool {
+    let sid = ctx.wrapper().tcgetsid(0).unwrap_or(Pid::from_raw(-1));
+    sid == pid
 }
 
 include!("exec_test.rs");
