@@ -64,8 +64,10 @@ impl JobSignalHandlerInner {
         self.interrupt = true
     }
 
-    pub fn reset_interrupt_flag(&mut self) {
-        self.interrupt = false
+    pub fn reset_interrupt_flag(&mut self) -> bool {
+        let ret = self.interrupt;
+        self.interrupt = false;
+        ret
     }
 
     pub fn push_status(&mut self, s: WaitStatus) {
@@ -118,7 +120,13 @@ impl JobSignalHandler {
                         match waitpid(any_child, None) {
                             Ok(s) => {
                                 let (inner, cvar) = &*pair;
-                                inner.lock().unwrap().push_status(s);
+
+                                let mut lock = inner.lock().unwrap();
+                                lock.push_status(s);
+                                if matches!(s, WaitStatus::Signaled(_, signal, _) if signal == Signal::SIGINT)
+                                {
+                                    lock.set_interrupt_flag();
+                                }
                                 cvar.notify_one();
                             }
                             Err(e) => {
@@ -151,6 +159,11 @@ impl JobSignalHandler {
                 _ => unreachable![],
             },
         }
+    }
+
+    pub fn is_interrupt(&mut self) -> bool {
+        let (mutex, _) = &*self.inner;
+        mutex.lock().unwrap().reset_interrupt_flag()
     }
 }
 

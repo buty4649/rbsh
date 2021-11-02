@@ -473,14 +473,24 @@ impl Executor {
         inverse: bool,
         pgid: Option<Pid>,
     ) -> ExitStatus {
-        loop {
+        'exec: loop {
+            macro_rules! interrupt {
+                () => {
+                    if self.handler.is_interrupt() {
+                        break 'exec;
+                    }
+                };
+            }
+
+            interrupt!();
             match self.execute_command_internal(*condition.clone(), pgid, None, None) {
                 status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
                     for c in command.to_vec() {
+                        interrupt!();
                         self.execute_command_internal(c, pgid, None, None);
                     }
                 }
-                _ => break,
+                _ => break 'exec,
             }
         }
         ExitStatus::new(0)
@@ -518,9 +528,13 @@ impl Executor {
                 .collect::<Vec<_>>(),
         };
 
-        for word in list.iter() {
+        'exec: for word in list.iter() {
             self.ctx.set_var(&*identifier, word);
             for c in command.to_vec() {
+                if self.handler.is_interrupt() {
+                    break 'exec;
+                }
+
                 self.execute_command_internal(c, pgid, None, None);
             }
         }

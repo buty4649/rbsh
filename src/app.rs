@@ -77,10 +77,7 @@ impl<'a> App {
                     }
                     Err(e) => eprintln!("Error: {:?}", e),
                 },
-                Err(ReadlineError::Interrupted) => {
-                    println!("CTRL-C");
-                    break;
-                }
+                Err(ReadlineError::Interrupted) => (),
                 Err(ReadlineError::Eof) => {
                     println!("CTRL-D");
                     break;
