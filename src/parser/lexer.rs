@@ -41,7 +41,7 @@ impl Lexer {
 
     fn lex(&mut self) -> Result<Vec<Token>> {
         if self.is_eof() {
-            return Err(self.error_eof());
+            return Ok(vec![]);
         }
 
         macro_rules! action {
