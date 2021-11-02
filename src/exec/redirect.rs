@@ -18,19 +18,18 @@ pub trait ApplyRedirect {
 
 impl ApplyRedirect for RedirectList {
     fn apply(self, context: &Context) -> Result<()> {
-        RedirectApplier::new(Wrapper::new(), context).exec(self)
+        RedirectApplier::new(context).exec(self)
     }
 }
 
 struct RedirectApplier<'a> {
-    wrapper: Wrapper,
     context: &'a Context,
 }
 type SysCallResult = super::syscall::SysCallResult<()>;
 
 impl<'a> RedirectApplier<'a> {
-    fn new(wrapper: Wrapper, context: &'a Context) -> Self {
-        Self { wrapper, context }
+    fn new(context: &'a Context) -> Self {
+        Self { context }
     }
 
     fn exec(self, list: RedirectList) -> Result<()> {
@@ -63,7 +62,7 @@ impl<'a> RedirectApplier<'a> {
         let file = file.to_string(self.context);
         let flag = OFlag::O_RDONLY;
         let mode = Mode::from_bits(0o666).unwrap();
-        let new_fd = self.wrapper.open(&*file, flag, mode)?;
+        let new_fd = self.wrapper().open(&*file, flag, mode)?;
         if fd != new_fd {
             self.copy(new_fd, fd)?;
             self.close(new_fd)?;
@@ -75,7 +74,7 @@ impl<'a> RedirectApplier<'a> {
         let file = file.to_string(self.context);
         let flag = OFlag::O_WRONLY | OFlag::O_CREAT | OFlag::O_TRUNC;
         let mode = Mode::from_bits(0o666).unwrap();
-        let new_fd = self.wrapper.open(&*file, flag, mode)?;
+        let new_fd = self.wrapper().open(&*file, flag, mode)?;
         if fd != new_fd {
             self.copy(new_fd, fd)?;
             self.close(new_fd)?;
@@ -84,7 +83,7 @@ impl<'a> RedirectApplier<'a> {
     }
 
     fn copy(&self, src: FdSize, dest: FdSize) -> SysCallResult {
-        self.wrapper.dup2(src, dest)?;
+        self.wrapper().dup2(src, dest)?;
         Ok(())
     }
 
@@ -92,7 +91,7 @@ impl<'a> RedirectApplier<'a> {
         let file = file.to_string(self.context);
         let flag = OFlag::O_WRONLY | OFlag::O_CREAT | OFlag::O_APPEND;
         let mode = Mode::from_bits(0o666).unwrap();
-        let new_fd = self.wrapper.open(&*file, flag, mode)?;
+        let new_fd = self.wrapper().open(&*file, flag, mode)?;
         if fd != new_fd {
             self.copy(new_fd, fd)?;
             self.close(new_fd)?;
@@ -101,7 +100,7 @@ impl<'a> RedirectApplier<'a> {
     }
 
     fn close(&self, fd: FdSize) -> SysCallResult {
-        self.wrapper.close(fd)?;
+        self.wrapper().close(fd)?;
         Ok(())
     }
 
@@ -109,12 +108,16 @@ impl<'a> RedirectApplier<'a> {
         let file = file.to_string(self.context);
         let flag = OFlag::O_RDWR | OFlag::O_CREAT;
         let mode = Mode::from_bits(0o666).unwrap();
-        let new_fd = self.wrapper.open(&*file, flag, mode)?;
+        let new_fd = self.wrapper().open(&*file, flag, mode)?;
         if fd != new_fd {
             self.copy(new_fd, fd)?;
             self.close(new_fd)?;
         }
         Ok(())
+    }
+
+    fn wrapper(&self) -> &Wrapper {
+        self.context.wrapper()
     }
 }
 

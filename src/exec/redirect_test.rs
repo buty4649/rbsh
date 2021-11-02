@@ -26,7 +26,7 @@ mod test {
 
     macro_rules! r {
         ($m: expr) => {
-            RedirectApplier::new($m, &Context::new())
+            RedirectApplier::new(&Context::new($m))
         };
     }
 

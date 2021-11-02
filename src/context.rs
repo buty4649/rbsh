@@ -8,11 +8,7 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new() -> Self {
-        Self::new_at(Wrapper::new())
-    }
-
-    pub fn new_at(wrapper: Wrapper) -> Self {
+    pub fn new(wrapper: Wrapper) -> Self {
         Self {
             local_vars: HashMap::new(),
             wrapper,

@@ -16,6 +16,10 @@ impl SysCallError {
     pub fn errno(&self) -> nix::errno::Errno {
         self.1
     }
+
+    pub fn desc(&self) -> &str {
+        self.errno().desc()
+    }
 }
 
 mod mockable {
@@ -30,7 +34,8 @@ mod mockable {
             wait::{waitpid, WaitPidFlag, WaitStatus},
         },
         unistd::{
-            close, dup2, execve, fork, getpgid, getpid, isatty, setpgid, tcsetpgrp, ForkResult, Pid,
+            close, dup2, execve, fork, getpgid, getpid, isatty, pipe, read, setpgid, tcgetpgrp,
+            tcsetpgrp, ForkResult, Pid,
         },
     };
     use std::{
@@ -102,6 +107,14 @@ mod mockable {
             syscall!(open, path, oflag, mode)
         }
 
+        fn pipe(&self) -> SysCallResult<(RawFd, RawFd)> {
+            syscall!(pipe)
+        }
+
+        fn read(&self, fd: RawFd, buf: &mut [u8]) -> SysCallResult<usize> {
+            syscall!(read, fd, buf)
+        }
+
         fn setpgid(&self, pid: Pid, pgid: Pid) -> SysCallResult<()> {
             syscall!(setpgid, pid, pgid)
         }
@@ -112,6 +125,10 @@ mod mockable {
 
         fn tcgetsid(&self, fd: RawFd) -> SysCallResult<Pid> {
             syscall!(tcgetsid, fd)
+        }
+
+        fn tcgetpgrp(&self, fd: RawFd) -> SysCallResult<Pid> {
+            syscall!(tcgetpgrp, fd)
         }
 
         fn tcsetpgrp(&self, fd: RawFd, pgrp: Pid) -> SysCallResult<()> {

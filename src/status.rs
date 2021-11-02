@@ -1,4 +1,5 @@
 use super::error::ShellError;
+use nix::sys::signal::Signal;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ExitStatus {
@@ -8,6 +9,14 @@ pub struct ExitStatus {
 impl ExitStatus {
     pub fn new(code: i32) -> Self {
         ExitStatus { code }
+    }
+
+    pub fn success() -> Self {
+        Self::new(0)
+    }
+
+    pub fn failure() -> Self {
+        Self::new(1)
     }
 
     pub fn code(self) -> i32 {
@@ -20,6 +29,10 @@ impl ExitStatus {
 
     pub fn is_error(self) -> bool {
         !self.is_success()
+    }
+
+    pub fn signaled(sig: Signal) -> Self {
+        Self::new(128 + sig as i32)
     }
 }
 

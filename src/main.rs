@@ -4,5 +4,5 @@ use std::process::exit;
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
-    exit(App::new().run(args))
+    exit(App::run(args))
 }
