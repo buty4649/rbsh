@@ -6,13 +6,16 @@ use super::{
 
 use nix::{
     sys::{
-        signal::{SaFlags, SigAction, SigHandler, SigSet, Signal},
+        signal::{killpg, SaFlags, SigAction, SigHandler, SigSet, Signal},
         wait::{waitpid, WaitStatus},
     },
     unistd::Pid,
 };
 use signal_hook::{consts::signal::*, iterator::Signals};
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{
+    atomic::{AtomicI32, Ordering},
+    Arc, Condvar, Mutex,
+};
 use std::thread;
 
 static TTYSIGNALS: [i32; 5] = [SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU];
@@ -45,6 +48,7 @@ pub fn restore_tty_signals(wrapper: &Wrapper) -> SysCallResult<()> {
 
 pub struct JobSignalHandler {
     inner: Arc<(Mutex<JobSignalHandlerInner>, Condvar)>,
+    forground: Arc<AtomicI32>,
 }
 
 pub struct JobSignalHandlerInner {
@@ -102,11 +106,13 @@ impl JobSignalHandlerInner {
 impl JobSignalHandler {
     pub fn start() -> Result<Self, std::io::Error> {
         let inner = Arc::new((Mutex::new(JobSignalHandlerInner::new()), Condvar::new()));
+        let forground = Arc::new(AtomicI32::new(0));
 
         let mut signals = Signals::new(vec![SIGINT, SIGCHLD])?;
         signals.handle();
 
         let pair = inner.clone();
+        let fg = forground.clone();
         thread::spawn(move || {
             for sig in &mut signals {
                 match sig {
@@ -114,11 +120,20 @@ impl JobSignalHandler {
                         let (inner, cvar) = &*pair;
                         inner.lock().unwrap().set_interrupt_flag();
                         cvar.notify_one();
+
+                        let f = fg.load(Ordering::Relaxed);
+                        if f > 0 {
+                            let pgid = Pid::from_raw(f);
+                            killpg(pgid, Signal::SIGINT).ok();
+                            fg.store(0, Ordering::Relaxed);
+                        }
                     }
                     SIGCHLD => {
                         let any_child = Pid::from_raw(-1);
                         loop {
                             match waitpid(any_child, Some(nix::sys::wait::WaitPidFlag::WNOHANG)) {
+                                Ok(s) if s == WaitStatus::StillAlive => break,
+                                Err(_) => break,
                                 Ok(s) => {
                                     let (inner, cvar) = &*pair;
 
@@ -130,7 +145,6 @@ impl JobSignalHandler {
                                     }
                                     cvar.notify_one();
                                 }
-                                Err(_) => break,
                             }
                         }
                     }
@@ -139,7 +153,7 @@ impl JobSignalHandler {
             }
         });
 
-        Ok(Self { inner })
+        Ok(Self { inner, forground })
     }
 
     pub fn wait_for(&mut self, pid: Pid, block: bool) -> Option<ExitStatus> {
@@ -164,6 +178,14 @@ impl JobSignalHandler {
     pub fn is_interrupt(&mut self) -> bool {
         let (mutex, _) = &*self.inner;
         mutex.lock().unwrap().reset_interrupt_flag()
+    }
+
+    pub fn set_forground(&mut self, pid: Pid) {
+        self.forground.store(pid.as_raw(), Ordering::Relaxed);
+    }
+
+    pub fn reset_forground(&mut self) {
+        self.forground.store(0, Ordering::Relaxed);
     }
 }
 

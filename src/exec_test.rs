@@ -28,6 +28,7 @@ mod test {
 
     #[test]
     fn test_simple_command() {
+        /*
         let mock = Wrapper::new();
         let mut e = Executor::new(mock).unwrap();
         assert_eq!(
@@ -35,7 +36,6 @@ mod test {
             e.execute_simple_command(vec![], RedirectList::new(), false, None, None, None)
         );
 
-        /*
         /* parent */
         let mut mock = Wrapper::new();
         mock.expect_fork()

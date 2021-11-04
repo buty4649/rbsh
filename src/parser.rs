@@ -14,13 +14,13 @@ use word::{parse_wordlist, Word, WordList};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommandList {
-    list: Vec<UnitKind>,
+    list: Vec<Unit>,
     ignore_history: bool,
     current: usize,
 }
 
 impl CommandList {
-    pub fn new(list: Vec<UnitKind>, ignore_history: bool) -> Self {
+    pub fn new(list: Vec<Unit>, ignore_history: bool) -> Self {
         Self {
             list,
             ignore_history,
@@ -28,7 +28,7 @@ impl CommandList {
         }
     }
 
-    pub fn to_vec(&self) -> Vec<UnitKind> {
+    pub fn to_vec(&self) -> Vec<Unit> {
         self.list.clone()
     }
 
@@ -38,50 +38,63 @@ impl CommandList {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Unit {
+    kind: UnitKind,
+    background: bool,
+}
+
+impl Unit {
+    pub fn new(kind: UnitKind, background: bool) -> Self {
+        Self { kind, background }
+    }
+
+    pub fn kind(&self) -> UnitKind {
+        self.kind.clone()
+    }
+
+    pub fn background(&self) -> bool {
+        self.background
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum UnitKind {
     SimpleCommand {
         command: Vec<WordList>,
         redirect: RedirectList,
-        background: bool,
     },
     Connecter {
-        left: Box<UnitKind>,
-        right: Box<UnitKind>,
+        left: Box<Unit>,
+        right: Box<Unit>,
         kind: ConnecterKind,
-        background: bool,
     },
     If {
-        condition: Box<UnitKind>,
-        true_case: Vec<UnitKind>,
-        false_case: Option<Vec<UnitKind>>,
+        condition: Box<Unit>,
+        true_case: Vec<Unit>,
+        false_case: Option<Vec<Unit>>,
         redirect: RedirectList,
-        background: bool,
     },
     Unless {
-        condition: Box<UnitKind>,
-        false_case: Vec<UnitKind>,
-        true_case: Option<Vec<UnitKind>>,
+        condition: Box<Unit>,
+        false_case: Vec<Unit>,
+        true_case: Option<Vec<Unit>>,
         redirect: RedirectList,
-        background: bool,
     },
     While {
-        condition: Box<UnitKind>,
-        command: Vec<UnitKind>,
+        condition: Box<Unit>,
+        command: Vec<Unit>,
         redirect: RedirectList,
-        background: bool,
     },
     Until {
-        condition: Box<UnitKind>,
-        command: Vec<UnitKind>,
+        condition: Box<Unit>,
+        command: Vec<Unit>,
         redirect: RedirectList,
-        background: bool,
     },
     For {
         identifier: Word,
         list: Option<Vec<WordList>>,
-        command: Vec<UnitKind>,
+        command: Vec<Unit>,
         redirect: RedirectList,
-        background: bool,
     },
 }
 

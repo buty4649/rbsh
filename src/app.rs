@@ -64,6 +64,7 @@ impl<'a> App {
 
         let status = ExitStatus::new(0);
         loop {
+            self.executor.reap_job();
             let readline = rl.readline("reddish> ");
             match readline {
                 Ok(line) => match parse_command_line(line.as_str()) {
@@ -72,7 +73,7 @@ impl<'a> App {
                             rl.add_history_entry(line.as_str());
                         }
                         for cmd in cmds.to_vec() {
-                            self.executor.execute_command(cmd);
+                            self.executor.execute_command(cmd, None);
                         }
                     }
                     Err(e) => eprintln!("Error: {:?}", e),

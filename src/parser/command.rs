@@ -2,7 +2,7 @@ use super::{
     redirect::parse_redirect,
     token::TokenReader,
     word::{parse_wordlist, Word},
-    {TokenKind, UnitKind},
+    {TokenKind, Unit, UnitKind},
 };
 use crate::{error::ShellError, status::Result};
 
@@ -14,63 +14,19 @@ pub enum ConnecterKind {
     Or,
 }
 
-pub fn parse_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
+pub fn parse_command(tokens: &mut TokenReader) -> Result<Option<Unit>> {
     match parse_connecter(tokens)? {
         None => Ok(None),
-        Some(c) => match tokens.peek_token() {
-            Some(TokenKind::Background) => {
-                tokens.next();
-                let mut c = c;
-                match &mut c {
-                    UnitKind::SimpleCommand {
-                        command: _,
-                        redirect: _,
-                        background,
-                    }
-                    | UnitKind::Connecter {
-                        left: _,
-                        right: _,
-                        kind: _,
-                        background,
-                    }
-                    | UnitKind::If {
-                        condition: _,
-                        true_case: _,
-                        false_case: _,
-                        redirect: _,
-                        background,
-                    }
-                    | UnitKind::Unless {
-                        condition: _,
-                        false_case: _,
-                        true_case: _,
-                        redirect: _,
-                        background,
-                    }
-                    | UnitKind::While {
-                        condition: _,
-                        command: _,
-                        redirect: _,
-                        background,
-                    }
-                    | UnitKind::Until {
-                        condition: _,
-                        command: _,
-                        redirect: _,
-                        background,
-                    }
-                    | UnitKind::For {
-                        identifier: _,
-                        list: _,
-                        command: _,
-                        redirect: _,
-                        background,
-                    } => *background = true,
-                };
-                Ok(Some(c))
-            }
-            _ => Ok(Some(c)),
-        },
+        Some(kind) => {
+            let background = match tokens.peek_token() {
+                Some(TokenKind::Background) => {
+                    tokens.next();
+                    true
+                }
+                _ => false,
+            };
+            Ok(Some(Unit::new(kind, background)))
+        }
     }
 }
 
@@ -104,17 +60,12 @@ pub fn parse_connecter(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
                                 TokenKind::Or => ConnecterKind::Or,
                                 _ => unreachable![],
                             };
-                            let left = Box::new(left);
+                            let left = Box::new(Unit::new(left, false));
                             let right = match parse_connecter(tokens)? {
-                                Some(c) => Box::new(c),
+                                Some(c) => Box::new(Unit::new(c, false)),
                                 None => return Err(ShellError::unexpected_token(token)),
                             };
-                            let connecter = UnitKind::Connecter {
-                                left,
-                                right,
-                                kind,
-                                background: false,
-                            };
+                            let connecter = UnitKind::Connecter { left, right, kind };
                             Ok(Some(connecter))
                         }
 
@@ -151,33 +102,28 @@ pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>>
             true_case: _,
             false_case: _,
             redirect,
-            background: _,
         })
         | Some(UnitKind::Unless {
             condition: _,
             false_case: _,
             true_case: _,
             redirect,
-            background: _,
         })
         | Some(UnitKind::While {
             condition: _,
             command: _,
             redirect,
-            background: _,
         })
         | Some(UnitKind::Until {
             condition: _,
             command: _,
             redirect,
-            background: _,
         })
         | Some(UnitKind::For {
             identifier: _,
             list: _,
             command: _,
             redirect,
-            background: _,
         }) => {
             tokens.skip_space();
             loop {
@@ -233,7 +179,8 @@ fn parse_if_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
                 break;
             }
             Some(TokenKind::ElsIf) | Some(TokenKind::ElIf) => {
-                false_case = parse_if_statement(tokens).map(|c| Some(vec![c.unwrap()]))?;
+                false_case =
+                    parse_if_statement(tokens).map(|c| Some(vec![Unit::new(c.unwrap(), false)]))?;
                 break;
             }
             None => return Err(tokens.error_eof()),
@@ -245,7 +192,6 @@ fn parse_if_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
         true_case,
         false_case,
         redirect: vec![],
-        background: false,
     };
 
     Ok(Some(unit))
@@ -298,13 +244,12 @@ fn parse_unless_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> 
         false_case,
         true_case,
         redirect: vec![],
-        background: false,
     };
 
     Ok(Some(unit))
 }
 
-fn parse_else_clause(tokens: &mut TokenReader) -> Result<Option<Vec<UnitKind>>> {
+fn parse_else_clause(tokens: &mut TokenReader) -> Result<Option<Vec<Unit>>> {
     let mut units = vec![];
     loop {
         match parse_command(tokens)? {
@@ -365,13 +310,11 @@ fn parse_while_or_until_statement(tokens: &mut TokenReader) -> Result<Option<Uni
             condition: Box::new(condition),
             command,
             redirect: vec![],
-            background: false,
         },
         TokenKind::Until => UnitKind::Until {
             condition: Box::new(condition),
             command,
             redirect: vec![],
-            background: false,
         },
         _ => unimplemented![],
     };
@@ -467,7 +410,6 @@ fn parse_for_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
         list,
         command,
         redirect: vec![],
-        background: false,
     };
     Ok(Some(unit))
 }
@@ -497,11 +439,7 @@ fn parse_simple_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
     if command.is_empty() && redirect.is_empty() {
         Ok(None)
     } else {
-        Ok(Some(UnitKind::SimpleCommand {
-            command,
-            redirect,
-            background: false,
-        }))
+        Ok(Some(UnitKind::SimpleCommand { command, redirect }))
     }
 }
 

@@ -51,150 +51,146 @@ mod test {
         };
     }
 
+    macro_rules! unit {
+        ($e: expr, $b: expr) => {
+            Unit::new($e, $b)
+        };
+    }
+
     macro_rules! simple_command {
-        ($c: expr, $r: expr, $b: expr) => {
+        ($c: expr, $r: expr) => {
             UnitKind::SimpleCommand {
                 command: $c,
                 redirect: $r,
-                background: $b,
             }
         };
 
         ($c: expr) => {
-            simple_command!($c, vec![], false)
+            simple_command!($c, vec![])
         };
     }
 
     macro_rules! if_stmt {
-        ($c: expr, $t: expr, $f: expr, $r: expr, $b: expr) => {
+        ($c: expr, $t: expr, $f: expr, $r: expr) => {
             UnitKind::If {
                 condition: Box::new($c),
                 true_case: $t,
                 false_case: $f,
                 redirect: $r,
-                background: $b,
             }
         };
 
         ($c: expr, $t: expr) => {
-            if_stmt!($c, $t, None, vec![], false)
+            if_stmt!($c, $t, None, vec![])
         };
 
         ($c: expr, $t: expr, $f: expr) => {
-            if_stmt!($c, $t, Some($f), vec![], false)
+            if_stmt!($c, $t, Some($f), vec![])
         };
     }
 
     macro_rules! unless_stmt {
-        ($c: expr, $f: expr, $t: expr, $r: expr, $b: expr) => {
+        ($c: expr, $f: expr, $t: expr, $r: expr) => {
             UnitKind::Unless {
                 condition: Box::new($c),
                 false_case: $f,
                 true_case: $t,
                 redirect: $r,
-                background: $b,
             }
         };
 
         ($c: expr, $f: expr) => {
-            unless_stmt!($c, $f, None, vec![], false)
+            unless_stmt!($c, $f, None, vec![])
         };
 
         ($c: expr, $f: expr, $t: expr) => {
-            unless_stmt!($c, $f, Some($t), vec![], false)
+            unless_stmt!($c, $f, Some($t), vec![])
         };
     }
 
     macro_rules! while_stmt {
-        ($c: expr, $a: expr, $r: expr, $b: expr) => {
+        ($c: expr, $a: expr, $r: expr) => {
             UnitKind::While {
                 condition: Box::new($c),
                 command: $a,
                 redirect: $r,
-                background: $b,
             }
         };
 
         ($c: expr, $a: expr) => {
-            while_stmt!($c, $a, vec![], false)
+            while_stmt!($c, $a, vec![])
         };
     }
 
     macro_rules! until_stmt {
-        ($c: expr, $a: expr, $r: expr, $b: expr) => {
+        ($c: expr, $a: expr, $r: expr) => {
             UnitKind::Until {
                 condition: Box::new($c),
                 command: $a,
                 redirect: $r,
-                background: $b,
             }
         };
 
         ($c: expr, $a: expr) => {
-            until_stmt!($c, $a, vec![], false)
+            until_stmt!($c, $a, vec![])
         };
     }
 
     macro_rules! for_stmt {
-        ($i: expr, $l: expr, $c: expr, $r: expr, $b: expr) => {
+        ($i: expr, $l: expr, $c: expr, $r: expr) => {
             UnitKind::For {
                 identifier: $i,
                 list: $l,
                 command: $c,
                 redirect: $r,
-                background: $b,
             }
         };
 
         ($i: expr, $c: expr) => {
-            for_stmt!($i, None, $c, vec![], false)
+            for_stmt!($i, None, $c, vec![])
         };
 
         ($i: expr, $l: expr, $c: expr) => {
-            for_stmt!($i, Some($l), $c, vec![], false)
+            for_stmt!($i, Some($l), $c, vec![])
         };
     }
 
     macro_rules! connecter_pipe {
-        ($left: expr, $right: expr, $background: expr) => {
+        ($left: expr, $right: expr) => {
             UnitKind::Connecter {
                 left: Box::new($left),
                 right: Box::new($right),
                 kind: ConnecterKind::Pipe,
-                background: $background,
             }
         };
     }
 
     macro_rules! connecter_pipe_both {
-        ($left: expr, $right: expr, $background: expr) => {
+        ($left: expr, $right: expr) => {
             UnitKind::Connecter {
                 left: Box::new($left),
                 right: Box::new($right),
                 kind: ConnecterKind::PipeBoth,
-                background: $background,
             }
         };
     }
 
     macro_rules! connecter_and {
-        ($left: expr, $right: expr, $background: expr) => {
+        ($left: expr, $right: expr) => {
             UnitKind::Connecter {
                 left: Box::new($left),
                 right: Box::new($right),
                 kind: ConnecterKind::And,
-                background: $background,
             }
         };
     }
 
     macro_rules! connecter_or {
-        ($left: expr, $right: expr, $background: expr) => {
+        ($left: expr, $right: expr) => {
             UnitKind::Connecter {
                 left: Box::new($left),
                 right: Box::new($right),
                 kind: ConnecterKind::Or,
-                background: $background,
             }
         };
     }
@@ -210,21 +206,26 @@ mod test {
         assert_parse!(
             parse_command,
             "foo &",
-            ok![simple_command!(vec![w!["foo"]], vec![], true)]
+            ok![unit![simple_command!(vec![w!["foo"]], vec![]), true]]
         );
 
         assert_parse!(
             parse_command,
             "foo ;",
-            ok![simple_command!(vec![w!["foo"]], vec![], false)]
+            ok![unit!(simple_command!(vec![w!["foo"]], vec![]), false)]
         );
 
         assert_parse!(
             parse_command,
             "foo | bar",
-            ok![connecter_pipe![
-                simple_command!(vec![w!["foo"]], vec![], false),
-                simple_command!(vec![w![normal_word!("bar", loc!(7, 1))]], vec![], false),
+            ok![unit![
+                connecter_pipe!(
+                    unit![simple_command!(vec![w!["foo"]], vec![]), false],
+                    unit![
+                        simple_command!(vec![w![normal_word!("bar", loc!(7, 1))]], vec![]),
+                        false
+                    ]
+                ),
                 false
             ]]
         );
@@ -232,9 +233,14 @@ mod test {
         assert_parse!(
             parse_command,
             "foo |& bar",
-            ok![connecter_pipe_both![
-                simple_command!(vec![w!["foo"]], vec![], false),
-                simple_command!(vec![w![normal_word!("bar", loc!(8, 1))]], vec![], false),
+            ok![unit![
+                connecter_pipe_both!(
+                    unit![simple_command!(vec![w!["foo"]], vec![]), false],
+                    unit![
+                        simple_command!(vec![w![normal_word!("bar", loc!(8, 1))]], vec![]),
+                        false
+                    ]
+                ),
                 false
             ]]
         );
@@ -242,9 +248,14 @@ mod test {
         assert_parse!(
             parse_command,
             "foo && bar",
-            ok![connecter_and![
-                simple_command!(vec![w!["foo"]], vec![], false),
-                simple_command!(vec![w![normal_word!("bar", loc!(8, 1))]], vec![], false),
+            ok![unit![
+                connecter_and!(
+                    unit![simple_command!(vec![w!["foo"]], vec![]), false],
+                    unit![
+                        simple_command!(vec![w![normal_word!("bar", loc!(8, 1))]], vec![]),
+                        false
+                    ]
+                ),
                 false
             ]]
         );
@@ -252,9 +263,14 @@ mod test {
         assert_parse!(
             parse_command,
             "foo || bar",
-            ok![connecter_or![
-                simple_command!(vec![w!["foo"]], vec![], false),
-                simple_command!(vec![w![normal_word!("bar", loc!(8, 1))]], vec![], false),
+            ok![unit![
+                connecter_or!(
+                    unit![simple_command!(vec![w!["foo"]], vec![]), false],
+                    unit![
+                        simple_command!(vec![w![normal_word!("bar", loc!(8, 1))]], vec![]),
+                        false
+                    ]
+                ),
                 false
             ]]
         );
@@ -286,14 +302,27 @@ mod test {
         assert_parse!(
             parse_command,
             "if foo; bar; end > baz 2>&1 &",
-            ok![if_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]])),
-                None,
-                vec![
-                    Redirect::write_to(1, w![normal_word!("baz", loc!(20, 1))], false, loc!(18, 1)),
-                    Redirect::copy(1, 2, false, loc!(24, 1)),
-                ],
+            ok![unit![
+                if_stmt!(
+                    unit![
+                        simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                        false
+                    ],
+                    vec!(unit![
+                        simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]]),
+                        false
+                    ]),
+                    None,
+                    vec![
+                        Redirect::write_to(
+                            1,
+                            w![normal_word!("baz", loc!(20, 1))],
+                            false,
+                            loc!(18, 1)
+                        ),
+                        Redirect::copy(1, 2, false, loc!(24, 1)),
+                    ]
+                ),
                 true
             ]]
         );
@@ -301,15 +330,35 @@ mod test {
         assert_parse!(
             parse_command,
             "if foo; bar; end && if baz; foo; end",
-            ok![connecter_and![
-                if_stmt![
-                    simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
-                    vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]]))
-                ],
-                if_stmt![
-                    simple_command!(vec![w![normal_word!("baz", loc!(24, 1))]]),
-                    vec!(simple_command!(vec![w![normal_word!("foo", loc!(29, 1))]]))
-                ],
+            ok![unit![
+                connecter_and!(
+                    unit![
+                        if_stmt![
+                            unit![
+                                simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                                false
+                            ],
+                            vec!(unit![
+                                simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]]),
+                                false
+                            ])
+                        ],
+                        false
+                    ],
+                    unit![
+                        if_stmt![
+                            unit![
+                                simple_command!(vec![w![normal_word!("baz", loc!(24, 1))]]),
+                                false
+                            ],
+                            vec!(unit![
+                                simple_command!(vec![w![normal_word!("foo", loc!(29, 1))]]),
+                                false
+                            ])
+                        ],
+                        false
+                    ]
+                ),
                 false
             ]]
         );
@@ -318,8 +367,11 @@ mod test {
             parse_command,
             "foo & bar",
             ok![vec![
-                simple_command!(vec![w!["foo"]], vec![], true),
-                simple_command!(vec![w![normal_word!("bar", loc!(7, 1))]], vec![], false),
+                unit![simple_command!(vec![w!["foo"]], vec![]), true],
+                unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(7, 1))]], vec![]),
+                    false
+                ],
             ]]
         );
 
@@ -327,20 +379,33 @@ mod test {
             parse_command,
             "foo ; bar",
             ok![vec![
-                simple_command!(vec![w!["foo"]], vec![], false),
-                simple_command!(vec![w![normal_word!("bar", loc!(7, 1))]], vec![], false),
+                unit![simple_command!(vec![w!["foo"]], vec![]), false],
+                unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(7, 1))]], vec![]),
+                    false
+                ],
             ]]
         );
 
         assert_parse_all!(
             parse_command,
             "foo && bar || baz &",
-            ok![vec![connecter_and![
-                simple_command!(vec![w!["foo"]], vec![], false),
-                connecter_or![
-                    simple_command!(vec![w![normal_word!("bar", loc!(8, 1))]], vec![], false),
-                    simple_command!(vec![w![normal_word!("baz", loc!(15, 1))]], vec![], false),
-                    false
+            ok![vec![unit![
+                connecter_and![
+                    unit![simple_command!(vec![w!["foo"]], vec![]), false],
+                    unit![
+                        connecter_or![
+                            unit![
+                                simple_command!(vec![w![normal_word!("bar", loc!(8, 1))]], vec![]),
+                                false
+                            ],
+                            unit![
+                                simple_command!(vec![w![normal_word!("baz", loc!(15, 1))]], vec![]),
+                                false
+                            ]
+                        ],
+                        false
+                    ]
                 ],
                 true
             ]]]
@@ -353,14 +418,19 @@ mod test {
             parse_shell_command,
             "if foo; bar; end > baz 2>&1",
             ok![if_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]])),
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]]),
+                    false
+                ]),
                 None,
                 vec![
                     Redirect::write_to(1, w![normal_word!("baz", loc!(20, 1))], false, loc!(18, 1)),
                     Redirect::copy(1, 2, false, loc!(24, 1)),
-                ],
-                false
+                ]
             ]]
         );
 
@@ -368,14 +438,19 @@ mod test {
             parse_shell_command,
             "unless foo; bar; end > baz 2>&1",
             ok![unless_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(8, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(13, 1))]])),
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(8, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(13, 1))]]),
+                    false
+                ]),
                 None,
                 vec![
                     Redirect::write_to(1, w![normal_word!("baz", loc!(24, 1))], false, loc!(22, 1)),
                     Redirect::copy(1, 2, false, loc!(28, 1)),
-                ],
-                false
+                ]
             ]]
         );
 
@@ -383,13 +458,18 @@ mod test {
             parse_shell_command,
             "while foo; bar; end > baz 2>&1",
             ok![while_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]])),
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]),
+                    false
+                ]),
                 vec![
                     Redirect::write_to(1, w![normal_word!("baz", loc!(23, 1))], false, loc!(21, 1)),
                     Redirect::copy(1, 2, false, loc!(27, 1)),
-                ],
-                false
+                ]
             ]]
         );
 
@@ -397,20 +477,25 @@ mod test {
             parse_shell_command,
             "until foo; bar; end > baz 2>&1",
             ok![until_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]])),
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]),
+                    false
+                ]),
                 vec![
                     Redirect::write_to(1, w![normal_word!("baz", loc!(23, 1))], false, loc!(21, 1)),
                     Redirect::copy(1, 2, false, loc!(27, 1)),
-                ],
-                false
+                ]
             ]]
         );
 
         assert_parse!(
             parse_shell_command,
             "ifconfig",
-            ok![simple_command!(vec![w!["ifconfig"]], vec![], false)]
+            ok![simple_command!(vec![w!["ifconfig"]], vec![])]
         );
 
         assert_parse!(
@@ -418,8 +503,7 @@ mod test {
             "echo if",
             ok![simple_command!(
                 vec![w!["echo"], w![normal_word!("if", loc!(6, 1))]],
-                vec![],
-                false
+                vec![]
             )]
         );
 
@@ -431,8 +515,7 @@ mod test {
                 vec![
                     Redirect::write_to(1, w![normal_word!("bar", loc!(7, 1))], false, loc!(5, 1)),
                     Redirect::copy(1, 2, false, loc!(11, 1)),
-                ],
-                false
+                ]
             )]
         );
     }
@@ -443,19 +526,28 @@ mod test {
             parse_if_statement,
             "if foo; then bar; fi",
             ok![if_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(14, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(14, 1))]]),
+                    false
+                ])
             ]]
         );
-        let input = "if foo
-then bar
-fi";
         assert_parse!(
             parse_if_statement,
-            input,
+            "if foo\nthen bar\nfi",
             ok![if_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(6, 2))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(6, 2))]]),
+                    false
+                ])
             ]]
         );
 
@@ -463,8 +555,14 @@ fi";
             parse_if_statement,
             "if foo; bar; fi",
             ok![if_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -472,8 +570,14 @@ fi";
             parse_if_statement,
             "if foo; bar; end",
             ok![if_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -481,10 +585,22 @@ fi";
             parse_if_statement,
             "if foo;then if bar;then baz; fi; fi",
             ok![if_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
-                vec![if_stmt![
-                    simple_command!(vec![w![normal_word!("bar", loc!(16, 1))]]),
-                    vec!(simple_command!(vec![w![normal_word!("baz", loc!(25, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                    false
+                ],
+                vec![unit![
+                    if_stmt![
+                        unit![
+                            simple_command!(vec![w![normal_word!("bar", loc!(16, 1))]]),
+                            false
+                        ],
+                        vec!(unit![
+                            simple_command!(vec![w![normal_word!("baz", loc!(25, 1))]]),
+                            false
+                        ])
+                    ],
+                    false
                 ]]
             ]]
         );
@@ -493,10 +609,22 @@ fi";
             parse_if_statement,
             "if foo;then if bar; baz; end; fi",
             ok![if_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
-                vec![if_stmt![
-                    simple_command!(vec![w![normal_word!("bar", loc!(16, 1))]]),
-                    vec!(simple_command!(vec![w![normal_word!("baz", loc!(21, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                    false
+                ],
+                vec![unit![
+                    if_stmt![
+                        unit![
+                            simple_command!(vec![w![normal_word!("bar", loc!(16, 1))]]),
+                            false
+                        ],
+                        vec!(unit![
+                            simple_command!(vec![w![normal_word!("baz", loc!(21, 1))]]),
+                            false
+                        ])
+                    ],
+                    false
                 ]]
             ]]
         );
@@ -505,11 +633,23 @@ fi";
             parse_if_statement,
             "if if foo; bar; end; baz; end",
             ok![if_stmt![
-                if_stmt![
-                    simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
-                    vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]))
+                unit![
+                    if_stmt![
+                        unit![
+                            simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                            false
+                        ],
+                        vec!(unit![
+                            simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]),
+                            false
+                        ])
+                    ],
+                    false
                 ],
-                vec![simple_command!(vec![w![normal_word!("baz", loc!(22, 1))]])]
+                vec![unit![
+                    simple_command!(vec![w![normal_word!("baz", loc!(22, 1))]]),
+                    false
+                ]]
             ]]
         );
 
@@ -517,9 +657,18 @@ fi";
             parse_if_statement,
             "if foo; bar; else baz; fi",
             ok![if_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]])),
-                vec!(simple_command!(vec![w![normal_word!("baz", loc!(19, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]]),
+                    false
+                ]),
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("baz", loc!(19, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -527,9 +676,18 @@ fi";
             parse_if_statement,
             "if foo; bar; else baz; end",
             ok![if_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]])),
-                vec!(simple_command!(vec![w![normal_word!("baz", loc!(19, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]]),
+                    false
+                ]),
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("baz", loc!(19, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -537,11 +695,26 @@ fi";
             parse_if_statement,
             "if foo; bar; elif baz; foo; fi",
             ok![if_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]])),
-                vec![if_stmt![
-                    simple_command!(vec![w![normal_word!("baz", loc!(19, 1))]]),
-                    vec!(simple_command!(vec![w![normal_word!("foo", loc!(24, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(9, 1))]]),
+                    false
+                ]),
+                vec![unit![
+                    if_stmt![
+                        unit![
+                            simple_command!(vec![w![normal_word!("baz", loc!(19, 1))]]),
+                            false
+                        ],
+                        vec!(unit![
+                            simple_command!(vec![w![normal_word!("foo", loc!(24, 1))]]),
+                            false
+                        ])
+                    ],
+                    false
                 ]]
             ]]
         );
@@ -553,19 +726,28 @@ fi";
             parse_unless_statement,
             "unless foo; then bar; end",
             ok![unless_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(8, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(18, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(8, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(18, 1))]]),
+                    false
+                ])
             ]]
         );
-        let input = "unless foo
-bar
-end";
         assert_parse!(
             parse_unless_statement,
-            input,
+            "unless foo\nbar\nend",
             ok![unless_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(8, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(1, 2))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(8, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(1, 2))]]),
+                    false
+                ])
             ]]
         );
 
@@ -573,8 +755,14 @@ end";
             parse_unless_statement,
             "unless foo; bar; end",
             ok![unless_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(8, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(13, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(8, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(13, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -582,9 +770,18 @@ end";
             parse_unless_statement,
             "unless foo; bar; else baz; end",
             ok![unless_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(8, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(13, 1))]])),
-                vec!(simple_command!(vec![w![normal_word!("baz", loc!(23, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(8, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(13, 1))]]),
+                    false
+                ]),
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("baz", loc!(23, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -601,8 +798,14 @@ end";
             parse_while_or_until_statement,
             "while foo; bar; end",
             ok![while_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -610,8 +813,14 @@ end";
             parse_while_or_until_statement,
             "while foo; bar; done",
             ok![while_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -619,8 +828,14 @@ end";
             parse_while_or_until_statement,
             "while foo; do bar; end",
             ok![while_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(15, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(15, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -628,19 +843,29 @@ end";
             parse_while_or_until_statement,
             "while foo; do bar; done",
             ok![while_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(15, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(15, 1))]]),
+                    false
+                ])
             ]]
         );
 
         assert_parse!(
             parse_while_or_until_statement,
-            "while foo
-                bar
-                end",
+            "while foo\nbar\nend",
             ok![while_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(17, 2))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(1, 2))]]),
+                    false
+                ])
             ]]
         );
 
@@ -648,8 +873,14 @@ end";
             parse_while_or_until_statement,
             "until foo; bar; end",
             ok![until_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -657,8 +888,14 @@ end";
             parse_while_or_until_statement,
             "until foo; bar; done",
             ok![until_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -666,8 +903,14 @@ end";
             parse_while_or_until_statement,
             "until foo; do bar; end",
             ok![until_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(15, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(15, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -675,19 +918,29 @@ end";
             parse_while_or_until_statement,
             "until foo; do bar; done",
             ok![until_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(15, 1))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(15, 1))]]),
+                    false
+                ])
             ]]
         );
 
         assert_parse!(
             parse_while_or_until_statement,
-            "until foo
-                bar
-                end",
+            "until foo\nbar\nend",
             ok![until_stmt![
-                simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(17, 2))]]))
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(1, 2))]]),
+                    false
+                ])
             ]]
         );
     }
@@ -699,7 +952,10 @@ end";
             "for foo; do bar; done",
             ok![for_stmt![
                 Word::new("foo".to_string(), WordKind::Normal, loc!(5, 1)),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(13, 1))]]))
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(13, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -708,7 +964,10 @@ end";
             "for foo; do bar; end",
             ok![for_stmt![
                 Word::new("foo".to_string(), WordKind::Normal, loc!(5, 1)),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(13, 1))]]))
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(13, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -717,7 +976,10 @@ end";
             "for foo; { bar; }",
             ok![for_stmt![
                 Word::new("foo".to_string(), WordKind::Normal, loc!(5, 1)),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]))
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(12, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -726,7 +988,10 @@ end";
             "for foo; bar; end",
             ok![for_stmt![
                 Word::new("foo".to_string(), WordKind::Normal, loc!(5, 1)),
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(10, 1))]]))
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(10, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -740,7 +1005,10 @@ end";
                     w![quote_word!("b", loc!(14, 1))],
                     w![literal_word!("c", loc!(18, 1))],
                 ],
-                vec!(simple_command!(vec![w![normal_word!("bar", loc!(23, 1))]]))
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(23, 1))]]),
+                    false
+                ])
             ]]
         );
 
@@ -797,7 +1065,7 @@ end";
         assert_parse!(
             parse_simple_command,
             "foobar",
-            ok![simple_command!(vec![w!["foobar"]], vec![], false)]
+            ok![simple_command!(vec![w!["foobar"]], vec![])]
         );
 
         assert_parse!(
@@ -805,8 +1073,7 @@ end";
             "foo bar",
             ok![simple_command!(
                 vec![w!["foo"], w![normal_word!("bar", loc!(5, 1))]],
-                vec![],
-                false
+                vec![]
             )]
         );
 
@@ -818,8 +1085,7 @@ end";
                 vec![
                     Redirect::write_to(1, w![normal_word!("bar", loc!(7, 1))], false, loc!(5, 1)),
                     Redirect::copy(1, 2, false, loc!(11, 1)),
-                ],
-                false
+                ]
             )]
         );
 
@@ -833,8 +1099,7 @@ end";
                     w![normal_word!("bar", loc!(3, 1))],
                     false,
                     loc!(1, 1)
-                )],
-                false
+                )]
             )]
         );
     }
