@@ -26,7 +26,7 @@ mod mockable {
     use super::{SysCallError, SysCallResult};
     use crate::{parser::redirect::FdSize, status::ExitStatus};
     use nix::{
-        fcntl::{open, OFlag},
+        fcntl::{fcntl, open, FcntlArg, OFlag},
         sys::{
             signal::{sigaction, SigAction, Signal},
             stat::Mode,
@@ -34,7 +34,7 @@ mod mockable {
             wait::{waitpid, WaitPidFlag, WaitStatus},
         },
         unistd::{
-            close, dup2, execve, fork, getpgid, getpid, isatty, pipe, read, setpgid, tcgetpgrp,
+            close, dup2, execve, fork, getpgid, getpid, isatty, pipe2, read, setpgid, tcgetpgrp,
             tcsetpgrp, ForkResult, Pid,
         },
     };
@@ -60,6 +60,11 @@ mod mockable {
 
         fn dup2(&self, oldfd: FdSize, newfd: FdSize) -> SysCallResult<FdSize> {
             syscall!(dup2, oldfd, newfd)
+        }
+
+        fn dup_fd(&self, src: FdSize, dest: FdSize) -> SysCallResult<FdSize> {
+            let arg = FcntlArg::F_DUPFD_CLOEXEC(dest);
+            syscall!(fcntl, src, arg)
         }
 
         fn env_get(&self, key: &str) -> Result<String, env::VarError> {
@@ -108,7 +113,7 @@ mod mockable {
         }
 
         fn pipe(&self) -> SysCallResult<(RawFd, RawFd)> {
-            syscall!(pipe)
+            syscall!(pipe2, OFlag::O_CLOEXEC)
         }
 
         fn read(&self, fd: RawFd, buf: &mut [u8]) -> SysCallResult<usize> {

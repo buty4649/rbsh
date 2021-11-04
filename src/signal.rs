@@ -117,20 +117,20 @@ impl JobSignalHandler {
                     }
                     SIGCHLD => {
                         let any_child = Pid::from_raw(-1);
-                        match waitpid(any_child, None) {
-                            Ok(s) => {
-                                let (inner, cvar) = &*pair;
+                        loop {
+                            match waitpid(any_child, Some(nix::sys::wait::WaitPidFlag::WNOHANG)) {
+                                Ok(s) => {
+                                    let (inner, cvar) = &*pair;
 
-                                let mut lock = inner.lock().unwrap();
-                                lock.push_status(s);
-                                if matches!(s, WaitStatus::Signaled(_, signal, _) if signal == Signal::SIGINT)
-                                {
-                                    lock.set_interrupt_flag();
+                                    let mut lock = inner.lock().unwrap();
+                                    lock.push_status(s);
+                                    if matches!(s, WaitStatus::Signaled(_, signal, _) if signal == Signal::SIGINT)
+                                    {
+                                        lock.set_interrupt_flag();
+                                    }
+                                    cvar.notify_one();
                                 }
-                                cvar.notify_one();
-                            }
-                            Err(e) => {
-                                eprintln!("waitpid: {}", e.desc())
+                                Err(_) => break,
                             }
                         }
                     }

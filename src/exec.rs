@@ -6,8 +6,9 @@ pub use syscall::SysCallError;
 use super::{
     context::Context,
     error::ShellErrorKind,
+    location::Location,
     parser::{
-        redirect::RedirectList,
+        redirect::{Redirect, RedirectList},
         word::{Word, WordKind, WordList},
         ConnecterKind, UnitKind,
     },
@@ -19,7 +20,7 @@ use nix::{
     unistd::{ForkResult, Pid},
 };
 use redirect::ApplyRedirect;
-use syscall::{SysCallWrapper, Wrapper};
+use syscall::{SysCallResult, SysCallWrapper, Wrapper};
 
 use is_executable::IsExecutable;
 use std::{collections::HashMap, env, ffi::CString, os::unix::io::RawFd, path::PathBuf};
@@ -159,16 +160,21 @@ impl Process {
 
 struct ChildProcess {
     pid: Pid,
+    pgid: Pid,
     pipe: RawFd,
 }
 
 impl ChildProcess {
-    fn new(pid: Pid, pipe: RawFd) -> Self {
-        Self { pid, pipe }
+    fn new(pid: Pid, pgid: Pid, pipe: RawFd) -> Self {
+        Self { pid, pgid, pipe }
     }
 
     fn pid(&self) -> Pid {
         self.pid
+    }
+
+    fn pgid(&self) -> Pid {
+        self.pgid
     }
 
     fn start(&self, wrapper: &Wrapper) {
@@ -202,7 +208,7 @@ impl Executor {
     }
 
     pub fn execute_command(&mut self, cmd: UnitKind) -> ExitStatus {
-        let ret = self.execute_command_internal(cmd, None, None, None);
+        let ret = self.execute_command_internal(cmd, false, None, None, None);
 
         self.jobs = self
             .jobs
@@ -241,6 +247,7 @@ impl Executor {
     pub fn execute_command_internal(
         &mut self,
         cmd: UnitKind,
+        bg: bool,
         pgid: Option<Pid>,
         pipe_read: Option<RawFd>,
         pipe_write: Option<RawFd>,
@@ -256,7 +263,7 @@ impl Executor {
                         }
                         Ok(Some(child)) => {
                             child.start(self.wrapper());
-                            return self.start_job(child.pid());
+                            return self.start_job(child.pid(), child.pgid());
                         }
                         Ok(None) => {
                             self.handler = JobSignalHandler::start().unwrap();
@@ -272,8 +279,14 @@ impl Executor {
                 command,
                 redirect,
                 background,
-            } => self
-                .execute_simple_command(command, redirect, background, pgid, pipe_read, pipe_write),
+            } => self.execute_simple_command(
+                command,
+                redirect,
+                bg || background,
+                pgid,
+                pipe_read,
+                pipe_write,
+            ),
             UnitKind::Connecter {
                 left,
                 right,
@@ -281,7 +294,7 @@ impl Executor {
                 background,
             } => {
                 let pgid = start!(background);
-                let ret = self.execute_connecter(left, right, kind, pgid);
+                let ret = self.execute_connecter(left, right, kind, pgid, pipe_read, pipe_write);
                 match background {
                     false => ret,
                     true => self.wrapper().exit(ret.code()),
@@ -363,13 +376,20 @@ impl Executor {
     fn execute_simple_command(
         &mut self,
         command: Vec<WordList>,
-        redirect: RedirectList,
+        mut redirect: RedirectList,
         background: bool,
         pgid: Option<Pid>,
-        _pipe_read: Option<RawFd>,
-        _pipe_write: Option<RawFd>,
+        pipe_read: Option<RawFd>,
+        pipe_write: Option<RawFd>,
     ) -> ExitStatus {
         let (temp_env, cmds) = split_env_and_commands(&self.ctx, command);
+        if let Some(pipe) = pipe_read {
+            redirect.push(Redirect::copy(pipe, 0, true, Location::new(0, 0)));
+        }
+        if let Some(pipe) = pipe_write {
+            redirect.push(Redirect::copy(pipe, 1, true, Location::new(0, 0)));
+        }
+
         if cmds.is_empty() && temp_env.is_present() {
             temp_env.iter().for_each(|(k, v)| self.ctx.set_var(k, v));
             ExitStatus::success()
@@ -382,7 +402,7 @@ impl Executor {
                 Ok(Some(child)) => {
                     if background {
                         child.start(self.wrapper());
-                        self.start_job(child.pid())
+                        self.start_job(child.pid(), pgid.unwrap_or(child.pgid))
                     } else {
                         let old_pgrp =
                             if pgid.is_none() && self.wrapper().isatty(0).unwrap_or(false) {
@@ -423,17 +443,55 @@ impl Executor {
         right: Box<UnitKind>,
         kind: ConnecterKind,
         pgid: Option<Pid>,
+        pipe_read: Option<RawFd>,
+        pipe_write: Option<RawFd>,
     ) -> ExitStatus {
         match kind {
-            ConnecterKind::And => match self.execute_command_internal(*left, pgid, None, None) {
-                status if status.is_error() => status,
-                _ => self.execute_command_internal(*right, pgid, None, None),
-            },
-            ConnecterKind::Or => match self.execute_command_internal(*left, pgid, None, None) {
-                status if status.is_success() => status,
-                _ => self.execute_command_internal(*right, pgid, None, None),
-            },
-            ConnecterKind::Pipe => unimplemented![],
+            ConnecterKind::And => {
+                match self.execute_command_internal(*left, false, pgid, pipe_read, pipe_write) {
+                    status if status.is_error() => status,
+                    _ => self.execute_command_internal(*right, false, pgid, pipe_read, pipe_write),
+                }
+            }
+            ConnecterKind::Or => {
+                match self.execute_command_internal(*left, false, pgid, pipe_read, pipe_write) {
+                    status if status.is_success() => status,
+                    _ => self.execute_command_internal(*right, false, pgid, None, None),
+                }
+            }
+            ConnecterKind::Pipe => {
+                let (tmp_read, tmp_write) = pipe(self.wrapper()).unwrap();
+
+                self.execute_command_internal(*left, true, pgid, pipe_read, Some(tmp_write));
+                self.wrapper().close(tmp_write).unwrap();
+
+                let child_pgid = match pgid {
+                    Some(p) => p,
+                    None => self.jobs.last().unwrap().pgid,
+                };
+                self.execute_command_internal(
+                    *right,
+                    true,
+                    Some(child_pgid),
+                    Some(tmp_read),
+                    pipe_write,
+                );
+                self.wrapper().close(tmp_read).unwrap();
+
+                if pgid.is_none() {
+                    let job = self.jobs.pop().unwrap();
+                    let mut ret = ExitStatus::success();
+                    for process in job.processes {
+                        ret = self
+                            .handler
+                            .wait_for(process.pid, true)
+                            .unwrap_or(ExitStatus::failure());
+                    }
+                    ret
+                } else {
+                    ExitStatus::success()
+                }
+            }
             ConnecterKind::PipeBoth => unimplemented![],
         }
     }
@@ -447,11 +505,11 @@ impl Executor {
         inverse: bool,
         pgid: Option<Pid>,
     ) -> ExitStatus {
-        match self.execute_command_internal(*condition, pgid, None, None) {
+        match self.execute_command_internal(*condition, false, pgid, None, None) {
             status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
                 let s = true_case
                     .into_iter()
-                    .map(|command| self.execute_command_internal(command, pgid, None, None));
+                    .map(|command| self.execute_command_internal(command, false, pgid, None, None));
                 s.last().unwrap()
             }
             status if false_case.is_none() => status,
@@ -459,7 +517,7 @@ impl Executor {
                 let s = false_case
                     .unwrap()
                     .into_iter()
-                    .map(|command| self.execute_command_internal(command, pgid, None, None));
+                    .map(|command| self.execute_command_internal(command, false, pgid, None, None));
                 s.last().unwrap()
             }
         }
@@ -483,11 +541,11 @@ impl Executor {
             }
 
             interrupt!();
-            match self.execute_command_internal(*condition.clone(), pgid, None, None) {
+            match self.execute_command_internal(*condition.clone(), false, pgid, None, None) {
                 status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
                     for c in command.to_vec() {
                         interrupt!();
-                        self.execute_command_internal(c, pgid, None, None);
+                        self.execute_command_internal(c, false, pgid, None, None);
                     }
                 }
                 _ => break 'exec,
@@ -535,7 +593,7 @@ impl Executor {
                     break 'exec;
                 }
 
-                self.execute_command_internal(c, pgid, None, None);
+                self.execute_command_internal(c, false, pgid, None, None);
             }
         }
 
@@ -546,8 +604,7 @@ impl Executor {
         &mut self,
         pgid: Option<Pid>,
     ) -> std::result::Result<Option<ChildProcess>, SysCallError> {
-        let (tmp_read, tmp_write) = self.wrapper().pipe()?;
-
+        let (tmp_read, tmp_write) = pipe(self.wrapper())?;
         match self.wrapper().fork() {
             Err(e) => {
                 self.wrapper().close(tmp_read).ok();
@@ -559,7 +616,7 @@ impl Executor {
                 self.wrapper().setpgid(child, new_pgid).ok();
                 self.wrapper().close(tmp_read).ok();
 
-                let ret = ChildProcess::new(child, tmp_write);
+                let ret = ChildProcess::new(child, new_pgid, tmp_write);
                 Ok(Some(ret))
             }
             Ok(ForkResult::Child) => {
@@ -581,12 +638,24 @@ impl Executor {
         }
     }
 
-    fn start_job(&mut self, pid: Pid) -> ExitStatus {
-        self.job_id += 1;
-        let mut job = Job::new(self.job_id, pid);
-        job.append(Process::running(pid));
-        self.jobs.push(job);
-        println!("[{}] {}", self.job_id, pid);
+    fn start_job(&mut self, pid: Pid, pgid: Pid) -> ExitStatus {
+        let is_new_job = match self.jobs.last() {
+            None => true,
+            Some(job) => job.pgid != pgid,
+        };
+
+        if is_new_job {
+            self.job_id += 1;
+            let mut job = Job::new(self.job_id, pid);
+            job.append(Process::running(pid));
+            self.jobs.push(job);
+        } else {
+            let mut job = self.jobs.pop().unwrap();
+            job.processes.push(Process::running(pid));
+            self.jobs.push(job);
+        }
+
+        //println!("[{}] {}", self.job_id, pid);
         ExitStatus::success()
     }
 }
@@ -708,6 +777,15 @@ fn execute_external_command<T: AsRef<str>>(
             ctx.wrapper().exit(1)
         }
     }
+}
+
+fn pipe(wrapper: &Wrapper) -> SysCallResult<(RawFd, RawFd)> {
+    let temp = wrapper.pipe()?;
+    let read = wrapper.dup_fd(temp.0, 255).unwrap();
+    let write = wrapper.dup_fd(temp.1, 255).unwrap();
+    wrapper.close(temp.0).ok();
+    wrapper.close(temp.1).ok();
+    Ok((read, write))
 }
 
 include!("exec_test.rs");
