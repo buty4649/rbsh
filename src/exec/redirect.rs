@@ -5,12 +5,13 @@ use crate::{
     error::ShellError,
     location::Location,
     parser::{
-        redirect::{FdSize, RedirectKind, RedirectList},
+        redirect::{RedirectKind, RedirectList},
         word::WordList,
     },
     status::Result,
 };
 use nix::{fcntl::OFlag, sys::stat::Mode};
+use std::os::unix::io::RawFd;
 
 pub trait ApplyRedirect {
     fn apply(self, context: &Context) -> Result<()>;
@@ -58,7 +59,7 @@ impl<'a> RedirectApplier<'a> {
         Ok(())
     }
 
-    fn read_from(&self, fd: FdSize, file: WordList) -> SysCallResult {
+    fn read_from(&self, fd: RawFd, file: WordList) -> SysCallResult {
         let file = file.to_string(self.context);
         let flag = OFlag::O_RDONLY;
         let mode = Mode::from_bits(0o666).unwrap();
@@ -70,7 +71,7 @@ impl<'a> RedirectApplier<'a> {
         Ok(())
     }
 
-    fn write_to(&self, fd: FdSize, file: WordList) -> SysCallResult {
+    fn write_to(&self, fd: RawFd, file: WordList) -> SysCallResult {
         let file = file.to_string(self.context);
         let flag = OFlag::O_WRONLY | OFlag::O_CREAT | OFlag::O_TRUNC;
         let mode = Mode::from_bits(0o666).unwrap();
@@ -82,12 +83,12 @@ impl<'a> RedirectApplier<'a> {
         Ok(())
     }
 
-    fn copy(&self, src: FdSize, dest: FdSize) -> SysCallResult {
+    fn copy(&self, src: RawFd, dest: RawFd) -> SysCallResult {
         self.wrapper().dup2(src, dest)?;
         Ok(())
     }
 
-    fn append(&self, fd: FdSize, file: WordList) -> SysCallResult {
+    fn append(&self, fd: RawFd, file: WordList) -> SysCallResult {
         let file = file.to_string(self.context);
         let flag = OFlag::O_WRONLY | OFlag::O_CREAT | OFlag::O_APPEND;
         let mode = Mode::from_bits(0o666).unwrap();
@@ -99,12 +100,12 @@ impl<'a> RedirectApplier<'a> {
         Ok(())
     }
 
-    fn close(&self, fd: FdSize) -> SysCallResult {
+    fn close(&self, fd: RawFd) -> SysCallResult {
         self.wrapper().close(fd)?;
         Ok(())
     }
 
-    fn read_write(&self, fd: FdSize, file: WordList) -> SysCallResult {
+    fn read_write(&self, fd: RawFd, file: WordList) -> SysCallResult {
         let file = file.to_string(self.context);
         let flag = OFlag::O_RDWR | OFlag::O_CREAT;
         let mode = Mode::from_bits(0o666).unwrap();

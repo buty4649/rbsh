@@ -12,25 +12,24 @@ use std::os::unix::io::RawFd;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RedirectKind {
-    ReadFrom(FdSize, WordList),      // fd filename / n<word
-    WriteTo(FdSize, WordList, bool), // fd filename force / n>word
+    ReadFrom(RawFd, WordList),      // fd filename / n<word
+    WriteTo(RawFd, WordList, bool), // fd filename force / n>word
     WriteBoth(WordList),             // filename / &>word, >&word
-    Copy(FdSize, FdSize, bool),      // fd(src) fd(dest) close? / n<&n, n<&n-
-    Append(FdSize, WordList),        // fd filename / n>>word
+    Copy(RawFd, RawFd, bool),      // fd(src) fd(dest) close? / n<&n, n<&n-
+    Append(RawFd, WordList),        // fd filename / n>>word
     AppendBoth(WordList),            // fd filename / &>>word
-    Close(FdSize),                   // fd / n<&-, n>&-
-    ReadWrite(FdSize, WordList),     // fd filename / n<>word
+    Close(RawFd),                   // fd / n<&-, n>&-
+    ReadWrite(RawFd, WordList),     // fd filename / n<>word
 }
-pub type FdSize = RawFd;
 pub type Redirect = Annotate<RedirectKind>;
 pub type RedirectList = Vec<Redirect>;
 
 impl Redirect {
-    pub fn read_from(fd: FdSize, wordlist: WordList, loc: Location) -> Self {
+    pub fn read_from(fd: RawFd, wordlist: WordList, loc: Location) -> Self {
         Self::new(RedirectKind::ReadFrom(fd, wordlist), loc)
     }
 
-    pub fn write_to(fd: FdSize, wordlist: WordList, force: bool, loc: Location) -> Self {
+    pub fn write_to(fd: RawFd, wordlist: WordList, force: bool, loc: Location) -> Self {
         Self::new(RedirectKind::WriteTo(fd, wordlist, force), loc)
     }
 
@@ -38,11 +37,11 @@ impl Redirect {
         Self::new(RedirectKind::WriteBoth(wordlist), loc)
     }
 
-    pub fn copy(src: FdSize, dest: FdSize, close: bool, loc: Location) -> Self {
+    pub fn copy(src: RawFd, dest: RawFd, close: bool, loc: Location) -> Self {
         Self::new(RedirectKind::Copy(src, dest, close), loc)
     }
 
-    pub fn append(fd: FdSize, wordlist: WordList, loc: Location) -> Self {
+    pub fn append(fd: RawFd, wordlist: WordList, loc: Location) -> Self {
         Self::new(RedirectKind::Append(fd, wordlist), loc)
     }
 
@@ -50,11 +49,11 @@ impl Redirect {
         Self::new(RedirectKind::AppendBoth(wordlist), loc)
     }
 
-    pub fn close(fd: FdSize, loc: Location) -> Self {
+    pub fn close(fd: RawFd, loc: Location) -> Self {
         Self::new(RedirectKind::Close(fd), loc)
     }
 
-    pub fn read_write(fd: FdSize, wordlist: WordList, loc: Location) -> Self {
+    pub fn read_write(fd: RawFd, wordlist: WordList, loc: Location) -> Self {
         Self::new(RedirectKind::ReadWrite(fd, wordlist), loc)
     }
 }
@@ -66,7 +65,7 @@ pub fn parse_redirect(tokens: &mut TokenReader) -> Result<Option<Redirect>> {
     let fd = match tokens.peek_token() {
         Some(TokenKind::Number(fd)) => {
             let fd = fd
-                .parse::<FdSize>()
+                .parse::<RawFd>()
                 .map_err(|_| tokens.error_invalid_fd(&fd))?;
             tokens.next();
             Some(fd)
@@ -101,7 +100,7 @@ pub fn parse_redirect(tokens: &mut TokenReader) -> Result<Option<Redirect>> {
     Ok(Some(redirect))
 }
 
-fn parse_redirect_read_from(tokens: &mut TokenReader, fd: FdSize) -> Result<RedirectKind> {
+fn parse_redirect_read_from(tokens: &mut TokenReader, fd: RawFd) -> Result<RedirectKind> {
     tokens.next();
     tokens.skip_space();
     match tokens.peek_token() {
@@ -115,7 +114,7 @@ fn parse_redirect_read_from(tokens: &mut TokenReader, fd: FdSize) -> Result<Redi
 
 fn parse_redirect_write_to(
     tokens: &mut TokenReader,
-    fd: FdSize,
+    fd: RawFd,
     force: bool,
 ) -> Result<RedirectKind> {
     tokens.next();
@@ -142,12 +141,12 @@ fn parse_redirect_write_both(tokens: &mut TokenReader) -> Result<RedirectKind> {
     }
 }
 
-fn parse_redirect_copy(tokens: &mut TokenReader, dest: FdSize) -> Result<RedirectKind> {
+fn parse_redirect_copy(tokens: &mut TokenReader, dest: RawFd) -> Result<RedirectKind> {
     tokens.next();
     match tokens.peek_token() {
         Some(TokenKind::Number(src)) => {
             let src = src
-                .parse::<FdSize>()
+                .parse::<RawFd>()
                 .map_err(|_| tokens.error_invalid_fd(&src))?;
             tokens.next();
             let close = match tokens.peek_token() {
@@ -161,7 +160,7 @@ fn parse_redirect_copy(tokens: &mut TokenReader, dest: FdSize) -> Result<Redirec
     }
 }
 
-fn parse_redirect_append(tokens: &mut TokenReader, fd: FdSize) -> Result<RedirectKind> {
+fn parse_redirect_append(tokens: &mut TokenReader, fd: RawFd) -> Result<RedirectKind> {
     tokens.next();
     tokens.skip_space();
     match tokens.peek_token() {
@@ -185,12 +184,12 @@ fn parse_redirect_append_both(tokens: &mut TokenReader) -> Result<RedirectKind> 
     }
 }
 
-fn parse_redirect_close(tokens: &mut TokenReader, fd: FdSize) -> Result<RedirectKind> {
+fn parse_redirect_close(tokens: &mut TokenReader, fd: RawFd) -> Result<RedirectKind> {
     tokens.next();
     Ok(RedirectKind::Close(fd))
 }
 
-fn parse_redirect_read_write(tokens: &mut TokenReader, fd: FdSize) -> Result<RedirectKind> {
+fn parse_redirect_read_write(tokens: &mut TokenReader, fd: RawFd) -> Result<RedirectKind> {
     tokens.next();
     tokens.skip_space();
     match tokens.peek_token() {

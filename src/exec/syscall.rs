@@ -24,7 +24,7 @@ impl SysCallError {
 
 mod mockable {
     use super::{SysCallError, SysCallResult};
-    use crate::{parser::redirect::FdSize, status::ExitStatus};
+    use crate::status::ExitStatus;
     use nix::{
         fcntl::{fcntl, open, FcntlArg, OFlag},
         sys::{
@@ -54,15 +54,15 @@ mod mockable {
 
     #[cfg_attr(test, automock)]
     pub trait SysCallWrapper {
-        fn close(&self, fd: FdSize) -> SysCallResult<()> {
+        fn close(&self, fd: RawFd) -> SysCallResult<()> {
             syscall!(close, fd)
         }
 
-        fn dup2(&self, oldfd: FdSize, newfd: FdSize) -> SysCallResult<FdSize> {
+        fn dup2(&self, oldfd: RawFd, newfd: RawFd) -> SysCallResult<RawFd> {
             syscall!(dup2, oldfd, newfd)
         }
 
-        fn dup_fd(&self, src: FdSize, dest: FdSize) -> SysCallResult<FdSize> {
+        fn dup_fd(&self, src: RawFd, dest: RawFd) -> SysCallResult<RawFd> {
             let arg = FcntlArg::F_DUPFD_CLOEXEC(dest);
             syscall!(fcntl, src, arg)
         }
@@ -108,7 +108,7 @@ mod mockable {
             syscall!(isatty, fd)
         }
 
-        fn open(&self, path: &str, oflag: OFlag, mode: Mode) -> SysCallResult<FdSize> {
+        fn open(&self, path: &str, oflag: OFlag, mode: Mode) -> SysCallResult<RawFd> {
             syscall!(open, path, oflag, mode)
         }
 
