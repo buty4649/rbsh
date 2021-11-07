@@ -109,7 +109,7 @@ impl JobSignalHandler {
         let forground = Arc::new(AtomicI32::new(0));
 
         let mut signals = Signals::new(vec![SIGINT, SIGCHLD])?;
-        signals.handle();
+        //signals.handle();
 
         let pair = inner.clone();
         let fg = forground.clone();

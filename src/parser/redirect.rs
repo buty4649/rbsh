@@ -14,10 +14,10 @@ use std::os::unix::io::RawFd;
 pub enum RedirectKind {
     ReadFrom(RawFd, WordList),      // fd filename / n<word
     WriteTo(RawFd, WordList, bool), // fd filename force / n>word
-    WriteBoth(WordList),             // filename / &>word, >&word
-    Copy(RawFd, RawFd, bool),      // fd(src) fd(dest) close? / n<&n, n<&n-
+    WriteBoth(WordList),            // filename / &>word, >&word
+    Copy(RawFd, RawFd, bool),       // fd(src) fd(dest) close? / n<&n, n<&n-
     Append(RawFd, WordList),        // fd filename / n>>word
-    AppendBoth(WordList),            // fd filename / &>>word
+    AppendBoth(WordList),           // fd filename / &>>word
     Close(RawFd),                   // fd / n<&-, n>&-
     ReadWrite(RawFd, WordList),     // fd filename / n<>word
 }

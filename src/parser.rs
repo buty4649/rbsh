@@ -68,6 +68,11 @@ pub enum UnitKind {
         right: Box<Unit>,
         kind: ConnecterKind,
     },
+    Pipe {
+        left: Box<Unit>,
+        right: Box<Unit>,
+        both: bool,
+    },
     If {
         condition: Box<Unit>,
         true_case: Vec<Unit>,

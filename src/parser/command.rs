@@ -8,8 +8,6 @@ use crate::{error::ShellError, status::Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConnecterKind {
-    Pipe,
-    PipeBoth,
     And,
     Or,
 }
@@ -53,20 +51,36 @@ pub fn parse_connecter(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
                             ) =>
                         {
                             let token = tokens.next().unwrap();
-                            let kind = match token.value() {
-                                TokenKind::Pipe => ConnecterKind::Pipe,
-                                TokenKind::PipeBoth => ConnecterKind::PipeBoth,
-                                TokenKind::And => ConnecterKind::And,
-                                TokenKind::Or => ConnecterKind::Or,
-                                _ => unreachable![],
-                            };
                             let left = Box::new(Unit::new(left, false));
                             let right = match parse_connecter(tokens)? {
                                 Some(c) => Box::new(Unit::new(c, false)),
                                 None => return Err(ShellError::unexpected_token(token)),
                             };
-                            let connecter = UnitKind::Connecter { left, right, kind };
-                            Ok(Some(connecter))
+
+                            let unit = match token.value() {
+                                TokenKind::And => UnitKind::Connecter {
+                                    left,
+                                    right,
+                                    kind: ConnecterKind::And,
+                                },
+                                TokenKind::Or => UnitKind::Connecter {
+                                    left,
+                                    right,
+                                    kind: ConnecterKind::Or,
+                                },
+                                TokenKind::Pipe => UnitKind::Pipe {
+                                    left,
+                                    right,
+                                    both: false,
+                                },
+                                TokenKind::PipeBoth => UnitKind::Pipe {
+                                    left,
+                                    right,
+                                    both: true,
+                                },
+                                _ => unreachable![],
+                            };
+                            Ok(Some(unit))
                         }
 
                         Some(TokenKind::Termination) | Some(TokenKind::NewLine) => {
@@ -97,34 +111,11 @@ pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>>
 
     // parse redirection list
     let unit = match &mut unit {
-        Some(UnitKind::If {
-            condition: _,
-            true_case: _,
-            false_case: _,
-            redirect,
-        })
-        | Some(UnitKind::Unless {
-            condition: _,
-            false_case: _,
-            true_case: _,
-            redirect,
-        })
-        | Some(UnitKind::While {
-            condition: _,
-            command: _,
-            redirect,
-        })
-        | Some(UnitKind::Until {
-            condition: _,
-            command: _,
-            redirect,
-        })
-        | Some(UnitKind::For {
-            identifier: _,
-            list: _,
-            command: _,
-            redirect,
-        }) => {
+        Some(UnitKind::If { redirect, .. })
+        | Some(UnitKind::Unless { redirect, .. })
+        | Some(UnitKind::While { redirect, .. })
+        | Some(UnitKind::Until { redirect, .. })
+        | Some(UnitKind::For { redirect, .. }) => {
             tokens.skip_space();
             loop {
                 match parse_redirect(tokens)? {

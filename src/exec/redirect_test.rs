@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod test {
+    use super::super::syscall::Wrapper;
     use super::*;
     use crate::{
         location::Location,
@@ -25,8 +26,14 @@ mod test {
     }
 
     macro_rules! r {
+        ($b: expr) => {
+            RedirectApplier::new($b)
+        };
+    }
+
+    macro_rules! ctx {
         ($m: expr) => {
-            RedirectApplier::new(&Context::new($m))
+            &Context::new($m)
         };
     }
 
@@ -41,13 +48,16 @@ mod test {
                 eq(Mode::from_bits(0o666).unwrap()),
             )
             .return_const(Ok(3));
-        r!(mock)
-            .exec(vec![Redirect::read_from(
-                3,
-                wordlist![word!("foobar")],
-                Location::new(1, 1),
-            )])
-            .unwrap();
+        assert!(r!(false)
+            .exec(
+                ctx!(mock),
+                vec![Redirect::read_from(
+                    3,
+                    wordlist![word!("foobar")],
+                    Location::new(1, 1),
+                )],
+            )
+            .is_ok());
 
         let mut mock = Wrapper::new();
         mock.expect_open()
@@ -66,13 +76,16 @@ mod test {
             .times(1)
             .with(eq(3))
             .return_const(Ok(()));
-        r!(mock)
-            .exec(vec![Redirect::read_from(
-                0,
-                wordlist![word!("foobar")],
-                Location::new(1, 1),
-            )])
-            .unwrap();
+        assert!(r!(false)
+            .exec(
+                ctx!(mock),
+                vec![Redirect::read_from(
+                    0,
+                    wordlist![word!("foobar")],
+                    Location::new(1, 1),
+                )],
+            )
+            .is_ok());
     }
 
     #[test]
@@ -86,14 +99,17 @@ mod test {
                 eq(Mode::from_bits(0o666).unwrap()),
             )
             .return_const(Ok(3));
-        r!(mock)
-            .exec(vec![Redirect::write_to(
-                3,
-                wordlist![word!("foobar")],
-                false,
-                Location::new(1, 1),
-            )])
-            .unwrap();
+        assert!(r!(false)
+            .exec(
+                ctx!(mock),
+                vec![Redirect::write_to(
+                    3,
+                    wordlist![word!("foobar")],
+                    false,
+                    Location::new(1, 1),
+                )],
+            )
+            .is_ok());
 
         let mut mock = Wrapper::new();
         mock.expect_open()
@@ -112,14 +128,17 @@ mod test {
             .times(1)
             .with(eq(3))
             .return_const(Ok(()));
-        r!(mock)
-            .exec(vec![Redirect::write_to(
-                1,
-                wordlist![word!("foobar")],
-                false,
-                Location::new(1, 1),
-            )])
-            .unwrap();
+        assert!(r!(false)
+            .exec(
+                ctx!(mock),
+                vec![Redirect::write_to(
+                    1,
+                    wordlist![word!("foobar")],
+                    false,
+                    Location::new(1, 1),
+                )],
+            )
+            .is_ok());
     }
 
     #[test]
@@ -145,12 +164,15 @@ mod test {
             .times(1)
             .with(eq(3))
             .return_const(Ok(()));
-        r!(mock)
-            .exec(vec![Redirect::write_both(
-                wordlist![word!("foobar")],
-                Location::new(1, 1),
-            )])
-            .unwrap();
+        assert!(r!(false)
+            .exec(
+                ctx!(mock),
+                vec![Redirect::write_both(
+                    wordlist![word!("foobar")],
+                    Location::new(1, 1),
+                )],
+            )
+            .is_ok());
     }
 
     #[test]
@@ -160,9 +182,12 @@ mod test {
             .times(1)
             .with(eq(3), eq(4))
             .return_const(Ok(4));
-        r!(mock)
-            .exec(vec![Redirect::copy(3, 4, false, Location::new(1, 1))])
-            .unwrap();
+        assert!(r!(false)
+            .exec(
+                ctx!(mock),
+                vec![Redirect::copy(3, 4, false, Location::new(1, 1))],
+            )
+            .is_ok());
 
         let mut mock = Wrapper::new();
         mock.expect_dup2()
@@ -173,9 +198,12 @@ mod test {
             .times(1)
             .with(eq(3))
             .return_const(Ok(()));
-        r!(mock)
-            .exec(vec![Redirect::copy(3, 4, true, Location::new(1, 1))])
-            .unwrap();
+        assert!(r!(false)
+            .exec(
+                ctx!(mock),
+                vec![Redirect::copy(3, 4, true, Location::new(1, 1))],
+            )
+            .is_ok());
     }
 
     #[test]
@@ -189,13 +217,16 @@ mod test {
                 eq(Mode::from_bits(0o666).unwrap()),
             )
             .return_const(Ok(3));
-        r!(mock)
-            .exec(vec![Redirect::append(
-                3,
-                wordlist![word!("foobar")],
-                Location::new(1, 1),
-            )])
-            .unwrap();
+        assert!(r!(false)
+            .exec(
+                ctx!(mock),
+                vec![Redirect::append(
+                    3,
+                    wordlist![word!("foobar")],
+                    Location::new(1, 1),
+                )],
+            )
+            .is_ok());
 
         let mut mock = Wrapper::new();
         mock.expect_open()
@@ -214,13 +245,16 @@ mod test {
             .times(1)
             .with(eq(3))
             .return_const(Ok(()));
-        r!(mock)
-            .exec(vec![Redirect::append(
-                1,
-                wordlist![word!("foobar")],
-                Location::new(1, 1),
-            )])
-            .unwrap();
+        assert!(r!(false)
+            .exec(
+                ctx!(mock),
+                vec![Redirect::append(
+                    1,
+                    wordlist![word!("foobar")],
+                    Location::new(1, 1),
+                )],
+            )
+            .is_ok());
     }
 
     #[test]
@@ -246,12 +280,15 @@ mod test {
             .times(1)
             .with(eq(3))
             .return_const(Ok(()));
-        r!(mock)
-            .exec(vec![Redirect::append_both(
-                wordlist![word!("foobar")],
-                Location::new(1, 1),
-            )])
-            .unwrap();
+        assert!(r!(false)
+            .exec(
+                ctx!(mock),
+                vec![Redirect::append_both(
+                    wordlist![word!("foobar")],
+                    Location::new(1, 1),
+                )],
+            )
+            .is_ok());
     }
 
     #[test]
@@ -261,9 +298,9 @@ mod test {
             .times(1)
             .with(eq(1))
             .return_const(Ok(()));
-        r!(mock)
-            .exec(vec![Redirect::close(1, Location::new(1, 1))])
-            .unwrap();
+        assert!(r!(false)
+            .exec(ctx!(mock), vec![Redirect::close(1, Location::new(1, 1))])
+            .is_ok());
     }
 
     #[test]
@@ -277,13 +314,16 @@ mod test {
                 eq(Mode::from_bits(0o666).unwrap()),
             )
             .return_const(Ok(3));
-        r!(mock)
-            .exec(vec![Redirect::read_write(
-                3,
-                wordlist![word!("foobar")],
-                Location::new(1, 1),
-            )])
-            .unwrap();
+        assert!(r!(false)
+            .exec(
+                ctx!(mock),
+                vec![Redirect::read_write(
+                    3,
+                    wordlist![word!("foobar")],
+                    Location::new(1, 1),
+                )],
+            )
+            .is_ok());
 
         let mut mock = Wrapper::new();
         mock.expect_open()
@@ -302,12 +342,15 @@ mod test {
             .times(1)
             .with(eq(3))
             .return_const(Ok(()));
-        r!(mock)
-            .exec(vec![Redirect::read_write(
-                0,
-                wordlist![word!("foobar")],
-                Location::new(1, 1),
-            )])
-            .unwrap();
+        assert!(r!(false)
+            .exec(
+                ctx!(mock),
+                vec![Redirect::read_write(
+                    0,
+                    wordlist![word!("foobar")],
+                    Location::new(1, 1),
+                )],
+            )
+            .is_ok());
     }
 }

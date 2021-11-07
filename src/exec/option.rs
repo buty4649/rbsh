@@ -4,9 +4,10 @@ use std::os::unix::io::RawFd;
 #[derive(Debug, Copy, Clone)]
 pub struct ExecOption {
     pgid: Option<Pid>,
-    background: bool,
+    piping: bool,
     input: Option<RawFd>,
     output: Option<(RawFd, bool)>,
+    leak_fd: Option<RawFd>,
 }
 
 impl ExecOption {
@@ -14,8 +15,8 @@ impl ExecOption {
         self.pgid
     }
 
-    pub fn background(&self) -> bool {
-        self.background
+    pub fn piping(&self) -> bool {
+        self.piping
     }
 
     pub fn input(&self) -> Option<RawFd> {
@@ -25,24 +26,30 @@ impl ExecOption {
     pub fn output(&self) -> Option<(RawFd, bool)> {
         self.output
     }
+
+    pub fn leak_fd(&self) -> Option<RawFd> {
+        self.leak_fd
+    }
 }
 
 pub struct ExecOptionBuilder {
     pgid: Option<Pid>,
-    background: bool,
+    piping: bool,
     input: Option<RawFd>,
     output: Option<RawFd>,
     both_output: bool,
+    leak_fd: Option<RawFd>,
 }
 
 impl ExecOptionBuilder {
     pub fn new() -> Self {
         ExecOptionBuilder {
             pgid: None,
-            background: false,
+            piping: false,
             input: None,
             output: None,
             both_output: false,
+            leak_fd: None,
         }
     }
 
@@ -56,28 +63,28 @@ impl ExecOptionBuilder {
         self
     }
 
-    pub fn foreground(mut self) -> Self {
-        self.background = false;
+    pub fn piping(mut self, b: bool) -> Self {
+        self.piping = b;
         self
     }
 
-    pub fn background(mut self) -> Self {
-        self.background = true;
+    pub fn input(mut self, input: Option<RawFd>) -> Self {
+        self.input = input;
         self
     }
 
-    pub fn input(mut self, input: RawFd) -> Self {
-        self.input = Some(input);
-        self
-    }
-
-    pub fn output(mut self, output: RawFd) -> Self {
-        self.output = Some(output);
+    pub fn output(mut self, output: Option<RawFd>) -> Self {
+        self.output = output;
         self
     }
 
     pub fn both_output(mut self) -> Self {
         self.both_output = true;
+        self
+    }
+
+    pub fn leak_fd(mut self, fd: Option<RawFd>) -> Self {
+        self.leak_fd = fd;
         self
     }
 
@@ -89,9 +96,10 @@ impl ExecOptionBuilder {
 
         ExecOption {
             pgid: self.pgid,
-            background: self.background,
+            piping: self.piping,
             input: self.input,
             output,
+            leak_fd: self.leak_fd,
         }
     }
 
@@ -111,20 +119,25 @@ impl From<Option<ExecOption>> for ExecOptionBuilder {
     fn from(option: Option<ExecOption>) -> Self {
         match option {
             None => Self::new(),
-            Some(option) => {
-                let (output, both_output) = match option.output {
-                    None => (None, false),
-                    Some((o, b)) => (Some(o), b),
-                };
+            Some(option) => ExecOptionBuilder::from(option),
+        }
+    }
+}
 
-                ExecOptionBuilder {
-                    pgid: option.pgid,
-                    background: option.background,
-                    input: option.input,
-                    output,
-                    both_output,
-                }
-            }
+impl From<ExecOption> for ExecOptionBuilder {
+    fn from(option: ExecOption) -> Self {
+        let (output, both_output) = match option.output {
+            None => (None, false),
+            Some((o, b)) => (Some(o), b),
+        };
+
+        ExecOptionBuilder {
+            pgid: option.pgid,
+            piping: option.piping,
+            input: option.input,
+            output,
+            both_output,
+            leak_fd: option.leak_fd,
         }
     }
 }

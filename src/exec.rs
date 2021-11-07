@@ -21,7 +21,7 @@ use nix::{
     unistd::{ForkResult, Pid},
 };
 use option::{ExecOption, ExecOptionBuilder};
-use redirect::ApplyRedirect;
+use redirect::{ApplyRedirect, SHELL_FDBASE};
 use syscall::{SysCallResult, SysCallWrapper, Wrapper};
 
 use is_executable::IsExecutable;
@@ -210,12 +210,11 @@ impl Executor {
     }
 
     pub fn execute_command(&mut self, cmd: Unit, option: Option<ExecOption>) -> ExitStatus {
+        let option = option.unwrap_or(ExecOptionBuilder::new().build());
+
         let ret = match cmd.kind() {
             UnitKind::SimpleCommand { command, redirect } => {
-                let opt = ExecOptionBuilder::from(option)
-                    .if_then(cmd.background(), |b| b.background())
-                    .build();
-                let ret = self.execute_simple_command(command, redirect, Some(opt));
+                let ret = self.execute_simple_command(command, redirect, cmd.background(), option);
                 if cmd.background() {
                     let job = self.jobs.last().unwrap();
                     eprintln!("[{}] {}", job.id, job.pgid);
@@ -225,80 +224,89 @@ impl Executor {
             kind => {
                 let background = cmd.background()
                     || match kind {
-                        UnitKind::Connecter {
-                            left: _,
-                            right: _,
-                            kind: _,
-                        } => false,
-                        _ => option.and_then(|o| Some(o.background())).unwrap_or(false),
+                        UnitKind::Pipe { .. } => false,
+                        _ => option.piping(),
                     };
-                let opt = if !background {
-                    option
-                } else {
-                    let pgid = option.and_then(|o| o.pgid());
-                    match self.fork(pgid) {
-                        Err(e) => {
-                            eprintln!("{}: {}", e.name(), e.desc());
-                            return ExitStatus::failure();
-                        }
-                        Ok(Some(child)) => {
-                            child.start(self.wrapper());
-                            let ret = self.start_job(child.pid(), child.pgid());
-                            if cmd.background() {
-                                let job = self.jobs.last().unwrap();
-                                eprintln!("[{}] {}", job.id, job.pgid);
+                let option = match background {
+                    false => option,
+                    true => {
+                        let pgid = option.pgid();
+                        match self.fork(pgid) {
+                            Err(e) => {
+                                eprintln!("{}: {}", e.name(), e.desc());
+                                return ExitStatus::failure();
                             }
-                            return ret;
-                        }
-                        Ok(None) => {
-                            self.handler = JobSignalHandler::start().unwrap();
-                            let pgid = pgid.unwrap_or(self.wrapper().getpid());
-                            let opt = ExecOptionBuilder::from(option)
-                                .foreground()
-                                .pgid(pgid)
-                                .build();
-                            Some(opt)
+                            Ok(Some(child)) => {
+                                child.start(self.wrapper());
+                                let ret = self.start_job(child.pid(), child.pgid());
+                                if cmd.background() {
+                                    let job = self.jobs.last().unwrap();
+                                    eprintln!("[{}] {}", job.id, job.pgid);
+                                }
+                                return ret;
+                            }
+                            Ok(None) => {
+                                self.handler = JobSignalHandler::start().unwrap();
+                                let pgid = pgid.unwrap_or(self.wrapper().getpid());
+                                ExecOptionBuilder::from(option).pgid(pgid).build()
+                            }
                         }
                     }
                 };
+
+                if let Some(fd) = option.leak_fd() {
+                    match close(&self.ctx, fd) {
+                        Ok(_) => (),
+                        Err(e) => {
+                            eprintln!("{}, {}", e.name(), e.desc());
+                            return ExitStatus::failure();
+                        }
+                    }
+                }
+
                 let ret = match kind {
                     UnitKind::SimpleCommand {
                         command: _,
                         redirect: _,
                     } => unreachable![],
                     UnitKind::Connecter { left, right, kind } => {
-                        self.execute_connecter(left, right, kind, opt)
+                        self.execute_connecter(left, right, kind, option)
+                    }
+                    UnitKind::Pipe { left, right, both } => {
+                        self.execute_pipe(left, right, both, option)
                     }
                     UnitKind::If {
                         condition,
                         true_case,
                         false_case,
                         redirect,
-                    } => self
-                        .execute_if_command(condition, true_case, false_case, redirect, false, opt),
+                    } => self.execute_if_command(
+                        condition, true_case, false_case, redirect, false, option,
+                    ),
                     UnitKind::Unless {
                         condition,
                         false_case,
                         true_case,
                         redirect,
-                    } => self
-                        .execute_if_command(condition, false_case, true_case, redirect, true, opt),
+                    } => self.execute_if_command(
+                        condition, false_case, true_case, redirect, true, option,
+                    ),
                     UnitKind::While {
                         condition,
                         command,
                         redirect,
-                    } => self.execute_while_command(condition, command, redirect, false, opt),
+                    } => self.execute_while_command(condition, command, redirect, false, option),
                     UnitKind::Until {
                         condition,
                         command,
                         redirect,
-                    } => self.execute_while_command(condition, command, redirect, true, opt),
+                    } => self.execute_while_command(condition, command, redirect, true, option),
                     UnitKind::For {
                         identifier,
                         list,
                         command,
                         redirect,
-                    } => self.execute_for_command(identifier, list, command, redirect, opt),
+                    } => self.execute_for_command(identifier, list, command, redirect, option),
                 };
 
                 match background {
@@ -314,44 +322,31 @@ impl Executor {
     fn execute_simple_command(
         &mut self,
         command: Vec<WordList>,
-        mut redirect: RedirectList,
-        option: Option<ExecOption>,
+        redirect: RedirectList,
+        background: bool,
+        option: ExecOption,
     ) -> ExitStatus {
         let (temp_env, cmds) = split_env_and_commands(&self.ctx, command);
-        if let Some(pipe) = option.and_then(|o| o.input()) {
-            redirect.push(Redirect::copy(pipe, 0, true, Location::new(0, 0)));
-        }
-        if let Some((pipe, both)) = option.and_then(|o| o.output()) {
-            redirect.push(Redirect::copy(pipe, 1, true, Location::new(0, 0)));
-            if both {
-                redirect.push(Redirect::copy(1, 2, false, Location::new(0, 0)));
-            }
-        }
-
         if cmds.is_empty() && temp_env.is_present() {
             temp_env.iter().for_each(|(k, v)| self.ctx.set_var(k, v));
             ExitStatus::success()
         } else if cmds.is_present() {
-            let pgid = option.and_then(|o| o.pgid());
+            let pgid = option.pgid();
             match self.fork(pgid) {
                 Err(e) => {
                     eprintln!("{}: {}", e.name(), e.desc());
                     ExitStatus::failure()
                 }
                 Ok(Some(child)) => {
-                    let background = option.and_then(|o| Some(o.background())).unwrap_or(false);
+                    let background = background || option.piping();
                     if background {
                         child.start(self.wrapper());
                         self.start_job(child.pid(), pgid.unwrap_or(child.pgid))
                     } else {
-                        let old_pgrp =
-                            if pgid.is_none() && self.wrapper().isatty(0).unwrap_or(false) {
-                                let old = self.wrapper().tcgetpgrp(0).ok();
-                                self.wrapper().tcsetpgrp(0, child.pid()).ok();
-                                old
-                            } else {
-                                None
-                            };
+                        let need_terminal = !background && pgid.is_none();
+                        if need_terminal && self.wrapper().isatty(0).unwrap_or(false) {
+                            self.wrapper().tcsetpgrp(0, child.pgid()).ok();
+                        }
 
                         self.handler.set_forground(child.pgid());
                         child.start(self.wrapper());
@@ -364,14 +359,31 @@ impl Executor {
 
                         self.jobs.pop(); // remove current job
 
-                        if let Some(p) = old_pgrp {
-                            self.wrapper().tcsetpgrp(0, p).ok();
+                        if need_terminal && self.wrapper().isatty(0).unwrap_or(false) {
+                            let pgid = self.wrapper().getpgid(None).unwrap();
+                            self.wrapper().tcsetpgrp(0, pgid).ok();
                         }
 
                         ret
                     }
                 }
                 Ok(None) => {
+                    if let Some(pipe) = option.input() {
+                        self.wrapper().dup2(pipe, 0).unwrap();
+                        self.wrapper().close(pipe).unwrap();
+                    }
+                    if let Some((pipe, both)) = option.output() {
+                        self.wrapper().dup2(pipe, 1).unwrap();
+                        if both {
+                            self.wrapper().dup2(1, 2).unwrap();
+                        }
+                        self.wrapper().close(pipe).unwrap();
+                    }
+
+                    if let Some(fd) = option.leak_fd() {
+                        self.wrapper().close(fd).ok();
+                    }
+
                     let cmdpath = cmds.first().unwrap().to_string();
                     execute_external_command(&self.ctx, cmdpath, cmds, temp_env, redirect)
                 }
@@ -387,57 +399,88 @@ impl Executor {
         left: Box<Unit>,
         right: Box<Unit>,
         kind: ConnecterKind,
-        option: Option<ExecOption>,
+        option: ExecOption,
     ) -> ExitStatus {
+        let option = ExecOptionBuilder::from(option).piping(false).build();
+        let condition = self.execute_command(*left, Some(option));
+
+        let option = ExecOptionBuilder::from(option)
+            .input(None)
+            .output(None)
+            .build();
         match kind {
-            ConnecterKind::And => match self.execute_command(*left, option) {
-                status if status.is_error() => status,
-                _ => self.execute_command(*right, option),
-            },
-            ConnecterKind::Or => match self.execute_command(*left, option) {
-                status if status.is_success() => status,
-                _ => self.execute_command(*right, option),
-            },
-            ConnecterKind::Pipe | ConnecterKind::PipeBoth => {
-                let (pipe_read, pipe_write) = pipe(self.wrapper()).unwrap();
-
-                let opt = ExecOptionBuilder::from(option)
-                    .background()
-                    .output(pipe_write)
-                    .if_then(kind == ConnecterKind::PipeBoth, |b| b.both_output())
-                    .build();
-                self.execute_command(*left, Some(opt));
-
-                let opt = ExecOptionBuilder::from(option)
-                    .background()
-                    .default_pgid(self.jobs.last().unwrap().pgid)
-                    .input(pipe_read)
-                    .build();
-                self.execute_command(*right, Some(opt));
-
-                self.wrapper().close(pipe_read).unwrap();
-                self.wrapper().close(pipe_write).unwrap();
-
-                let background = option.and_then(|o| Some(o.background())).unwrap_or(false);
-                if background {
-                    ExitStatus::success()
-                } else {
-                    let job = self.jobs.pop().unwrap();
-                    self.handler.set_forground(job.pgid);
-                    let statuses = job
-                        .processes
-                        .iter()
-                        .map(|process| {
-                            self.handler
-                                .wait_for(process.pid, true)
-                                .unwrap_or(ExitStatus::failure())
-                        })
-                        .collect::<Vec<_>>();
-                    self.handler.reset_forground();
-
-                    statuses.last().unwrap_or(&ExitStatus::success()).to_owned()
-                }
+            ConnecterKind::And if condition.is_success() => {
+                self.execute_command(*right, Some(option))
             }
+            ConnecterKind::Or if condition.is_error() => self.execute_command(*right, Some(option)),
+            _ => condition,
+        }
+    }
+
+    fn execute_pipe(
+        &mut self,
+        left: Box<Unit>,
+        right: Box<Unit>,
+        both: bool,
+        option: ExecOption,
+    ) -> ExitStatus {
+        let (pipe_read, pipe_write) = pipe(&self.ctx).unwrap();
+
+        self.execute_command(
+            *left,
+            Some(
+                ExecOptionBuilder::from(option)
+                    .piping(true)
+                    .output(Some(pipe_write))
+                    .leak_fd(Some(pipe_read))
+                    .if_then(both, |b| b.both_output())
+                    .build(),
+            ),
+        );
+
+        let piping = option.piping();
+        if !piping && self.wrapper().isatty(0).unwrap_or(false) {
+            let job = self.jobs.last().unwrap();
+            self.wrapper().tcsetpgrp(0, job.pgid).ok();
+        }
+
+        self.execute_command(
+            *right,
+            Some(
+                ExecOptionBuilder::from(option)
+                    .piping(true)
+                    .default_pgid(self.jobs.last().unwrap().pgid)
+                    .input(Some(pipe_read))
+                    .leak_fd(Some(pipe_write))
+                    .build(),
+            ),
+        );
+
+        close(&self.ctx, pipe_read).unwrap();
+        close(&self.ctx, pipe_write).unwrap();
+
+        if piping {
+            ExitStatus::success()
+        } else {
+            let job = self.jobs.pop().unwrap();
+            self.handler.set_forground(job.pgid);
+            let statuses = job
+                .processes
+                .iter()
+                .map(|process| {
+                    self.handler
+                        .wait_for(process.pid, true)
+                        .unwrap_or(ExitStatus::failure())
+                })
+                .collect::<Vec<_>>();
+            self.handler.reset_forground();
+
+            if !piping && self.wrapper().isatty(0).unwrap_or(false) {
+                let pgid = self.wrapper().getpgid(None).unwrap();
+                self.wrapper().tcsetpgrp(0, pgid).ok();
+            }
+
+            statuses.last().unwrap_or(&ExitStatus::success()).to_owned()
         }
     }
 
@@ -446,15 +489,17 @@ impl Executor {
         condition: Box<Unit>,
         true_case: Vec<Unit>,
         false_case: Option<Vec<Unit>>,
-        _redirect: RedirectList,
+        redirect: RedirectList,
         inverse: bool,
-        option: Option<ExecOption>,
+        option: ExecOption,
     ) -> ExitStatus {
-        match self.execute_command(*condition, option) {
+        let (restore, option) = self.update_option_and_apply_redirect(option, redirect);
+
+        let ret = match self.execute_command(*condition, Some(option)) {
             status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
                 let s = true_case
                     .into_iter()
-                    .map(|command| self.execute_command(command, option));
+                    .map(|command| self.execute_command(command, Some(option)));
                 s.last().unwrap()
             }
             status if false_case.is_none() => status,
@@ -462,20 +507,25 @@ impl Executor {
                 let s = false_case
                     .unwrap()
                     .into_iter()
-                    .map(|command| self.execute_command(command, option));
+                    .map(|command| self.execute_command(command, Some(option)));
                 s.last().unwrap()
             }
-        }
+        };
+
+        restore.apply(&self.ctx, false).unwrap();
+        ret
     }
 
     fn execute_while_command(
         &mut self,
         condition: Box<Unit>,
         command: Vec<Unit>,
-        _redirect: RedirectList,
+        redirect: RedirectList,
         inverse: bool,
-        option: Option<ExecOption>,
+        option: ExecOption,
     ) -> ExitStatus {
+        let (restore, option) = self.update_option_and_apply_redirect(option, redirect);
+
         'exec: loop {
             macro_rules! interrupt {
                 () => {
@@ -486,16 +536,18 @@ impl Executor {
             }
 
             interrupt!();
-            match self.execute_command(*condition.clone(), option) {
+            match self.execute_command(*condition.clone(), Some(option)) {
                 status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
                     for c in command.to_vec() {
                         interrupt!();
-                        self.execute_command(c, option);
+                        self.execute_command(c, Some(option));
                     }
                 }
                 _ => break 'exec,
             }
         }
+
+        restore.apply(&self.ctx, false).unwrap();
         ExitStatus::new(0)
     }
 
@@ -504,8 +556,8 @@ impl Executor {
         identifier: Word,
         list: Option<Vec<WordList>>,
         command: Vec<Unit>,
-        _redirect: RedirectList,
-        option: Option<ExecOption>,
+        redirect: RedirectList,
+        option: ExecOption,
     ) -> ExitStatus {
         let identifier = match identifier.take() {
             (string, kind, _) if kind == WordKind::Normal => string.to_string(),
@@ -531,6 +583,7 @@ impl Executor {
                 .collect::<Vec<_>>(),
         };
 
+        let (restore, option) = self.update_option_and_apply_redirect(option, redirect);
         'exec: for word in list.iter() {
             self.ctx.set_var(&*identifier, word);
             for c in command.to_vec() {
@@ -538,9 +591,10 @@ impl Executor {
                     break 'exec;
                 }
 
-                self.execute_command(c, option);
+                self.execute_command(c, Some(option));
             }
         }
+        restore.apply(&self.ctx, false).ok();
 
         ExitStatus::new(0)
     }
@@ -549,7 +603,7 @@ impl Executor {
         &mut self,
         pgid: Option<Pid>,
     ) -> std::result::Result<Option<ChildProcess>, SysCallError> {
-        let (tmp_read, tmp_write) = pipe(self.wrapper())?;
+        let (tmp_read, tmp_write) = pipe(&self.ctx)?;
         match self.wrapper().fork() {
             Err(e) => {
                 self.wrapper().close(tmp_read).ok();
@@ -634,6 +688,37 @@ impl Executor {
             .collect::<Vec<_>>();
         self.jobs.sort_by(|a, b| a.id.cmp(&b.id));
         self.job_id = self.jobs.last().map(|job| job.id).unwrap_or(0);
+    }
+
+    fn update_option_and_apply_redirect(
+        &self,
+        option: ExecOption,
+        mut redirect: RedirectList,
+    ) -> (RedirectList, ExecOption) {
+        if let Some(pipe) = option.input() {
+            let mut r = vec![Redirect::copy(pipe, 0, true, Location::new(0, 0))];
+            r.append(&mut redirect);
+            redirect = r;
+        }
+        if let Some((pipe, both)) = option.output() {
+            let mut r = vec![Redirect::copy(pipe, 1, true, Location::new(0, 0))];
+            if both {
+                r.push(Redirect::copy(1, 2, false, Location::new(0, 0)));
+            }
+            r.append(&mut redirect);
+            redirect = r;
+        }
+
+        (
+            redirect
+                .apply(&self.ctx, !option.piping())
+                .unwrap_or(vec![]),
+            ExecOptionBuilder::from(option)
+                .input(None)
+                .output(None)
+                .piping(false)
+                .build(),
+        )
     }
 }
 
@@ -731,7 +816,7 @@ fn execute_external_command<T: AsRef<str>>(
         .map(|(k, v)| format!("{}={}", k, v).to_cstring())
         .collect::<Vec<_>>();
 
-    if let Err(e) = redirect.apply(ctx) {
+    if let Err(e) = redirect.apply(ctx, false) {
         match e.value() {
             ShellErrorKind::SysCallError(f, e) => {
                 eprintln!("{}: {}", f, e.desc());
@@ -756,13 +841,21 @@ fn execute_external_command<T: AsRef<str>>(
     }
 }
 
-fn pipe(wrapper: &Wrapper) -> SysCallResult<(RawFd, RawFd)> {
-    let temp = wrapper.pipe()?;
-    let read = wrapper.dup_fd(temp.0, 255).unwrap();
-    let write = wrapper.dup_fd(temp.1, 255).unwrap();
-    wrapper.close(temp.0).ok();
-    wrapper.close(temp.1).ok();
+fn pipe(ctx: &Context) -> SysCallResult<(RawFd, RawFd)> {
+    let (tmp_read, tmp_write) = ctx.wrapper().pipe()?;
+    let read = ctx.wrapper().dup_fd(tmp_read, SHELL_FDBASE)?;
+    let write = ctx.wrapper().dup_fd(tmp_write, SHELL_FDBASE)?;
+    ctx.wrapper().close(tmp_read)?;
+    ctx.wrapper().close(tmp_write)?;
     Ok((read, write))
+}
+
+fn close(ctx: &Context, fd: RawFd) -> SysCallResult<()> {
+    match ctx.wrapper().close(fd) {
+        Ok(_) => Ok(()),
+        Err(e) if e.errno() == Errno::EBADF => Ok(()),
+        Err(e) => Err(e),
+    }
 }
 
 include!("exec_test.rs");

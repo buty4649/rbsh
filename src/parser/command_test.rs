@@ -157,20 +157,20 @@ mod test {
 
     macro_rules! connecter_pipe {
         ($left: expr, $right: expr) => {
-            UnitKind::Connecter {
+            UnitKind::Pipe {
                 left: Box::new($left),
                 right: Box::new($right),
-                kind: ConnecterKind::Pipe,
+                both: false,
             }
         };
     }
 
     macro_rules! connecter_pipe_both {
         ($left: expr, $right: expr) => {
-            UnitKind::Connecter {
+            UnitKind::Pipe {
                 left: Box::new($left),
                 right: Box::new($right),
-                kind: ConnecterKind::PipeBoth,
+                both: true,
             }
         };
     }
