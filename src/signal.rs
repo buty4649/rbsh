@@ -1,6 +1,9 @@
 use super::{
     context::Context,
-    exec::syscall::{SysCallResult, SysCallWrapper, Wrapper},
+    exec::{
+        syscall::{SysCallResult, SysCallWrapper, Wrapper},
+        SHELL_FDBASE,
+    },
     status::ExitStatus,
 };
 
@@ -11,7 +14,14 @@ use nix::{
     },
     unistd::Pid,
 };
-use signal_hook::{consts::signal::*, iterator::Signals};
+use signal_hook::{
+    consts::signal::*, iterator::backend::PollResult, iterator::backend::RefSignalIterator,
+    iterator::backend::SignalDelivery, iterator::exfiltrator::SignalOnly,
+};
+use std::io::Error as IoError;
+use std::io::Read;
+use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
+use std::os::unix::net::UnixStream;
 use std::sync::{
     atomic::{AtomicI32, Ordering},
     Arc, Condvar, Mutex,
@@ -46,9 +56,99 @@ pub fn restore_tty_signals(wrapper: &Wrapper) -> SysCallResult<()> {
     Ok(())
 }
 
+struct Handle {
+    sf_handle: signal_hook::iterator::Handle,
+    read: RawFd,
+    write: RawFd,
+}
+
+impl Handle {
+    fn close(&self) {
+        self.sf_handle.close();
+        nix::unistd::close(self.read).unwrap();
+        nix::unistd::close(self.write).unwrap();
+    }
+}
+
+struct SignalHandler {
+    delivery: SignalDelivery<UnixStream, SignalOnly>,
+    read: RawFd,
+    write: RawFd,
+}
+
+impl SignalHandler {
+    fn new(signals: Vec<nix::libc::c_int>) -> Result<Self, IoError> {
+        Self::new_at(Wrapper::new(), signals)
+    }
+
+    fn new_at(wrapper: Wrapper, signals: Vec<nix::libc::c_int>) -> Result<Self, IoError> {
+        let (stream_read, stream_write) = UnixStream::pair()?;
+        let read = wrapper
+            .dup_fd(stream_read.as_raw_fd(), SHELL_FDBASE)
+            .unwrap();
+        let write = wrapper
+            .dup_fd(stream_write.as_raw_fd(), SHELL_FDBASE)
+            .unwrap();
+        let stream_read = unsafe { UnixStream::from_raw_fd(read) };
+        let stream_write = unsafe { UnixStream::from_raw_fd(write) };
+        let delivery =
+            SignalDelivery::with_pipe(stream_read, stream_write, SignalOnly::default(), signals)?;
+
+        Ok(Self {
+            delivery,
+            read,
+            write,
+        })
+    }
+
+    fn handle(&self) -> Handle {
+        Handle {
+            sf_handle: self.delivery.handle(),
+            read: self.read,
+            write: self.write,
+        }
+    }
+
+    fn has_signals(read: &mut UnixStream) -> Result<bool, IoError> {
+        loop {
+            match read.read(&mut [0u8]) {
+                Ok(num_read) => break Ok(num_read > 0),
+                Err(e) => {
+                    if e.kind() != std::io::ErrorKind::Interrupted {
+                        break Err(e);
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a mut SignalHandler {
+    type Item = nix::libc::c_int;
+    type IntoIter = Forever<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        Forever(RefSignalIterator::new(&mut self.delivery))
+    }
+}
+
+struct Forever<'a>(RefSignalIterator<'a, UnixStream, SignalOnly>);
+impl<'a> Iterator for Forever<'a> {
+    type Item = nix::libc::c_int;
+
+    fn next(&mut self) -> Option<nix::libc::c_int> {
+        match self.0.poll_signal(&mut SignalHandler::has_signals) {
+            PollResult::Signal(result) => Some(result),
+            PollResult::Closed => None,
+            PollResult::Pending => unreachable![],
+            PollResult::Err(e) => panic!("Unexpected error: {}", e),
+        }
+    }
+}
+
 pub struct JobSignalHandler {
     inner: Arc<(Mutex<JobSignalHandlerInner>, Condvar)>,
     forground: Arc<AtomicI32>,
+    handle: Handle,
 }
 
 pub struct JobSignalHandlerInner {
@@ -108,8 +208,8 @@ impl JobSignalHandler {
         let inner = Arc::new((Mutex::new(JobSignalHandlerInner::new()), Condvar::new()));
         let forground = Arc::new(AtomicI32::new(0));
 
-        let mut signals = Signals::new(vec![SIGINT, SIGCHLD])?;
-        //signals.handle();
+        let mut signals = SignalHandler::new(vec![SIGINT, SIGCHLD])?;
+        let handle = signals.handle();
 
         let pair = inner.clone();
         let fg = forground.clone();
@@ -153,7 +253,11 @@ impl JobSignalHandler {
             }
         });
 
-        Ok(Self { inner, forground })
+        Ok(Self {
+            inner,
+            forground,
+            handle,
+        })
     }
 
     pub fn wait_for(&mut self, pid: Pid, block: bool) -> Option<ExitStatus> {
@@ -186,6 +290,10 @@ impl JobSignalHandler {
 
     pub fn reset_forground(&mut self) {
         self.forground.store(0, Ordering::Relaxed);
+    }
+
+    pub fn close(&mut self) {
+        self.handle.close();
     }
 }
 

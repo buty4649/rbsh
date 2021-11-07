@@ -2,6 +2,7 @@ mod option;
 mod redirect;
 
 pub mod syscall;
+pub use redirect::SHELL_FDBASE;
 pub use syscall::SysCallError;
 
 use super::{
@@ -21,7 +22,7 @@ use nix::{
     unistd::{ForkResult, Pid},
 };
 use option::{ExecOption, ExecOptionBuilder};
-use redirect::{ApplyRedirect, SHELL_FDBASE};
+use redirect::ApplyRedirect;
 use syscall::{SysCallResult, SysCallWrapper, Wrapper};
 
 use is_executable::IsExecutable;
@@ -246,6 +247,7 @@ impl Executor {
                                 return ret;
                             }
                             Ok(None) => {
+                                self.handler.close();
                                 self.handler = JobSignalHandler::start().unwrap();
                                 let pgid = pgid.unwrap_or(self.wrapper().getpid());
                                 ExecOptionBuilder::from(option).pgid(pgid).build()
@@ -368,6 +370,8 @@ impl Executor {
                     }
                 }
                 Ok(None) => {
+                    self.handler.close();
+
                     if let Some(pipe) = option.input() {
                         self.wrapper().dup2(pipe, 0).unwrap();
                         self.wrapper().close(pipe).unwrap();
