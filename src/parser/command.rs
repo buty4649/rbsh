@@ -117,11 +117,8 @@ pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>>
         | Some(UnitKind::Until { redirect, .. })
         | Some(UnitKind::For { redirect, .. }) => {
             tokens.skip_space();
-            loop {
-                match parse_redirect(tokens)? {
-                    Some(r) => redirect.push(r),
-                    None => break,
-                }
+            while let Some(r) = parse_redirect(tokens)? {
+                redirect.push(r)
             }
             unit
         }
@@ -339,14 +336,9 @@ fn parse_for_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
             tokens.next();
             tokens.skip_space();
             let mut wordlist = vec![];
-            loop {
-                match tokens.peek_token() {
-                    Some(TokenKind::Word(_, _)) => {
-                        let words = parse_wordlist(tokens)?;
-                        wordlist.push(words);
-                    }
-                    _ => break,
-                }
+            while let Some(TokenKind::Word(_, _)) = tokens.peek_token() {
+                let words = parse_wordlist(tokens)?;
+                wordlist.push(words);
             }
             Some(wordlist)
         }
@@ -354,11 +346,8 @@ fn parse_for_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
     };
 
     tokens.skip_space();
-    loop {
-        match tokens.peek_token() {
-            Some(TokenKind::Termination) | Some(TokenKind::NewLine) => tokens.next(),
-            _ => break,
-        };
+    while let Some(TokenKind::Termination | TokenKind::NewLine) = tokens.peek_token() {
+        tokens.next();
     }
 
     tokens.skip_space();

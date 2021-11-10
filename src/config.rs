@@ -32,3 +32,9 @@ impl Config {
         self.history_file.to_string()
     }
 }
+
+impl Default for Config {
+    fn default() -> Self {
+        Self::new()
+    }
+}

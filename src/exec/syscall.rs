@@ -82,8 +82,8 @@ mod mockable {
         fn execve(
             &self,
             path: CString,
-            args: &Vec<CString>,
-            env: &Vec<CString>,
+            args: &[CString],
+            env: &[CString],
         ) -> SysCallResult<Infallible> {
             syscall!(execve, &path, args, env)
         }
@@ -159,6 +159,7 @@ cfg_if::cfg_if! {
     } else {
         #[derive(Debug, Clone)]
         pub struct Wrapper {}
+        #[allow(clippy::new_without_default)]
         impl Wrapper {
             pub fn new() -> Self {
                 Self{}

@@ -176,14 +176,14 @@ impl JobSignalHandlerInner {
                 WaitStatus::Signaled(p, _, _) if *p == pid => true,
                 _ => false,
             })
-            .map_or(None, |(index, _)| Some(index))
+            .map(|(index, _)| index)
     }
 
     pub fn remove_status(&mut self, pid: Pid) -> Option<WaitStatus> {
-        self.find_pid(pid).map_or(None, |index| {
+        self.find_pid(pid).map(|index| {
             let ret = self.status[index];
             self.status.remove(index);
-            Some(ret)
+            ret
         })
     }
 }

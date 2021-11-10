@@ -105,11 +105,7 @@ impl ExecOptionBuilder {
     }
 
     pub fn build(self) -> ExecOption {
-        let output = match self.output {
-            None => None,
-            Some(o) => Some((o, self.both_output)),
-        };
-
+        let output = self.output.map(|o| (o, self.both_output));
         ExecOption {
             pgid: self.pgid,
             piping: self.piping,

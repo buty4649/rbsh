@@ -234,10 +234,7 @@ impl TokenReader {
     }
 
     pub fn peek_token(&mut self) -> Option<TokenKind> {
-        match self.peek() {
-            Some(t) => Some(t.value()),
-            None => None,
-        }
+        self.peek().map(|t| t.value())
     }
 
     pub fn skip_space(&mut self) -> Option<Token> {

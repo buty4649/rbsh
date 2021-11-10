@@ -41,7 +41,7 @@ use std::{
 use syscall::{SysCallResult, SysCallWrapper, Wrapper};
 
 pub trait WordParser {
-    fn to_string<'a>(self, context: &Context) -> Result<String, IoError>;
+    fn to_string(self, context: &Context) -> Result<String, IoError>;
 }
 
 impl WordParser for Word {
@@ -50,7 +50,7 @@ impl WordParser for Word {
         match k {
             WordKind::Normal | WordKind::Quote | WordKind::Literal => Ok(s),
             WordKind::Variable | WordKind::Parameter => {
-                Ok(ctx.get_var(s).unwrap_or("".to_string()))
+                Ok(ctx.get_var(s).unwrap_or_else(String::new))
             }
             WordKind::Command => Executor::capture_command_output(ctx, s),
         }
@@ -219,11 +219,11 @@ impl Executor {
     }
 
     fn wrapper(&self) -> &Wrapper {
-        &self.ctx.wrapper()
+        self.ctx.wrapper()
     }
 
     pub fn execute_command(&mut self, cmd: Unit, option: Option<ExecOption>) -> ExitStatus {
-        let option = option.unwrap_or(ExecOptionBuilder::new().build());
+        let option = option.unwrap_or_else(|| ExecOptionBuilder::new().build());
 
         let ret = match cmd.kind() {
             UnitKind::SimpleCommand { command, redirect } => {
@@ -264,7 +264,7 @@ impl Executor {
                             }
                             Ok(None) => {
                                 self.handler = JobSignalHandler::start().unwrap();
-                                let pgid = pgid.unwrap_or(self.wrapper().getpid());
+                                let pgid = pgid.unwrap_or_else(|| self.wrapper().getpid());
                                 ExecOptionBuilder::from(option).pgid(pgid).build()
                             }
                         }
@@ -287,10 +287,10 @@ impl Executor {
                         redirect: _,
                     } => unreachable![],
                     UnitKind::Connecter { left, right, kind } => {
-                        self.execute_connecter(left, right, kind, option)
+                        self.execute_connecter(*left, *right, kind, option)
                     }
                     UnitKind::Pipe { left, right, both } => {
-                        self.execute_pipe(left, right, both, option)
+                        self.execute_pipe(*left, *right, both, option)
                     }
                     UnitKind::If {
                         condition,
@@ -298,7 +298,7 @@ impl Executor {
                         false_case,
                         redirect,
                     } => self.execute_if_command(
-                        condition, true_case, false_case, redirect, false, option,
+                        *condition, true_case, false_case, redirect, false, option,
                     ),
                     UnitKind::Unless {
                         condition,
@@ -306,18 +306,18 @@ impl Executor {
                         true_case,
                         redirect,
                     } => self.execute_if_command(
-                        condition, false_case, true_case, redirect, true, option,
+                        *condition, false_case, true_case, redirect, true, option,
                     ),
                     UnitKind::While {
                         condition,
                         command,
                         redirect,
-                    } => self.execute_while_command(condition, command, redirect, false, option),
+                    } => self.execute_while_command(*condition, command, redirect, false, option),
                     UnitKind::Until {
                         condition,
                         command,
                         redirect,
-                    } => self.execute_while_command(condition, command, redirect, true, option),
+                    } => self.execute_while_command(*condition, command, redirect, true, option),
                     UnitKind::For {
                         identifier,
                         list,
@@ -382,7 +382,7 @@ impl Executor {
                         let ret = self
                             .handler
                             .wait_for(child.pid(), true)
-                            .unwrap_or(ExitStatus::failure());
+                            .unwrap_or_else(ExitStatus::failure);
                         self.handler.reset_forground();
 
                         self.jobs.pop(); // remove current job
@@ -424,13 +424,13 @@ impl Executor {
 
     fn execute_connecter(
         &mut self,
-        left: Box<Unit>,
-        right: Box<Unit>,
+        left: Unit,
+        right: Unit,
         kind: ConnecterKind,
         option: ExecOption,
     ) -> ExitStatus {
         let option = ExecOptionBuilder::from(option).piping(false).build();
-        let condition = self.execute_command(*left, Some(option));
+        let condition = self.execute_command(left, Some(option));
 
         let option = ExecOptionBuilder::from(option)
             .input(None)
@@ -438,24 +438,24 @@ impl Executor {
             .build();
         match kind {
             ConnecterKind::And if condition.is_success() => {
-                self.execute_command(*right, Some(option))
+                self.execute_command(right, Some(option))
             }
-            ConnecterKind::Or if condition.is_error() => self.execute_command(*right, Some(option)),
+            ConnecterKind::Or if condition.is_error() => self.execute_command(right, Some(option)),
             _ => condition,
         }
     }
 
     fn execute_pipe(
         &mut self,
-        left: Box<Unit>,
-        right: Box<Unit>,
+        left: Unit,
+        right: Unit,
         both: bool,
         option: ExecOption,
     ) -> ExitStatus {
         let (pipe_read, pipe_write) = pipe(&self.ctx).unwrap();
 
         self.execute_command(
-            *left,
+            left,
             Some(
                 ExecOptionBuilder::from(option)
                     .piping(true)
@@ -473,7 +473,7 @@ impl Executor {
         }
 
         self.execute_command(
-            *right,
+            right,
             Some(
                 ExecOptionBuilder::from(option)
                     .piping(true)
@@ -498,7 +498,7 @@ impl Executor {
                 .map(|process| {
                     self.handler
                         .wait_for(process.pid, true)
-                        .unwrap_or(ExitStatus::failure())
+                        .unwrap_or_else(ExitStatus::failure)
                 })
                 .collect::<Vec<_>>();
             self.handler.reset_forground();
@@ -514,7 +514,7 @@ impl Executor {
 
     fn execute_if_command(
         &mut self,
-        condition: Box<Unit>,
+        condition: Unit,
         true_case: Vec<Unit>,
         false_case: Option<Vec<Unit>>,
         redirect: RedirectList,
@@ -523,7 +523,7 @@ impl Executor {
     ) -> ExitStatus {
         let (restore, option) = self.update_option_and_apply_redirect(option, redirect);
 
-        let ret = match self.execute_command(*condition, Some(option)) {
+        let ret = match self.execute_command(condition, Some(option)) {
             status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
                 let s = true_case
                     .into_iter()
@@ -546,7 +546,7 @@ impl Executor {
 
     fn execute_while_command(
         &mut self,
-        condition: Box<Unit>,
+        condition: Unit,
         command: Vec<Unit>,
         redirect: RedirectList,
         inverse: bool,
@@ -564,7 +564,7 @@ impl Executor {
             }
 
             interrupt!();
-            match self.execute_command(*condition.clone(), Some(option)) {
+            match self.execute_command(condition.clone(), Some(option)) {
                 status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
                     for c in command.to_vec() {
                         interrupt!();
@@ -714,7 +714,7 @@ impl Executor {
                     true
                 }
             })
-            .map(|job| job.clone())
+            .cloned()
             .collect::<Vec<_>>();
         self.jobs.sort_by(|a, b| a.id.cmp(&b.id));
         self.job_id = self.jobs.last().map(|job| job.id).unwrap_or(0);
@@ -742,7 +742,7 @@ impl Executor {
         (
             redirect
                 .apply(&self.ctx, !option.piping())
-                .unwrap_or(vec![]),
+                .unwrap_or_default(),
             ExecOptionBuilder::from(option)
                 .input(None)
                 .output(None)
@@ -790,9 +790,7 @@ impl Executor {
 
                 match read_result {
                     Ok(_) => {
-                        let s = std::str::from_utf8(&mut output)
-                            .unwrap()
-                            .trim_end_matches('\n');
+                        let s = std::str::from_utf8(&output).unwrap().trim_end_matches('\n');
                         Ok(s.to_string())
                     }
                     Err(e) => Err(e),
@@ -808,9 +806,9 @@ impl Executor {
                     true => ctx
                         .wrapper()
                         .tcgetpgrp(0)
-                        .and_then(|old| {
+                        .map(|old| {
                             ctx.wrapper().tcsetpgrp(0, pid).ok();
-                            Ok(old)
+                            old
                         })
                         .ok(),
                 };
@@ -861,14 +859,9 @@ fn split_env_and_commands(
         }
     }
 
-    loop {
-        match iter.next() {
-            Some(wl) => {
-                let s = wl.to_string(ctx)?;
-                cmds.push(s);
-            }
-            None => break,
-        }
+    for wl in iter {
+        let s = wl.to_string(ctx)?;
+        cmds.push(s);
     }
 
     Ok((env, cmds))
@@ -885,7 +878,7 @@ fn assume_command(command: &str) -> PathBuf {
         match env::var("PATH") {
             Err(_) => buf,
             Ok(val) => val
-                .split(":")
+                .split(':')
                 .find_map(|p| {
                     let mut buf = PathBuf::new();
                     buf.push(p);

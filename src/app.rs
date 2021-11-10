@@ -55,10 +55,10 @@ impl<'a> App {
 
         // Ignore SIGPIPE by default
         // https://github.com/rust-lang/rust/pull/13158
-        recognize_sigpipe(&ctx).unwrap();
+        recognize_sigpipe(ctx).unwrap();
 
         if self.tty_avaliable {
-            ignore_tty_signals(&ctx).unwrap();
+            ignore_tty_signals(ctx).unwrap();
             rl.load_history(&*self.config.history_file())
                 .unwrap_or_default();
         }

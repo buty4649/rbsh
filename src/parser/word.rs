@@ -61,12 +61,18 @@ impl WordList {
         self.list.first().unwrap().clone()
     }
 
-    pub fn to_vec(self) -> Vec<Word> {
-        self.list
+    pub fn to_vec(&self) -> Vec<Word> {
+        self.list.clone()
     }
 
-    pub fn is_empty(self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.list.is_empty()
+    }
+}
+
+impl Default for WordList {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
