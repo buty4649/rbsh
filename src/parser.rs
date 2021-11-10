@@ -103,8 +103,8 @@ pub enum UnitKind {
     },
 }
 
-pub fn parse_command_line(s: &str) -> Result<CommandList> {
-    let tokens = lex(s)?;
+pub fn parse_command_line<S: AsRef<str>>(s: S) -> Result<CommandList> {
+    let tokens = lex(s.as_ref())?;
     let mut tokens = TokenReader::new(tokens);
     let mut result = vec![];
 

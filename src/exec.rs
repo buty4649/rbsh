@@ -9,50 +9,62 @@ use super::{
     context::Context,
     error::ShellErrorKind,
     location::Location,
+    parse_command_line,
     parser::{
         redirect::{Redirect, RedirectList},
         word::{Word, WordKind, WordList},
         ConnecterKind, Unit, UnitKind,
     },
-    signal::{restore_tty_signals, JobSignalHandler},
+    signal::{close_signal_handler, restore_tty_signals, JobSignalHandler},
     status::ExitStatus,
 };
+use is_executable::IsExecutable;
 use nix::{
-    errno::Errno,
+    errno::{errno, Errno},
+    libc,
+    sys::signal::Signal,
     unistd::{ForkResult, Pid},
 };
 use option::{ExecOption, ExecOptionBuilder};
 use redirect::ApplyRedirect;
+use std::{
+    collections::HashMap,
+    env,
+    ffi::CString,
+    fs::File,
+    io::{Error as IoError, Read},
+    mem,
+    os::unix::io::{FromRawFd, RawFd},
+    path::PathBuf,
+    ptr,
+};
 use syscall::{SysCallResult, SysCallWrapper, Wrapper};
 
-use is_executable::IsExecutable;
-use std::{collections::HashMap, env, ffi::CString, os::unix::io::RawFd, path::PathBuf};
-
 pub trait WordParser {
-    fn to_string<'a>(self, context: &Context) -> String;
+    fn to_string<'a>(self, context: &Context) -> Result<String, IoError>;
 }
 
 impl WordParser for Word {
-    fn to_string(self, context: &Context) -> String {
+    fn to_string(self, ctx: &Context) -> Result<String, std::io::Error> {
         let (s, k, _) = self.take();
         match k {
-            WordKind::Normal | WordKind::Quote | WordKind::Literal => s,
-            WordKind::Command => "".to_string(), // unimplemented
+            WordKind::Normal | WordKind::Quote | WordKind::Literal => Ok(s),
             WordKind::Variable | WordKind::Parameter => {
-                context.get_var(s).unwrap_or("".to_string())
+                Ok(ctx.get_var(s).unwrap_or("".to_string()))
             }
+            WordKind::Command => Executor::capture_command_output(ctx, s),
         }
     }
 }
 
 impl WordParser for WordList {
-    fn to_string(self, context: &Context) -> String {
-        self.to_vec()
-            .into_iter()
-            .fold(String::new(), |mut result, word| {
-                result.push_str(&*word.to_string(context));
-                result
-            })
+    fn to_string(self, ctx: &Context) -> Result<String, IoError> {
+        let mut result = String::new();
+        for word in self.to_vec() {
+            let s = word.to_string(ctx)?;
+            result.push_str(&*s);
+        }
+        Ok(result)
     }
 }
 
@@ -193,9 +205,9 @@ pub struct Executor {
 }
 
 impl Executor {
-    pub fn new(wrapper: Wrapper) -> std::result::Result<Self, std::io::Error> {
+    pub fn new(ctx: Context) -> std::result::Result<Self, std::io::Error> {
         Ok(Self {
-            ctx: Context::new(wrapper),
+            ctx,
             handler: JobSignalHandler::start()?,
             job_id: 0,
             jobs: vec![],
@@ -218,7 +230,9 @@ impl Executor {
                 let ret = self.execute_simple_command(command, redirect, cmd.background(), option);
                 if cmd.background() {
                     let job = self.jobs.last().unwrap();
-                    eprintln!("[{}] {}", job.id, job.pgid);
+                    if option.verbose() {
+                        println!("[{}] {}", job.id, job.pgid);
+                    }
                 }
                 ret
             }
@@ -242,12 +256,13 @@ impl Executor {
                                 let ret = self.start_job(child.pid(), child.pgid());
                                 if cmd.background() {
                                     let job = self.jobs.last().unwrap();
-                                    eprintln!("[{}] {}", job.id, job.pgid);
+                                    if option.verbose() {
+                                        println!("[{}] {}", job.id, job.pgid);
+                                    }
                                 }
                                 return ret;
                             }
                             Ok(None) => {
-                                self.handler.close();
                                 self.handler = JobSignalHandler::start().unwrap();
                                 let pgid = pgid.unwrap_or(self.wrapper().getpid());
                                 ExecOptionBuilder::from(option).pgid(pgid).build()
@@ -328,7 +343,18 @@ impl Executor {
         background: bool,
         option: ExecOption,
     ) -> ExitStatus {
-        let (temp_env, cmds) = split_env_and_commands(&self.ctx, command);
+        let (temp_env, cmds) = match split_env_and_commands(&self.ctx, command) {
+            Ok(ret) => ret,
+            Err(e) => {
+                return match e.kind() {
+                    std::io::ErrorKind::Interrupted => ExitStatus::signaled(Signal::SIGINT),
+                    e => {
+                        eprintln!("{:?}", e);
+                        ExitStatus::failure()
+                    }
+                }
+            }
+        };
         if cmds.is_empty() && temp_env.is_present() {
             temp_env.iter().for_each(|(k, v)| self.ctx.set_var(k, v));
             ExitStatus::success()
@@ -370,8 +396,6 @@ impl Executor {
                     }
                 }
                 Ok(None) => {
-                    self.handler.close();
-
                     if let Some(pipe) = option.input() {
                         self.wrapper().dup2(pipe, 0).unwrap();
                         self.wrapper().close(pipe).unwrap();
@@ -583,13 +607,13 @@ impl Executor {
             None => vec![], // Normally, it returns $@.
             Some(list) => list
                 .into_iter()
-                .map(|w| w.to_string(&self.ctx))
+                .map(|w| w.to_string(&self.ctx).unwrap())
                 .collect::<Vec<_>>(),
         };
 
         let (restore, option) = self.update_option_and_apply_redirect(option, redirect);
         'exec: for word in list.iter() {
-            self.ctx.set_var(&*identifier, word);
+            self.ctx.set_var(&*identifier, &*word);
             for c in command.to_vec() {
                 if self.handler.is_interrupt() {
                     break 'exec;
@@ -623,6 +647,8 @@ impl Executor {
                 Ok(Some(ret))
             }
             Ok(ForkResult::Child) => {
+                close_signal_handler();
+
                 self.wrapper().close(tmp_write).ok();
 
                 // Synchronize with the parent process.
@@ -681,7 +707,7 @@ impl Executor {
                 }
 
                 if exited == job.processes.len() {
-                    eprintln!("[{}]+ Done", job.id);
+                    println!("[{}]+ Done", job.id);
                     false
                 } else {
                     // remove job
@@ -724,52 +750,128 @@ impl Executor {
                 .build(),
         )
     }
+
+    fn capture_command_output<I: AsRef<str>>(
+        ctx: &Context,
+        command: I,
+    ) -> Result<String, std::io::Error> {
+        let (pipe_read, pipe_write) = ctx.wrapper().pipe().unwrap();
+
+        match ctx.wrapper().fork() {
+            Err(e) => {
+                eprintln!("{}: {}", e.name(), e.desc());
+                Err(IoError::from_raw_os_error(e.errno() as i32))
+            }
+            Ok(ForkResult::Parent { child }) => {
+                ctx.wrapper().setpgid(child, child).unwrap();
+                ctx.wrapper().close(pipe_write).unwrap();
+                change_sa_restart_flag(false)?;
+
+                let mut pipe = unsafe { File::from_raw_fd(pipe_read) };
+                let mut output = Vec::new();
+                let read_result = loop {
+                    let mut buf = [0u8; 4096];
+                    match pipe.read(&mut buf) {
+                        Ok(s) => {
+                            if s == 0 {
+                                break Ok(());
+                            } else {
+                                output.append(&mut (buf[0..s].to_vec()));
+                            }
+                        }
+                        Err(e) => break Err(e),
+                    }
+                };
+                ctx.wrapper().close(pipe_read).unwrap();
+                change_sa_restart_flag(true)?;
+
+                let pgid = Pid::from_raw(-child.as_raw());
+                ctx.wrapper().waitpid(pgid, None).ok();
+
+                match read_result {
+                    Ok(_) => {
+                        let s = std::str::from_utf8(&mut output)
+                            .unwrap()
+                            .trim_end_matches('\n');
+                        Ok(s.to_string())
+                    }
+                    Err(e) => Err(e),
+                }
+            }
+            Ok(ForkResult::Child) => {
+                close_signal_handler();
+
+                let pid = ctx.wrapper().getpid();
+                ctx.wrapper().setpgid(pid, pid).unwrap();
+                let old_pgrp = match ctx.wrapper().isatty(0).unwrap_or(false) {
+                    false => None,
+                    true => ctx
+                        .wrapper()
+                        .tcgetpgrp(0)
+                        .and_then(|old| {
+                            ctx.wrapper().tcsetpgrp(0, pid).ok();
+                            Ok(old)
+                        })
+                        .ok(),
+                };
+
+                ctx.wrapper().close(pipe_read).unwrap();
+                ctx.wrapper().dup2(pipe_write, 1).unwrap();
+                ctx.wrapper().close(pipe_write).unwrap();
+
+                let mut e = Executor::new(ctx.clone()).unwrap();
+                let option = ExecOptionBuilder::new().quiet(true).pgid(pid).build();
+                let status = match parse_command_line(command) {
+                    Err(_) => ExitStatus::failure(),
+                    Ok(cmds) => {
+                        for cmd in cmds.to_vec() {
+                            e.execute_command(cmd, Some(option));
+                        }
+                        if let Some(pgrp) = old_pgrp {
+                            ctx.wrapper().tcsetpgrp(0, pgrp).unwrap();
+                        }
+                        ExitStatus::success()
+                    }
+                };
+                ctx.wrapper().exit(status.code());
+
+                unreachable![]
+            }
+        }
+    }
 }
 
 fn split_env_and_commands(
     ctx: &Context,
     list: Vec<WordList>,
-) -> (HashMap<String, String>, Vec<String>) {
-    let (env, cmds) = {
-        let mut env = vec![];
-        let mut cmds = vec![];
-        let mut iter = list.into_iter().peekable();
+) -> Result<(HashMap<String, String>, Vec<String>), IoError> {
+    let mut env = HashMap::new();
+    let mut cmds = vec![];
+    let mut iter = list.into_iter().peekable();
 
-        loop {
-            match iter.peek() {
-                Some(wl) if wl.is_var_name() => {
-                    let wl = iter.next().unwrap();
-                    env.push(wl.clone())
-                }
-                _ => break,
+    loop {
+        match iter.peek() {
+            Some(wl) if wl.is_var_name() => {
+                let wl = iter.next().unwrap();
+                let s = wl.to_string(ctx)?;
+                let (k, v) = s.split_once("=").unwrap();
+                env.insert(k.to_string(), v.to_string());
             }
+            _ => break,
         }
+    }
 
-        loop {
-            match iter.next() {
-                Some(wl) => cmds.push(wl.clone()),
-                None => break,
+    loop {
+        match iter.next() {
+            Some(wl) => {
+                let s = wl.to_string(ctx)?;
+                cmds.push(s);
             }
+            None => break,
         }
+    }
 
-        (env, cmds)
-    };
-
-    let env = env
-        .into_iter()
-        .map(|wordlist| {
-            wordlist
-                .to_string(ctx)
-                .split_once("=")
-                .map(|(k, v)| (k.to_string(), v.to_string()))
-                .unwrap()
-        })
-        .collect::<HashMap<_, _>>();
-    let cmds = cmds
-        .into_iter()
-        .map(|wordlist| wordlist.to_string(ctx))
-        .collect::<Vec<_>>();
-    (env, cmds)
+    Ok((env, cmds))
 }
 
 fn assume_command(command: &str) -> PathBuf {
@@ -810,7 +912,6 @@ fn execute_external_command<T: AsRef<str>>(
     let cmdpath = assume_command(path).to_str().unwrap().to_cstring();
     let cmds = cmds.to_cstring();
 
-    // merge temporary env to env
     let mut env = env::vars().collect::<HashMap<_, _>>();
     temp_env.into_iter().for_each(|(k, v)| {
         env.insert(k, v);
@@ -860,6 +961,29 @@ fn close(ctx: &Context, fd: RawFd) -> SysCallResult<()> {
         Err(e) if e.errno() == Errno::EBADF => Ok(()),
         Err(e) => Err(e),
     }
+}
+
+fn change_sa_restart_flag(flag: bool) -> Result<(), IoError> {
+    macro_rules! sigaction {
+        ($new: expr, $old: expr) => {
+            match libc::sigaction(Signal::SIGINT as libc::c_int, $new, $old) {
+                -1 => Err(IoError::from_raw_os_error(errno())),
+                r => Ok(r),
+            }
+        };
+    }
+
+    unsafe {
+        let mut sa: libc::sigaction = mem::zeroed();
+        sigaction!(ptr::null(), &mut sa)?;
+
+        sa.sa_flags = match flag {
+            true => sa.sa_flags | libc::SA_RESTART,
+            false => sa.sa_flags & !libc::SA_RESTART,
+        };
+        sigaction!(&sa, ptr::null_mut())?;
+    };
+    Ok(())
 }
 
 include!("exec_test.rs");

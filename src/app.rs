@@ -1,4 +1,5 @@
 use super::{
+    context::Context,
     exec::{
         syscall::{SysCallWrapper, Wrapper},
         Executor,
@@ -30,7 +31,7 @@ impl<'a> App {
 
     fn new(wrapper: Wrapper) -> Result<Self, std::io::Error> {
         let config = Config::new();
-        let executor = Executor::new(wrapper.clone())?;
+        let executor = Executor::new(Context::new(wrapper.clone()))?;
         let tty_avaliable = wrapper.isatty(0).unwrap_or(false);
         Ok(Self {
             config,

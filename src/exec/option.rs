@@ -8,6 +8,7 @@ pub struct ExecOption {
     input: Option<RawFd>,
     output: Option<(RawFd, bool)>,
     leak_fd: Option<RawFd>,
+    quiet: bool,
 }
 
 impl ExecOption {
@@ -30,6 +31,14 @@ impl ExecOption {
     pub fn leak_fd(&self) -> Option<RawFd> {
         self.leak_fd
     }
+
+    pub fn quiet(&self) -> bool {
+        self.quiet
+    }
+
+    pub fn verbose(&self) -> bool {
+        !self.quiet()
+    }
 }
 
 pub struct ExecOptionBuilder {
@@ -39,6 +48,7 @@ pub struct ExecOptionBuilder {
     output: Option<RawFd>,
     both_output: bool,
     leak_fd: Option<RawFd>,
+    quiet: bool,
 }
 
 impl ExecOptionBuilder {
@@ -50,6 +60,7 @@ impl ExecOptionBuilder {
             output: None,
             both_output: false,
             leak_fd: None,
+            quiet: false,
         }
     }
 
@@ -88,6 +99,11 @@ impl ExecOptionBuilder {
         self
     }
 
+    pub fn quiet(mut self, b: bool) -> Self {
+        self.quiet = b;
+        self
+    }
+
     pub fn build(self) -> ExecOption {
         let output = match self.output {
             None => None,
@@ -100,6 +116,7 @@ impl ExecOptionBuilder {
             input: self.input,
             output,
             leak_fd: self.leak_fd,
+            quiet: self.quiet,
         }
     }
 
@@ -111,15 +128,6 @@ impl ExecOptionBuilder {
             f(self)
         } else {
             self
-        }
-    }
-}
-
-impl From<Option<ExecOption>> for ExecOptionBuilder {
-    fn from(option: Option<ExecOption>) -> Self {
-        match option {
-            None => Self::new(),
-            Some(option) => ExecOptionBuilder::from(option),
         }
     }
 }
@@ -138,6 +146,7 @@ impl From<ExecOption> for ExecOptionBuilder {
             output,
             both_output,
             leak_fd: option.leak_fd,
+            quiet: option.quiet,
         }
     }
 }

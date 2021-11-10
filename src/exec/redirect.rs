@@ -88,7 +88,7 @@ impl RedirectApplier {
         wordlist: WordList,
         flag: OFlag,
     ) -> SysCallResult<()> {
-        let file = wordlist.to_string(ctx);
+        let file = wordlist.to_string(ctx).unwrap();
         let mode = Mode::from_bits(0o666).unwrap();
         let new_fd = ctx.wrapper().open(&*file, flag, mode)?;
 

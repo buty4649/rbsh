@@ -12,11 +12,15 @@ use nix::{
         signal::{killpg, SaFlags, SigAction, SigHandler, SigSet, Signal},
         wait::{waitpid, WaitStatus},
     },
-    unistd::Pid,
+    unistd::{close, Pid},
 };
+use once_cell::sync::OnceCell;
 use signal_hook::{
-    consts::signal::*, iterator::backend::PollResult, iterator::backend::RefSignalIterator,
-    iterator::backend::SignalDelivery, iterator::exfiltrator::SignalOnly,
+    consts::signal::*,
+    iterator::{
+        backend::{PollResult, RefSignalIterator, SignalDelivery},
+        exfiltrator::SignalOnly,
+    },
 };
 use std::io::Error as IoError;
 use std::io::Read;
@@ -28,7 +32,7 @@ use std::sync::{
 };
 use std::thread;
 
-static TTYSIGNALS: [i32; 5] = [SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU];
+const TTYSIGNALS: [i32; 5] = [SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU];
 
 pub fn recognize_sigpipe(ctx: &Context) -> SysCallResult<()> {
     // Ignore SIGPIPE by default
@@ -56,24 +60,10 @@ pub fn restore_tty_signals(wrapper: &Wrapper) -> SysCallResult<()> {
     Ok(())
 }
 
-struct Handle {
-    sf_handle: signal_hook::iterator::Handle,
-    read: RawFd,
-    write: RawFd,
-}
-
-impl Handle {
-    fn close(&self) {
-        self.sf_handle.close();
-        nix::unistd::close(self.read).unwrap();
-        nix::unistd::close(self.write).unwrap();
-    }
-}
+static mut SIGNAL_HANDLER_FD: OnceCell<(RawFd, RawFd)> = OnceCell::new();
 
 struct SignalHandler {
     delivery: SignalDelivery<UnixStream, SignalOnly>,
-    read: RawFd,
-    write: RawFd,
 }
 
 impl SignalHandler {
@@ -89,24 +79,13 @@ impl SignalHandler {
         let write = wrapper
             .dup_fd(stream_write.as_raw_fd(), SHELL_FDBASE)
             .unwrap();
+        unsafe { SIGNAL_HANDLER_FD.set((read, write)).unwrap() };
         let stream_read = unsafe { UnixStream::from_raw_fd(read) };
         let stream_write = unsafe { UnixStream::from_raw_fd(write) };
         let delivery =
             SignalDelivery::with_pipe(stream_read, stream_write, SignalOnly::default(), signals)?;
 
-        Ok(Self {
-            delivery,
-            read,
-            write,
-        })
-    }
-
-    fn handle(&self) -> Handle {
-        Handle {
-            sf_handle: self.delivery.handle(),
-            read: self.read,
-            write: self.write,
-        }
+        Ok(Self { delivery })
     }
 
     fn has_signals(read: &mut UnixStream) -> Result<bool, IoError> {
@@ -145,10 +124,16 @@ impl<'a> Iterator for Forever<'a> {
     }
 }
 
+pub fn close_signal_handler() {
+    if let Some((read, write)) = unsafe { SIGNAL_HANDLER_FD.take() } {
+        close(read).unwrap();
+        close(write).unwrap();
+    }
+}
+
 pub struct JobSignalHandler {
     inner: Arc<(Mutex<JobSignalHandlerInner>, Condvar)>,
     forground: Arc<AtomicI32>,
-    handle: Handle,
 }
 
 pub struct JobSignalHandlerInner {
@@ -209,8 +194,6 @@ impl JobSignalHandler {
         let forground = Arc::new(AtomicI32::new(0));
 
         let mut signals = SignalHandler::new(vec![SIGINT, SIGCHLD])?;
-        let handle = signals.handle();
-
         let pair = inner.clone();
         let fg = forground.clone();
         thread::spawn(move || {
@@ -253,19 +236,16 @@ impl JobSignalHandler {
             }
         });
 
-        Ok(Self {
-            inner,
-            forground,
-            handle,
-        })
+        Ok(Self { inner, forground })
     }
 
     pub fn wait_for(&mut self, pid: Pid, block: bool) -> Option<ExitStatus> {
         let (mutex, cvar) = &*self.inner;
-        let mut list = if block {
-            cvar.wait_while(mutex.lock().unwrap(), |inner| !inner.has_pid(pid))
-        } else {
-            mutex.lock()
+        let mut list = match block {
+            true => cvar.wait_while(mutex.lock().unwrap(), |inner| {
+                !inner.reset_interrupt_flag() && !inner.has_pid(pid)
+            }),
+            false => mutex.lock(),
         }
         .unwrap();
 
@@ -290,10 +270,6 @@ impl JobSignalHandler {
 
     pub fn reset_forground(&mut self) {
         self.forground.store(0, Ordering::Relaxed);
-    }
-
-    pub fn close(&mut self) {
-        self.handle.close();
     }
 }
 
