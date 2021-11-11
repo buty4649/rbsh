@@ -115,15 +115,15 @@ mod test {
     fn test_split_env_and_commands() {
         let ctx = Context::new(Wrapper::new());
         assert_eq!(
-            (HashMap::new(), vec!["foo".to_string()]),
-            split_env_and_commands(&ctx, vec![wordlist![word!("foo")]])
+            Some((HashMap::new(), vec!["foo".to_string()])),
+            split_env_and_commands(&ctx, vec![wordlist![word!("foo")]]).ok()
         );
 
         assert_eq!(
-            (
+            Some((
                 hashmap![("foo", "bar"), ("baz", "foo")],
                 vec!["bar".to_string()]
-            ),
+            )),
             split_env_and_commands(
                 &ctx,
                 vec![
@@ -132,13 +132,14 @@ mod test {
                     wordlist![word!("bar")]
                 ]
             )
+            .ok()
         );
 
         assert_eq!(
-            (
+            Some((
                 hashmap![("foo", "bar")],
                 vec!["baz".to_string(), "hoge=fuga".to_string()]
-            ),
+            )),
             split_env_and_commands(
                 &ctx,
                 vec![
@@ -147,6 +148,7 @@ mod test {
                     wordlist![word!("hoge=fuga")]
                 ]
             )
+            .ok()
         );
     }
 }
