@@ -439,7 +439,13 @@ impl Lexer {
         let loc = self.location();
         self.next(); // '$'
 
-        let word = self.lex_internal_word(true, terminator)?;
+        let word = match self.peek() {
+            Some(b'$') => {
+                self.next();
+                "$".to_string()
+            }
+            _ => self.lex_internal_word(true, terminator)?,
+        };
         let token = Token::word(word, WordKind::Variable, loc);
         Ok(token)
     }

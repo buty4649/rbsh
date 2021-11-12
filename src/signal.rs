@@ -1,5 +1,4 @@
 use super::{
-    context::Context,
     exec::{
         syscall::{SysCallResult, SysCallWrapper, Wrapper},
         SHELL_FDBASE,
@@ -34,19 +33,19 @@ use std::thread;
 
 const TTYSIGNALS: [i32; 5] = [SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU];
 
-pub fn recognize_sigpipe(ctx: &Context) -> SysCallResult<()> {
+pub fn recognize_sigpipe(wrapper: &Wrapper) -> SysCallResult<()> {
     // Ignore SIGPIPE by default
     // https://github.com/rust-lang/rust/pull/13158
     let sa = SigAction::new(SigHandler::SigDfl, SaFlags::empty(), SigSet::empty());
-    ctx.wrapper().sigaction(Signal::SIGPIPE, &sa)?;
+    wrapper.sigaction(Signal::SIGPIPE, &sa)?;
     Ok(())
 }
 
-pub fn ignore_tty_signals(ctx: &Context) -> SysCallResult<()> {
+pub fn ignore_tty_signals(wrapper: &Wrapper) -> SysCallResult<()> {
     let sa = SigAction::new(SigHandler::SigIgn, SaFlags::empty(), SigSet::empty());
     for sig in TTYSIGNALS {
         let sig = Signal::try_from(sig).unwrap();
-        ctx.wrapper().sigaction(sig, &sa)?;
+        wrapper.sigaction(sig, &sa)?;
     }
     Ok(())
 }
@@ -276,7 +275,7 @@ impl JobSignalHandler {
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::exec::syscall::Wrapper;
+    use crate::context::Context;
     use mockall::predicate::{eq, function};
 
     pub fn mock_ignore_tty_signals(mock: &mut Wrapper) {
@@ -324,7 +323,7 @@ pub mod test {
         let mut mock = Wrapper::new();
         mock_ignore_tty_signals(&mut mock);
         let ctx = Context::new(mock);
-        ignore_tty_signals(&ctx).unwrap();
+        ignore_tty_signals(ctx.wrapper()).unwrap();
     }
 
     #[test]

@@ -494,5 +494,6 @@ mod test {
         assert_lex!(lex_variable, "$foo$bar", ok![var!("foo"), loc!(5, 1)]);
         assert_lex!(lex_variable, "$foo_bar", ok![var!("foo_bar"), loc!(9, 1)]);
         assert_lex!(lex_variable, "$foo-bar", ok![var!("foo"), loc!(5, 1)]);
+        assert_lex!(lex_variable, "$$foobar", ok![var!("$"), loc!(3, 1)]);
     }
 }

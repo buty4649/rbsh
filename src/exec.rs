@@ -197,25 +197,21 @@ impl ChildProcess {
     }
 }
 
-pub struct Executor {
-    ctx: Context,
+pub struct Executor<'a> {
+    ctx: &'a Context,
     handler: JobSignalHandler,
     pub job_id: u16,
     jobs: Vec<Job>,
 }
 
-impl Executor {
-    pub fn new(ctx: Context) -> std::result::Result<Self, std::io::Error> {
+impl<'a> Executor<'a> {
+    pub fn new(ctx: &'a Context) -> std::result::Result<Self, std::io::Error> {
         Ok(Self {
             ctx,
             handler: JobSignalHandler::start()?,
             job_id: 0,
             jobs: vec![],
         })
-    }
-
-    pub fn context(&self) -> &Context {
-        &self.ctx
     }
 
     fn wrapper(&self) -> &Wrapper {
@@ -272,7 +268,7 @@ impl Executor {
                 };
 
                 if let Some(fd) = option.leak_fd() {
-                    match close(&self.ctx, fd) {
+                    match close(self.ctx, fd) {
                         Ok(_) => (),
                         Err(e) => {
                             eprintln!("{}, {}", e.name(), e.desc());
@@ -333,6 +329,7 @@ impl Executor {
             }
         };
 
+        self.ctx.set_staus(ret);
         ret
     }
 
@@ -343,7 +340,7 @@ impl Executor {
         background: bool,
         option: ExecOption,
     ) -> ExitStatus {
-        let (temp_env, cmds) = match split_env_and_commands(&self.ctx, command) {
+        let (temp_env, cmds) = match split_env_and_commands(self.ctx, command) {
             Ok(ret) => ret,
             Err(e) => {
                 return match e.kind() {
@@ -413,7 +410,7 @@ impl Executor {
                     }
 
                     let cmdpath = cmds.first().unwrap().to_string();
-                    execute_external_command(&self.ctx, cmdpath, cmds, temp_env, redirect)
+                    execute_external_command(self.ctx, cmdpath, cmds, temp_env, redirect)
                 }
             }
         } else {
@@ -452,7 +449,7 @@ impl Executor {
         both: bool,
         option: ExecOption,
     ) -> ExitStatus {
-        let (pipe_read, pipe_write) = pipe(&self.ctx).unwrap();
+        let (pipe_read, pipe_write) = pipe(self.ctx).unwrap();
 
         self.execute_command(
             left,
@@ -484,8 +481,8 @@ impl Executor {
             ),
         );
 
-        close(&self.ctx, pipe_read).unwrap();
-        close(&self.ctx, pipe_write).unwrap();
+        close(self.ctx, pipe_read).unwrap();
+        close(self.ctx, pipe_write).unwrap();
 
         if piping {
             ExitStatus::success()
@@ -540,7 +537,7 @@ impl Executor {
             }
         };
 
-        restore.apply(&self.ctx, false).unwrap();
+        restore.apply(self.ctx, false).unwrap();
         ret
     }
 
@@ -575,7 +572,7 @@ impl Executor {
             }
         }
 
-        restore.apply(&self.ctx, false).unwrap();
+        restore.apply(self.ctx, false).unwrap();
         ExitStatus::new(0)
     }
 
@@ -607,7 +604,7 @@ impl Executor {
             None => vec![], // Normally, it returns $@.
             Some(list) => list
                 .into_iter()
-                .map(|w| w.to_string(&self.ctx).unwrap())
+                .map(|w| w.to_string(self.ctx).unwrap())
                 .collect::<Vec<_>>(),
         };
 
@@ -622,7 +619,7 @@ impl Executor {
                 self.execute_command(c, Some(option));
             }
         }
-        restore.apply(&self.ctx, false).ok();
+        restore.apply(self.ctx, false).ok();
 
         ExitStatus::new(0)
     }
@@ -631,7 +628,7 @@ impl Executor {
         &mut self,
         pgid: Option<Pid>,
     ) -> std::result::Result<Option<ChildProcess>, SysCallError> {
-        let (tmp_read, tmp_write) = pipe(&self.ctx)?;
+        let (tmp_read, tmp_write) = pipe(self.ctx)?;
         match self.wrapper().fork() {
             Err(e) => {
                 self.wrapper().close(tmp_read).ok();
@@ -741,7 +738,7 @@ impl Executor {
 
         (
             redirect
-                .apply(&self.ctx, !option.piping())
+                .apply(self.ctx, !option.piping())
                 .unwrap_or_default(),
             ExecOptionBuilder::from(option)
                 .input(None)
@@ -817,7 +814,8 @@ impl Executor {
                 ctx.wrapper().dup2(pipe_write, 1).unwrap();
                 ctx.wrapper().close(pipe_write).unwrap();
 
-                let mut e = Executor::new(ctx.clone()).unwrap();
+                let c = ctx.clone();
+                let mut e = Executor::new(&c).unwrap();
                 let option = ExecOptionBuilder::new().quiet(true).pgid(pid).build();
                 let status = match parse_command_line(command) {
                     Err(_) => ExitStatus::failure(),

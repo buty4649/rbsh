@@ -36,4 +36,10 @@ impl ExitStatus {
     }
 }
 
+impl Default for ExitStatus {
+    fn default() -> Self {
+        Self::new(0)
+    }
+}
+
 pub type Result<T> = std::result::Result<T, ShellError>;
