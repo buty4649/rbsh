@@ -1,20 +1,21 @@
 use super::{
     context::Context,
+    error::ShellErrorKind,
     exec::{
         syscall::{SysCallWrapper, Wrapper},
         Executor,
     },
     parse_command_line,
+    read_line::{ReadFromFile, ReadFromTTY, ReadLine, ReadLineError},
     signal::{ignore_tty_signals, recognize_sigpipe},
     status::ExitStatus,
     Config, APP_NAME, VERSION,
 };
-use rustyline::{error::ReadlineError, Editor};
+use std::path::PathBuf;
 
 pub struct App {
     config: Config,
     ctx: Context,
-    tty_avaliable: bool,
 }
 
 impl<'a> App {
@@ -32,12 +33,7 @@ impl<'a> App {
     fn new(wrapper: Wrapper) -> Result<Self, std::io::Error> {
         let config = Config::new();
         let ctx = Context::new(wrapper.clone());
-        let tty_avaliable = wrapper.isatty(0).unwrap_or(false);
-        Ok(Self {
-            config,
-            ctx,
-            tty_avaliable,
-        })
+        Ok(Self { config, ctx })
     }
 
     fn parse_args(&self, args: Vec<String>) -> clap::ArgMatches<'a> {
@@ -53,18 +49,51 @@ impl<'a> App {
     fn exec(&mut self, args: Vec<String>) -> i32 {
         self.ctx.set_var("0", &args[0].to_string());
         self.ctx.set_var("PS1", "reddish> ");
+        self.ctx.set_var("PS2", "> ");
 
-        let _args = self.parse_args(args);
-        let mut rl = Editor::<()>::new();
+        let args = self.parse_args(args);
 
         // Ignore SIGPIPE by default
         // https://github.com/rust-lang/rust/pull/13158
         recognize_sigpipe(self.ctx.wrapper()).unwrap();
 
-        if self.tty_avaliable {
+        let isatty = self.ctx.wrapper().isatty(0).unwrap_or(false);
+        if isatty {
             ignore_tty_signals(self.ctx.wrapper()).unwrap();
-            rl.load_history(&*self.config.history_file())
-                .unwrap_or_default();
+        }
+
+        let mut rl: Box<dyn ReadLine> = match args.value_of("script-file") {
+            Some(file) => {
+                let mut p = PathBuf::new();
+                p.push(file);
+                let file = match ReadFromFile::new(self.ctx.wrapper(), Some(p)) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        eprintln!("{:?}", e);
+                        return ExitStatus::failure().code();
+                    }
+                };
+                Box::new(file)
+            }
+            None => match isatty {
+                true => Box::new(ReadFromTTY::new()),
+                false => {
+                    let file = match ReadFromFile::new(self.ctx.wrapper(), None) {
+                        Ok(f) => f,
+                        Err(e) => {
+                            eprintln!("{:?}", e);
+                            return ExitStatus::failure().code();
+                        }
+                    };
+                    Box::new(file)
+                }
+            },
+        };
+
+        let mut path = PathBuf::new();
+        path.push(self.config.history_file());
+        if let Some(e) = rl.load_history(path).err() {
+            eprintln!("load history error: {:?}", e);
         }
 
         let status = ExitStatus::new(0);
@@ -75,24 +104,36 @@ impl<'a> App {
                 return ExitStatus::failure().code();
             }
         };
+        let mut cmdline = String::new();
         loop {
             executor.reap_job();
-            let prompt = self.ctx.get_var("PS1").unwrap_or_else(|| "$ ".to_string());
-            let readline = rl.readline(&*prompt);
-            match readline {
-                Ok(line) => match parse_command_line(line.as_str()) {
-                    Ok(cmds) => {
-                        if !cmds.ignore_history() {
-                            rl.add_history_entry(line.as_str());
+            let prompt = match cmdline.is_empty() {
+                true => self.ctx.get_var_or_default("PS1", "$ ".to_string()),
+                false => self.ctx.get_var_or_default("PS2", "> ".to_string()),
+            };
+            match rl.readline(&prompt) {
+                Ok(line) => {
+                    cmdline.push_str(&line);
+                    match parse_command_line(&cmdline) {
+                        Ok(cmds) => {
+                            if !cmds.ignore_history() {
+                                rl.add_history_entry(&cmdline);
+                            }
+                            for cmd in cmds.to_vec() {
+                                executor.execute_command(cmd, None);
+                            }
+                            cmdline = String::new()
                         }
-                        for cmd in cmds.to_vec() {
-                            executor.execute_command(cmd, None);
+                        Err(e) => {
+                            match e.value() {
+                                ShellErrorKind::Eof => cmdline.push('\n'), // next line
+                                _ => eprintln!("Error: {:?}", e),
+                            }
                         }
                     }
-                    Err(e) => eprintln!("Error: {:?}", e),
-                },
-                Err(ReadlineError::Interrupted) => (),
-                Err(ReadlineError::Eof) => {
+                }
+                Err(ReadLineError::Interrupted) => (),
+                Err(ReadLineError::Eof) => {
                     break;
                 }
                 Err(err) => {
@@ -100,10 +141,6 @@ impl<'a> App {
                     break;
                 }
             }
-        }
-
-        if self.tty_avaliable {
-            rl.save_history(&*self.config.history_file()).unwrap();
         }
 
         status.code()

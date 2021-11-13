@@ -5,6 +5,7 @@ mod error;
 mod exec;
 mod location;
 mod parser;
+mod read_line;
 mod signal;
 mod status;
 

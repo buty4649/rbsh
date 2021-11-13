@@ -241,7 +241,7 @@ impl TokenReader {
         let mut last_token: Option<Token> = None;
         loop {
             match self.peek_token() {
-                Some(TokenKind::Space) => {
+                Some(TokenKind::Space | TokenKind::NewLine) => {
                     last_token = self.next();
                 }
                 _ => break last_token,

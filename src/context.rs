@@ -73,6 +73,10 @@ impl Context {
             })
     }
 
+    pub fn get_var_or_default<T: AsRef<str>>(&self, name: T, default: String) -> String {
+        self.get_var(name).unwrap_or_else(|| default)
+    }
+
     fn get_env<T: AsRef<str>>(&self, name: T) -> Option<String> {
         self.wrapper.env_get(name.as_ref()).ok()
     }
