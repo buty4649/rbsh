@@ -496,4 +496,28 @@ mod test {
         assert_lex!(lex_variable, "$foo-bar", ok![var!("foo"), loc!(5, 1)]);
         assert_lex!(lex_variable, "$$foobar", ok![var!("$"), loc!(3, 1)]);
     }
+
+    #[test]
+    fn test_lex_comment() {
+        assert_lex!(
+            lex_comment,
+            "#foo bar",
+            ok![
+                Token::comment("foo bar".to_string(), loc!(1, 1)),
+                loc!(9, 1)
+            ]
+        );
+
+        assert_lex!(
+            "foo # bar",
+            ok![
+                vec![
+                    normal_word!("foo", loc!(1, 1)),
+                    Token::space(loc!(4, 1)),
+                    Token::comment(" bar".to_string(), loc!(5, 1))
+                ],
+                loc!(10, 1)
+            ]
+        );
+    }
 }

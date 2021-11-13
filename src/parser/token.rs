@@ -10,6 +10,7 @@ pub enum TokenKind {
     Space,
     Word(String, WordKind),
     Number(String),
+    Comment(String),
     Background,   // '&'
     Pipe,         // '|'
     PipeBoth,     // '|&'
@@ -62,6 +63,10 @@ impl Token {
 
     pub fn number(n: String, loc: Location) -> Self {
         Self::new(TokenKind::Number(n), loc)
+    }
+
+    pub fn comment(c: String, loc: Location) -> Self {
+        Self::new(TokenKind::Comment(c), loc)
     }
 
     pub fn background(loc: Location) -> Self {
@@ -241,7 +246,7 @@ impl TokenReader {
         let mut last_token: Option<Token> = None;
         loop {
             match self.peek_token() {
-                Some(TokenKind::Space | TokenKind::NewLine) => {
+                Some(TokenKind::Space | TokenKind::NewLine | TokenKind::Comment(_)) => {
                     last_token = self.next();
                 }
                 _ => break last_token,

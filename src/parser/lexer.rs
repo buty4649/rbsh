@@ -75,6 +75,7 @@ impl Lexer {
                 Some(b'\'') => action!(lex_single_quote),
                 Some(b'\n') => action!(lex_newline),
                 Some(b'<') | Some(b'>') => action!(lex_redirect),
+                Some(b'#') => action!(lex_comment),
                 Some(c) if is_space(c) => action!(lex_space),
                 Some(c) if is_number(c) => action!(lex_number),
                 Some(b'"') => {
@@ -448,6 +449,14 @@ impl Lexer {
         };
         let token = Token::word(word, WordKind::Variable, loc);
         Ok(token)
+    }
+
+    fn lex_comment(&mut self) -> LexResult {
+        let loc = self.location();
+        self.next(); // #
+
+        let comment = self.lex_internal_word(true, is_line_ending)?;
+        Ok(Token::comment(comment, loc))
     }
 
     fn next(&mut self) -> Option<u8> {
