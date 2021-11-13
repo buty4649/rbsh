@@ -19,17 +19,21 @@ use signal_hook::{
     iterator::{
         backend::{PollResult, RefSignalIterator, SignalDelivery},
         exfiltrator::SignalOnly,
+        Handle,
     },
 };
-use std::io::Error as IoError;
-use std::io::Read;
-use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
-use std::os::unix::net::UnixStream;
-use std::sync::{
-    atomic::{AtomicI32, Ordering},
-    Arc, Condvar, Mutex,
+use std::{
+    io::{Error as IoError, Read},
+    os::unix::{
+        io::{AsRawFd, FromRawFd, RawFd},
+        net::UnixStream,
+    },
+    sync::{
+        atomic::{AtomicI32, Ordering},
+        Arc, Condvar, Mutex,
+    },
+    thread,
 };
-use std::thread;
 
 const TTYSIGNALS: [i32; 5] = [SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU];
 
@@ -99,6 +103,10 @@ impl SignalHandler {
             }
         }
     }
+
+    fn handle(&self) -> Handle {
+        self.delivery.handle()
+    }
 }
 
 impl<'a> IntoIterator for &'a mut SignalHandler {
@@ -116,8 +124,7 @@ impl<'a> Iterator for Forever<'a> {
     fn next(&mut self) -> Option<nix::libc::c_int> {
         match self.0.poll_signal(&mut SignalHandler::has_signals) {
             PollResult::Signal(result) => Some(result),
-            PollResult::Closed => None,
-            PollResult::Pending => unreachable![],
+            PollResult::Closed | PollResult::Pending => None,
             PollResult::Err(e) => panic!("Unexpected error: {}", e),
         }
     }
@@ -128,11 +135,6 @@ pub fn close_signal_handler() {
         close(read).unwrap();
         close(write).unwrap();
     }
-}
-
-pub struct JobSignalHandler {
-    inner: Arc<(Mutex<JobSignalHandlerInner>, Condvar)>,
-    forground: Arc<AtomicI32>,
 }
 
 pub struct JobSignalHandlerInner {
@@ -187,15 +189,26 @@ impl JobSignalHandlerInner {
     }
 }
 
+pub struct JobSignalHandler {
+    inner: Arc<(Mutex<JobSignalHandlerInner>, Condvar)>,
+    forground: Arc<AtomicI32>,
+    signal_handler: Handle,
+    //thread: std::cell::RefCell<thread::JoinHandle<()>>,
+    thread: thread::JoinHandle<()>,
+}
+
 impl JobSignalHandler {
     pub fn start() -> Result<Self, std::io::Error> {
         let inner = Arc::new((Mutex::new(JobSignalHandlerInner::new()), Condvar::new()));
         let forground = Arc::new(AtomicI32::new(0));
 
         let mut signals = SignalHandler::new(vec![SIGINT, SIGCHLD])?;
+        let signal_handler = signals.handle();
         let pair = inner.clone();
         let fg = forground.clone();
-        thread::spawn(move || {
+
+        let thread = thread::Builder::new()
+        .spawn(move || {
             for sig in &mut signals {
                 match sig {
                     SIGINT => {
@@ -233,9 +246,14 @@ impl JobSignalHandler {
                     _ => unreachable![],
                 }
             }
-        });
+        }).unwrap();
 
-        Ok(Self { inner, forground })
+        Ok(Self {
+            inner,
+            forground,
+            signal_handler,
+            thread,
+        })
     }
 
     pub fn wait_for(&mut self, pid: Pid, block: bool) -> Option<ExitStatus> {
@@ -269,6 +287,12 @@ impl JobSignalHandler {
 
     pub fn reset_forground(&mut self) {
         self.forground.store(0, Ordering::Relaxed);
+    }
+
+    pub fn close(self) {
+        close_signal_handler();
+        self.signal_handler.close();
+        self.thread.join().unwrap();
     }
 }
 

@@ -143,6 +143,7 @@ impl<'a> App {
             }
         }
 
+        executor.close();
         status.code()
     }
 }

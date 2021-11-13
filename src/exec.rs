@@ -814,8 +814,7 @@ impl<'a> Executor<'a> {
                 ctx.wrapper().dup2(pipe_write, 1).unwrap();
                 ctx.wrapper().close(pipe_write).unwrap();
 
-                let c = ctx.clone();
-                let mut e = Executor::new(&c).unwrap();
+                let mut e = Executor::new(ctx).unwrap();
                 let option = ExecOptionBuilder::new().quiet(true).pgid(pid).build();
                 let status = match parse_command_line(command) {
                     Err(_) => ExitStatus::failure(),
@@ -834,6 +833,10 @@ impl<'a> Executor<'a> {
                 unreachable![]
             }
         }
+    }
+
+    pub fn close(self) {
+        self.handler.close()
     }
 }
 
