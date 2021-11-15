@@ -229,6 +229,17 @@ impl TokenReader {
         Self { tokens, pos: 0 }
     }
 
+    pub fn next_if<F>(&mut self, f: F) -> Option<Token>
+    where
+        F: FnOnce(&TokenKind) -> bool,
+    {
+        let kind = self.peek_token()?;
+        match f(&kind) {
+            false => None,
+            true => self.next(),
+        }
+    }
+
     pub fn peek(&mut self) -> Option<Token> {
         if self.is_eof() {
             None
@@ -242,11 +253,14 @@ impl TokenReader {
         self.peek().map(|t| t.value())
     }
 
-    pub fn skip_space(&mut self) -> Option<Token> {
+    pub fn skip_space(&mut self, newline: bool) -> Option<Token> {
         let mut last_token: Option<Token> = None;
         loop {
             match self.peek_token() {
-                Some(TokenKind::Space | TokenKind::NewLine | TokenKind::Comment(_)) => {
+                Some(TokenKind::Space | TokenKind::Comment(_)) => {
+                    last_token = self.next();
+                }
+                Some(TokenKind::NewLine) if newline => {
                     last_token = self.next();
                 }
                 _ => break last_token,

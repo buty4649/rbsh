@@ -4,12 +4,12 @@ mod test {
     use crate::error::ShellError;
     use crate::{
         loc, normal_word,
-        parser::{lexer::lex, token::Token, word::WordKind},
+        parser::{lexer::Lexer, token::Token, word::WordKind},
     };
 
     macro_rules! lex {
         ($e: expr) => {
-            lex($e).unwrap()
+            Lexer::new($e, 1).lex().unwrap()
         };
     }
 

@@ -9,6 +9,7 @@ use std::{
 
 pub trait ReadLine {
     fn readline(&mut self, prompt: &str) -> Result<String, ReadLineError>;
+    fn keep_linenumer(&self) -> bool;
 
     fn load_history(&mut self, _: PathBuf) -> Result<(), ReadLineError> {
         Ok(())
@@ -59,6 +60,10 @@ impl ReadLine for ReadFromFile {
             Err(e) => Err(ReadLineError::Io(e)),
         }
     }
+
+    fn keep_linenumer(&self) -> bool {
+        true
+    }
 }
 
 pub struct ReadFromTTY {
@@ -80,6 +85,10 @@ impl ReadLine for ReadFromTTY {
             Ok(line) => Ok(line),
             Err(e) => Err(ReadLineError::from(e)),
         }
+    }
+
+    fn keep_linenumer(&self) -> bool {
+        false
     }
 
     fn load_history(&mut self, path: PathBuf) -> Result<(), ReadLineError> {

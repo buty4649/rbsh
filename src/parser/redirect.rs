@@ -102,7 +102,7 @@ pub fn parse_redirect(tokens: &mut TokenReader) -> Result<Option<Redirect>> {
 
 fn parse_redirect_read_from(tokens: &mut TokenReader, fd: RawFd) -> Result<RedirectKind> {
     tokens.next();
-    tokens.skip_space();
+    tokens.skip_space(false);
     match tokens.peek_token() {
         Some(TokenKind::Word(_, _)) => {
             let words = parse_wordlist(tokens)?;
@@ -118,7 +118,7 @@ fn parse_redirect_write_to(
     force: bool,
 ) -> Result<RedirectKind> {
     tokens.next();
-    tokens.skip_space();
+    tokens.skip_space(false);
     match tokens.peek_token() {
         Some(TokenKind::Word(_, _)) => {
             let words = parse_wordlist(tokens)?;
@@ -130,10 +130,10 @@ fn parse_redirect_write_to(
 
 fn parse_redirect_write_both(tokens: &mut TokenReader) -> Result<RedirectKind> {
     tokens.next();
-    tokens.skip_space();
+    tokens.skip_space(false);
     match tokens.peek_token() {
         Some(TokenKind::Word(_, _)) => {
-            tokens.skip_space();
+            tokens.skip_space(false);
             let words = parse_wordlist(tokens)?;
             Ok(RedirectKind::WriteBoth(words))
         }
@@ -159,7 +159,7 @@ fn parse_redirect_copy(tokens: &mut TokenReader, dest: RawFd) -> Result<Redirect
 
 fn parse_redirect_append(tokens: &mut TokenReader, fd: RawFd) -> Result<RedirectKind> {
     tokens.next();
-    tokens.skip_space();
+    tokens.skip_space(false);
     match tokens.peek_token() {
         Some(TokenKind::Word(_, _)) => {
             let words = parse_wordlist(tokens)?;
@@ -171,7 +171,7 @@ fn parse_redirect_append(tokens: &mut TokenReader, fd: RawFd) -> Result<Redirect
 
 fn parse_redirect_append_both(tokens: &mut TokenReader) -> Result<RedirectKind> {
     tokens.next();
-    tokens.skip_space();
+    tokens.skip_space(false);
     match tokens.peek_token() {
         Some(TokenKind::Word(_, _)) => {
             let words = parse_wordlist(tokens)?;
@@ -188,7 +188,7 @@ fn parse_redirect_close(tokens: &mut TokenReader, fd: RawFd) -> Result<RedirectK
 
 fn parse_redirect_read_write(tokens: &mut TokenReader, fd: RawFd) -> Result<RedirectKind> {
     tokens.next();
-    tokens.skip_space();
+    tokens.skip_space(false);
     match tokens.peek_token() {
         Some(TokenKind::Word(_, _)) => {
             let words = parse_wordlist(tokens)?;

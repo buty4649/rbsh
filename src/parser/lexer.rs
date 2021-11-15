@@ -7,7 +7,7 @@ use std::str::{from_utf8, Utf8Error};
 type LexResult = Result<Token>;
 
 #[derive(Debug, Clone)]
-struct Lexer {
+pub struct Lexer {
     input: Vec<u8>,
     pos: usize,
     line: usize,
@@ -27,19 +27,19 @@ macro_rules! lex_simple_token {
 }
 
 impl Lexer {
-    fn new(input: &str) -> Self {
+    pub fn new(input: &str, line: usize) -> Self {
         let input = input.as_bytes().to_vec();
         Lexer {
             input,
             pos: 0,
-            line: 1,
+            line,
             column: 1,
             token: vec![],
             begin_command: true,
         }
     }
 
-    fn lex(&mut self) -> Result<Vec<Token>> {
+    pub fn lex(&mut self) -> Result<Vec<Token>> {
         if self.is_eof() {
             return Ok(vec![]);
         }
@@ -531,10 +531,6 @@ impl Lexer {
     fn error_eof(&self) -> ShellError {
         ShellError::eof(self.location())
     }
-}
-
-pub fn lex(input: &str) -> Result<Vec<Token>> {
-    Lexer::new(input).lex()
 }
 
 fn is_space(c: u8) -> bool {

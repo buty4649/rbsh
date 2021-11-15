@@ -105,6 +105,7 @@ impl<'a> App {
             }
         };
         let mut cmdline = String::new();
+        let mut linenumber = 1;
         loop {
             executor.reap_job();
             let prompt = match cmdline.is_empty() {
@@ -114,7 +115,7 @@ impl<'a> App {
             match rl.readline(&prompt) {
                 Ok(line) => {
                     cmdline.push_str(&line);
-                    match parse_command_line(&cmdline) {
+                    match parse_command_line(&cmdline, linenumber) {
                         Ok(cmds) => {
                             if !cmds.ignore_history() {
                                 rl.add_history_entry(&cmdline);
@@ -122,6 +123,7 @@ impl<'a> App {
                             for cmd in cmds.to_vec() {
                                 executor.execute_command(cmd, None);
                             }
+                            linenumber += cmdline.split('\n').count();
                             cmdline = String::new()
                         }
                         Err(e) => {

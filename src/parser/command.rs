@@ -39,7 +39,7 @@ pub fn parse_connecter(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
             match parse_shell_command(tokens)? {
                 None => Err(tokens.error_unexpected_token()),
                 Some(left) => {
-                    tokens.skip_space();
+                    tokens.skip_space(false);
                     match tokens.peek_token() {
                         Some(kind)
                             if matches!(
@@ -116,7 +116,7 @@ pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>>
         | Some(UnitKind::While { redirect, .. })
         | Some(UnitKind::Until { redirect, .. })
         | Some(UnitKind::For { redirect, .. }) => {
-            tokens.skip_space();
+            tokens.skip_space(false);
             while let Some(r) = parse_redirect(tokens)? {
                 redirect.push(r)
             }
@@ -132,7 +132,7 @@ fn parse_if_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
     tokens.next(); // 'if'
 
     // need space
-    match tokens.skip_space() {
+    match tokens.skip_space(true) {
         Some(_) => (),
         None => return Err(tokens.error_unexpected_token()),
     };
@@ -142,9 +142,10 @@ fn parse_if_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
         None => return Err(tokens.error_unexpected_token()),
     };
 
-    tokens.skip_space();
+    tokens.skip_space(true);
     if matches!(tokens.peek_token(), Some(TokenKind::Then)) {
         tokens.next();
+        tokens.skip_space(true);
     }
 
     let mut true_case = vec![];
@@ -155,7 +156,7 @@ fn parse_if_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
             None => return Err(tokens.error_eof()),
         };
 
-        tokens.skip_space();
+        tokens.skip_space(true);
         match tokens.peek_token() {
             Some(TokenKind::Fi) | Some(TokenKind::End) => {
                 tokens.next();
@@ -189,7 +190,7 @@ fn parse_unless_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> 
     tokens.next(); // 'unless'
 
     // need space
-    match tokens.skip_space() {
+    match tokens.skip_space(true) {
         Some(_) => (),
         None => return Err(tokens.error_unexpected_token()),
     };
@@ -199,9 +200,10 @@ fn parse_unless_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> 
         None => return Err(tokens.error_unexpected_token()),
     };
 
-    tokens.skip_space();
+    tokens.skip_space(true);
     if matches!(tokens.peek_token(), Some(TokenKind::Then)) {
         tokens.next();
+        tokens.skip_space(true);
     }
 
     let mut false_case = vec![];
@@ -212,7 +214,7 @@ fn parse_unless_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> 
             None => return Err(tokens.error_eof()),
         };
 
-        tokens.skip_space();
+        tokens.skip_space(true);
         match tokens.peek_token() {
             Some(TokenKind::End) => {
                 tokens.next();
@@ -244,7 +246,7 @@ fn parse_else_clause(tokens: &mut TokenReader) -> Result<Option<Vec<Unit>>> {
             Some(c) => units.push(c),
             None => return Err(tokens.error_eof()),
         };
-        tokens.skip_space();
+        tokens.skip_space(true);
         match tokens.peek_token() {
             Some(TokenKind::Fi) | Some(TokenKind::End) => {
                 tokens.next();
@@ -260,7 +262,7 @@ fn parse_while_or_until_statement(tokens: &mut TokenReader) -> Result<Option<Uni
     let token = tokens.next().unwrap().value(); // 'while' or 'until'
 
     // need space
-    match tokens.skip_space() {
+    match tokens.skip_space(true) {
         Some(_) => (),
         None => return Err(tokens.error_unexpected_token()),
     };
@@ -270,9 +272,10 @@ fn parse_while_or_until_statement(tokens: &mut TokenReader) -> Result<Option<Uni
         None => return Err(tokens.error_unexpected_token()),
     };
 
-    tokens.skip_space();
+    tokens.skip_space(true);
     if matches!(tokens.peek_token(), Some(TokenKind::Do)) {
         tokens.next();
+        tokens.skip_space(true);
     }
 
     let mut command = vec![];
@@ -282,7 +285,7 @@ fn parse_while_or_until_statement(tokens: &mut TokenReader) -> Result<Option<Uni
             None => return Err(tokens.error_eof()),
         };
 
-        tokens.skip_space();
+        tokens.skip_space(true);
         match tokens.peek_token() {
             Some(TokenKind::Done) | Some(TokenKind::End) => {
                 tokens.next();
@@ -314,7 +317,7 @@ fn parse_for_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
     tokens.next(); // 'for'
 
     // need space
-    match tokens.skip_space() {
+    match tokens.skip_space(false) {
         Some(_) => (),
         None => return Err(tokens.error_unexpected_token()),
     };
@@ -329,28 +332,28 @@ fn parse_for_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
         _ => return Err(tokens.error_unexpected_token()),
     };
 
-    tokens.skip_space();
-    let list = match tokens.peek_token() {
-        Some(TokenKind::Termination) | Some(TokenKind::NewLine) => None,
-        Some(TokenKind::In) => {
-            tokens.next();
-            tokens.skip_space();
+    tokens.skip_space(false);
+    let list = tokens
+        .next_if(|k| k == &TokenKind::In)
+        .map_or(Ok(None), |_| {
+            tokens.skip_space(false);
             let mut wordlist = vec![];
             while let Some(TokenKind::Word(_, _)) = tokens.peek_token() {
                 let words = parse_wordlist(tokens)?;
                 wordlist.push(words);
             }
-            Some(wordlist)
+            Ok(Some(wordlist))
+        })?;
+
+    tokens.skip_space(false);
+    match tokens.peek_token() {
+        Some(TokenKind::Termination | TokenKind::NewLine) => {
+            tokens.next();
         }
         _ => return Err(tokens.error_unexpected_token()),
-    };
-
-    tokens.skip_space();
-    while let Some(TokenKind::Termination | TokenKind::NewLine) = tokens.peek_token() {
-        tokens.next();
     }
 
-    tokens.skip_space();
+    tokens.skip_space(true);
     let terminate_group_end = match tokens.peek_token() {
         Some(TokenKind::GroupStart) => {
             tokens.next();
@@ -370,7 +373,7 @@ fn parse_for_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
             None => return Err(tokens.error_eof()),
         };
 
-        tokens.skip_space();
+        tokens.skip_space(true);
         match tokens.peek_token() {
             Some(TokenKind::GroupEnd) if terminate_group_end => {
                 tokens.next();

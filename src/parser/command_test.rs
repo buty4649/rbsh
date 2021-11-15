@@ -6,7 +6,7 @@ mod test {
         location::Location,
         normal_word,
         parser::{
-            lexer::lex,
+            lexer::Lexer,
             redirect::Redirect,
             token::Token,
             word::{WordKind, WordList},
@@ -16,7 +16,7 @@ mod test {
 
     macro_rules! lex {
         ($e: expr) => {
-            lex($e).unwrap()
+            Lexer::new($e, 1).lex().unwrap()
         };
     }
 
@@ -24,7 +24,7 @@ mod test {
         ($f: ident, $e: expr, $expect: expr) => {
             let mut t = TokenReader::new(lex!($e));
             let got = $f(&mut t);
-            assert_eq!($expect, got);
+            assert_eq!(got, $expect);
         };
     }
 
@@ -41,7 +41,7 @@ mod test {
                     }
                 }
             };
-            assert_eq!($expect, got(t));
+            assert_eq!(got(t), $expect);
         };
     }
 
@@ -295,6 +295,12 @@ mod test {
 
         assert_parse!(
             parse_command,
+            "foo &&\nbar",
+            Err(ShellError::unexpected_token(Token::newline(loc!(7, 1))))
+        );
+
+        assert_parse!(
+            parse_command,
             "foo && &",
             Err(ShellError::unexpected_token(Token::background(loc!(8, 1))))
         );
@@ -536,16 +542,17 @@ mod test {
                 ])
             ]]
         );
+
         assert_parse!(
             parse_if_statement,
-            "if foo\nthen bar\nfi",
+            "if foo\nthen\nbar\nfi",
             ok![if_stmt![
                 unit![
                     simple_command!(vec![w![normal_word!("foo", loc!(4, 1))]]),
                     false
                 ],
                 vec!(unit![
-                    simple_command!(vec![w![normal_word!("bar", loc!(6, 2))]]),
+                    simple_command!(vec![w![normal_word!("bar", loc!(1, 3))]]),
                     false
                 ])
             ]]
@@ -856,6 +863,21 @@ mod test {
 
         assert_parse!(
             parse_while_or_until_statement,
+            "while foo\ndo\nbar\ndone",
+            ok![while_stmt![
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(1, 3))]]),
+                    false
+                ])
+            ]]
+        );
+
+        assert_parse!(
+            parse_while_or_until_statement,
             "while foo\nbar\nend",
             ok![while_stmt![
                 unit![
@@ -931,6 +953,21 @@ mod test {
 
         assert_parse!(
             parse_while_or_until_statement,
+            "until foo\ndo\nbar\ndone",
+            ok![until_stmt![
+                unit![
+                    simple_command!(vec![w![normal_word!("foo", loc!(7, 1))]]),
+                    false
+                ],
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(1, 3))]]),
+                    false
+                ])
+            ]]
+        );
+
+        assert_parse!(
+            parse_while_or_until_statement,
             "until foo\nbar\nend",
             ok![until_stmt![
                 unit![
@@ -997,6 +1034,18 @@ mod test {
 
         assert_parse!(
             parse_for_statement,
+            "for foo\nbar\nend",
+            ok![for_stmt![
+                Word::new("foo".to_string(), WordKind::Normal, loc!(5, 1)),
+                vec!(unit![
+                    simple_command!(vec![w![normal_word!("bar", loc!(1, 2))]]),
+                    false
+                ])
+            ]]
+        );
+
+        assert_parse!(
+            parse_for_statement,
             "for foo in a \"b\" 'c'; bar; end",
             ok![for_stmt![
                 Word::new("foo".to_string(), WordKind::Normal, loc!(5, 1)),
@@ -1011,53 +1060,6 @@ mod test {
                 ])
             ]]
         );
-
-        /*
-        assert_parse!(
-            parse_for_statement,
-            "for \"foo\"; bar; end",
-            Err(ShellError::invalid_identifier(
-                "\"foo\"".to_string(),
-                loc!(5, 1)
-            ),)
-        );
-
-        assert_parse!(
-            parse_for_statement,
-            "for 'foo'; bar; end",
-            Err(ShellError::invalid_identifier(
-                "'foo'".to_string(),
-                loc!(5, 1)
-            ),)
-        );
-
-        assert_parse!(
-            parse_for_statement,
-            "for `foo`; bar; end",
-            Err(ShellError::invalid_identifier(
-                "`foo`".to_string(),
-                loc!(5, 1)
-            ),)
-        );
-
-        assert_parse!(
-            parse_for_statement,
-            "for $foo; bar; end",
-            Err(ShellError::invalid_identifier(
-                "$foo".to_string(),
-                loc!(5, 1)
-            ),)
-        );
-
-        assert_parse!(
-            parse_for_statement,
-            "for ${foo}; bar; end",
-            Err(ShellError::invalid_identifier(
-                "${foo}".to_string(),
-                loc!(5, 1)
-            ),)
-        );
-        */
     }
 
     #[test]

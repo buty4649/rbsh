@@ -7,7 +7,7 @@ mod command;
 mod lexer;
 
 use super::status::Result;
-use lexer::lex;
+use lexer::Lexer;
 use redirect::RedirectList;
 use token::{Token, TokenKind, TokenReader};
 use word::{parse_wordlist, Word, WordList};
@@ -103,13 +103,13 @@ pub enum UnitKind {
     },
 }
 
-pub fn parse_command_line<S: AsRef<str>>(s: S) -> Result<CommandList> {
-    let tokens = lex(s.as_ref())?;
+pub fn parse_command_line<S: AsRef<str>>(s: S, linenumber: usize) -> Result<CommandList> {
+    let tokens = Lexer::new(s.as_ref(), linenumber).lex()?;
     let mut tokens = TokenReader::new(tokens);
     let mut result = vec![];
 
     // If it starts with a Space, ignore the command history.
-    let ignore_history = matches!(tokens.skip_space(), Some(_));
+    let ignore_history = matches!(tokens.skip_space(false), Some(_));
 
     loop {
         match parse_command(&mut tokens)? {
