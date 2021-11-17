@@ -6,8 +6,8 @@ pub use redirect::SHELL_FDBASE;
 pub use syscall::SysCallError;
 
 use super::{
+    builtin::{builtin_command_exec, is_builtin_command},
     context::Context,
-    error::ShellErrorKind,
     location::Location,
     parse_command_line,
     parser::{
@@ -197,6 +197,27 @@ impl ChildProcess {
     }
 }
 
+#[derive(Debug, PartialEq)]
+enum SimpleCommandKind {
+    Noop,
+    SetEnv {
+        env: Env,
+    },
+    Builtin {
+        env: Env,
+        command: String,
+        args: Args,
+    },
+    External {
+        env: Env,
+        command: String,
+        args: Args,
+    },
+}
+
+type Env = HashMap<String, String>;
+type Args = Vec<String>;
+
 pub struct Executor<'a> {
     ctx: &'a Context,
     handler: JobSignalHandler,
@@ -336,11 +357,11 @@ impl<'a> Executor<'a> {
     fn execute_simple_command(
         &mut self,
         command: Vec<WordList>,
-        redirect: RedirectList,
+        mut redirect: RedirectList,
         background: bool,
         option: ExecOption,
     ) -> ExitStatus {
-        let (temp_env, cmds) = match split_env_and_commands(self.ctx, command) {
+        let kind = match expand_command_line(self.ctx, command) {
             Ok(ret) => ret,
             Err(e) => {
                 return match e.kind() {
@@ -352,70 +373,121 @@ impl<'a> Executor<'a> {
                 }
             }
         };
-        if cmds.is_empty() && temp_env.is_present() {
-            temp_env.iter().for_each(|(k, v)| self.ctx.set_var(k, v));
-            ExitStatus::success()
-        } else if cmds.is_present() {
+
+        let background = background || option.piping();
+        let is_external_command = matches!(kind, SimpleCommandKind::External { .. });
+        if background || is_external_command {
             let pgid = option.pgid();
             match self.fork(pgid) {
                 Err(e) => {
                     eprintln!("{}: {}", e.name(), e.desc());
-                    ExitStatus::failure()
+                    return ExitStatus::failure();
                 }
-                Ok(Some(child)) => {
-                    let background = background || option.piping();
-                    if background {
+                Ok(Some(child)) => match background {
+                    true => {
                         child.start(self.wrapper());
-                        self.start_job(child.pid(), pgid.unwrap_or(child.pgid))
-                    } else {
-                        let need_terminal = !background && pgid.is_none();
-                        if need_terminal && self.wrapper().isatty(0).unwrap_or(false) {
-                            self.wrapper().tcsetpgrp(0, child.pgid()).ok();
-                        }
+                        return self.start_job(child.pid(), child.pgid());
+                    }
+                    false => {
+                        let old_pgrp = match self.wrapper().isatty(0).unwrap_or(false) {
+                            false => None,
+                            true => match pgid {
+                                Some(_) => None,
+                                None => self
+                                    .wrapper()
+                                    .tcgetpgrp(0)
+                                    .map(|old| {
+                                        self.wrapper().tcsetpgrp(0, child.pgid()).ok();
+                                        old
+                                    })
+                                    .ok(),
+                            },
+                        };
 
                         self.handler.set_forground(child.pgid());
-                        child.start(self.wrapper());
                         self.start_job(child.pid(), child.pgid());
-                        let ret = self
+                        child.start(self.wrapper());
+                        let status = self
                             .handler
                             .wait_for(child.pid(), true)
                             .unwrap_or_else(ExitStatus::failure);
                         self.handler.reset_forground();
-
                         self.jobs.pop(); // remove current job
 
-                        if need_terminal && self.wrapper().isatty(0).unwrap_or(false) {
-                            let pgid = self.wrapper().getpgid(None).unwrap();
+                        if let Some(pgid) = old_pgrp {
                             self.wrapper().tcsetpgrp(0, pgid).ok();
                         }
 
-                        ret
+                        return status;
                     }
-                }
-                Ok(None) => {
-                    if let Some(pipe) = option.input() {
-                        self.wrapper().dup2(pipe, 0).unwrap();
-                        self.wrapper().close(pipe).unwrap();
-                    }
-                    if let Some((pipe, both)) = option.output() {
-                        self.wrapper().dup2(pipe, 1).unwrap();
-                        if both {
-                            self.wrapper().dup2(1, 2).unwrap();
-                        }
-                        self.wrapper().close(pipe).unwrap();
-                    }
-
-                    if let Some(fd) = option.leak_fd() {
-                        self.wrapper().close(fd).ok();
-                    }
-
-                    let cmdpath = cmds.first().unwrap().to_string();
-                    execute_external_command(self.ctx, cmdpath, cmds, temp_env, redirect)
-                }
+                },
+                Ok(None) => (),
             }
-        } else {
-            // noop
-            ExitStatus::success()
+        }
+
+        if let Some(pipe) = option.input() {
+            redirect.insert(0, Redirect::copy(pipe, 0, true, Location::new(0, 0)));
+        }
+        if let Some((pipe, both)) = option.output() {
+            redirect.insert(0, Redirect::copy(pipe, 1, true, Location::new(0, 0)));
+            if both {
+                redirect.push(Redirect::copy(1, 2, false, Location::new(0, 0)));
+            }
+        }
+
+        if let Some(fd) = option.leak_fd() {
+            self.wrapper().close(fd).ok();
+        }
+
+        let restore = match redirect.apply(self.ctx, !(background || is_external_command)) {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("{:?}", e);
+                return match is_external_command {
+                    false => ExitStatus::failure(),
+                    true => self.wrapper().exit(1),
+                };
+            }
+        };
+
+        let status = match kind {
+            SimpleCommandKind::Noop => ExitStatus::success(),
+            SimpleCommandKind::SetEnv { env } => {
+                env.iter().for_each(|(k, v)| {
+                    self.ctx.set_var(k, v);
+                });
+                ExitStatus::success()
+            }
+            SimpleCommandKind::Builtin { env, command, args } => {
+                let old_env_vars = env
+                    .iter()
+                    .map(|(k, v)| {
+                        let old_var = self.ctx.set_var(k, v);
+                        (k, old_var)
+                    })
+                    .collect::<Vec<_>>();
+
+                let status = builtin_command_exec(self.ctx, command, &args);
+
+                old_env_vars.iter().for_each(|(k, v)| {
+                    match v {
+                        None => self.ctx.unset_var(k),
+                        Some(v) => self.ctx.set_var(k, &v),
+                    };
+                });
+
+                status
+            }
+            SimpleCommandKind::External { env, command, args } => {
+                execute_external_command(self.ctx, env, command, args)
+            }
+        };
+
+        restore.apply(self.ctx, false).ok();
+
+        match background {
+            true => self.wrapper().exit(status.code()),
+            false => status,
         }
     }
 
@@ -840,14 +912,13 @@ impl<'a> Executor<'a> {
     }
 }
 
-fn split_env_and_commands(
-    ctx: &Context,
-    list: Vec<WordList>,
-) -> Result<(HashMap<String, String>, Vec<String>), IoError> {
-    let mut env = HashMap::new();
-    let mut cmds = vec![];
-    let mut iter = list.into_iter().peekable();
+fn expand_command_line(ctx: &Context, list: Vec<WordList>) -> Result<SimpleCommandKind, IoError> {
+    if list.is_empty() {
+        return Ok(SimpleCommandKind::Noop);
+    }
 
+    let mut env = Env::new();
+    let mut iter = list.into_iter().peekable();
     loop {
         match iter.peek() {
             Some(wl) if wl.is_var_name() => {
@@ -860,12 +931,23 @@ fn split_env_and_commands(
         }
     }
 
+    if iter.peek().is_none() {
+        return Ok(SimpleCommandKind::SetEnv { env });
+    }
+
+    let mut cmds = vec![];
     for wl in iter {
         let s = wl.to_string(ctx)?;
         cmds.push(s);
     }
 
-    Ok((env, cmds))
+    let command = cmds.remove(0);
+    let args = cmds;
+
+    match is_builtin_command(&command) {
+        true => Ok(SimpleCommandKind::Builtin { env, command, args }),
+        false => Ok(SimpleCommandKind::External { env, command, args }),
+    }
 }
 
 fn assume_command(command: &str) -> PathBuf {
@@ -895,42 +977,31 @@ fn assume_command(command: &str) -> PathBuf {
     }
 }
 
-fn execute_external_command<T: AsRef<str>>(
+fn execute_external_command(
     ctx: &Context,
-    path: T,
-    cmds: Vec<String>,
-    temp_env: HashMap<String, String>,
-    redirect: RedirectList,
+    env: HashMap<String, String>,
+    command: String,
+    args: Vec<String>,
 ) -> ExitStatus {
-    let path = path.as_ref();
-    let cmdpath = assume_command(path).to_str().unwrap().to_cstring();
-    let cmds = cmds.to_cstring();
+    let cmdpath = assume_command(&*command).to_str().unwrap().to_cstring();
+    let mut cmds = vec![command.to_cstring()];
+    cmds.append(&mut args.to_cstring());
 
-    let mut env = env::vars().collect::<HashMap<_, _>>();
-    temp_env.into_iter().for_each(|(k, v)| {
-        env.insert(k, v);
-    });
-    let env = env
-        .into_iter()
-        .map(|(k, v)| format!("{}={}", k, v).to_cstring())
-        .collect::<Vec<_>>();
-
-    if let Err(e) = redirect.apply(ctx, false) {
-        match e.value() {
-            ShellErrorKind::SysCallError(f, e) => {
-                eprintln!("{}: {}", f, e.desc());
-                return ctx.wrapper().exit(1);
-            }
-            _ => unreachable![],
-        }
+    let env = {
+        let mut t = ctx.env_vars();
+        t.extend(env);
+        t
     }
+    .into_iter()
+    .map(|(k, v)| format!("{}={}", k, v).to_cstring())
+    .collect::<Vec<_>>();
 
     restore_tty_signals(ctx.wrapper()).unwrap();
 
     match ctx.wrapper().execve(cmdpath, &cmds, &env) {
         Ok(_) => unreachable![],
         Err(e) if e.errno() == Errno::ENOENT => {
-            eprintln!("{}: command not found", path);
+            eprintln!("{}: command not found", command);
             ctx.wrapper().exit(127)
         }
         Err(e) => {

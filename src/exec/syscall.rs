@@ -75,6 +75,10 @@ mod mockable {
             env::set_var(key, value)
         }
 
+        fn env_unset(&self, key: &str) {
+            env::remove_var(key)
+        }
+
         fn env_vars(&self) -> HashMap<String, String> {
             env::vars().collect::<HashMap<_, _>>()
         }

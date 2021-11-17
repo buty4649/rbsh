@@ -112,19 +112,24 @@ mod test {
     }
 
     #[test]
-    fn test_split_env_and_commands() {
+    fn test_expand_command_line() {
         let ctx = Context::new(Wrapper::new());
         assert_eq!(
-            Some((HashMap::new(), vec!["foo".to_string()])),
-            split_env_and_commands(&ctx, vec![wordlist![word!("foo")]]).ok()
+            Some(SimpleCommandKind::External {
+                env: HashMap::new(),
+                command: "foo".to_string(),
+                args: vec![],
+            }),
+            expand_command_line(&ctx, vec![wordlist![word!("foo")]]).ok()
         );
 
         assert_eq!(
-            Some((
-                hashmap![("foo", "bar"), ("baz", "foo")],
-                vec!["bar".to_string()]
-            )),
-            split_env_and_commands(
+            Some(SimpleCommandKind::External {
+                env: hashmap![("foo", "bar"), ("baz", "foo")],
+                command: "bar".to_string(),
+                args: Args::new()
+            }),
+            expand_command_line(
                 &ctx,
                 vec![
                     wordlist![word!("foo=bar")],
@@ -136,11 +141,12 @@ mod test {
         );
 
         assert_eq!(
-            Some((
-                hashmap![("foo", "bar")],
-                vec!["baz".to_string(), "hoge=fuga".to_string()]
-            )),
-            split_env_and_commands(
+            Some(SimpleCommandKind::External {
+                env: hashmap![("foo", "bar")],
+                command: "baz".to_string(),
+                args: vec!["hoge=fuga".to_string()],
+            }),
+            expand_command_line(
                 &ctx,
                 vec![
                     wordlist![word!("foo=bar")],

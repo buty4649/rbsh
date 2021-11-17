@@ -1,4 +1,5 @@
 mod app;
+mod builtin;
 mod config;
 mod context;
 mod error;
@@ -8,6 +9,7 @@ mod parser;
 mod read_line;
 mod signal;
 mod status;
+mod utils;
 
 pub use app::App;
 pub use config::Config;

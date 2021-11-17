@@ -75,6 +75,7 @@ impl ReadFromTTY {
         let mut editor = Editor::new();
 
         editor.set_auto_add_history(true);
+        editor.set_check_cursor_position(true);
         Self { editor }
     }
 }

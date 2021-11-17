@@ -47,8 +47,11 @@ impl Context {
         self.inner.borrow_mut().status = s
     }
 
-    pub fn set_var<T: AsRef<str>>(&self, name: T, value: &str) {
+    pub fn set_var<T: AsRef<str>>(&self, name: T, value: T) -> Option<String> {
         let name = name.as_ref();
+        let value = value.as_ref();
+
+        let old_var = self.get_var(name);
         match self.wrapper.env_get(name) {
             Ok(_) => self.wrapper.env_set(name, value),
             Err(_) => {
@@ -58,6 +61,8 @@ impl Context {
                     .insert(name.to_string(), value.to_string());
             }
         };
+
+        old_var
     }
 
     pub fn get_var<T: AsRef<str>>(&self, name: T) -> Option<String> {
@@ -90,5 +95,19 @@ impl Context {
             }
             _ => None,
         }
+    }
+
+    pub fn unset_var<T: AsRef<str>>(&self, name: T) -> Option<String> {
+        let name = name.as_ref();
+        let old_var = self.get_var(name);
+
+        match self.wrapper.env_get(name) {
+            Ok(_) => self.wrapper.env_unset(name),
+            Err(_) => {
+                self.inner.borrow_mut().local_vars.remove(name);
+            }
+        }
+
+        old_var
     }
 }
