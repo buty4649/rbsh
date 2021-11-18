@@ -124,8 +124,12 @@ impl<'a> App {
                             for cmd in cmds.to_vec() {
                                 executor.execute_command(cmd, None);
                             }
-                            linenumber += cmdline.split('\n').count();
-                            cmdline = String::new()
+
+                            if rl.keep_linenumer() {
+                                linenumber += cmdline.split('\n').count();
+                            }
+
+                            cmdline.clear()
                         }
                         Err(e) => {
                             match e.value() {
@@ -135,9 +139,13 @@ impl<'a> App {
                         }
                     }
                 }
-                Err(ReadLineError::Interrupted) => (),
+                Err(ReadLineError::Interrupted) => cmdline.clear(),
                 Err(ReadLineError::Eof) => {
-                    break;
+                    if cmdline.is_empty() {
+                        break;
+                    } else {
+                        cmdline.clear()
+                    }
                 }
                 Err(err) => {
                     println!("Error: {:?}", err);
