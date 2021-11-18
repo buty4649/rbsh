@@ -20,6 +20,10 @@ impl SysCallError {
     pub fn desc(&self) -> &str {
         self.errno().desc()
     }
+
+    pub fn code(&self) -> i32 {
+        self.errno() as i32
+    }
 }
 
 mod mockable {

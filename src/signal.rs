@@ -7,6 +7,8 @@ use super::{
 };
 
 use nix::{
+    libc,
+    errno::errno,
     sys::{
         signal::{killpg, SaFlags, SigAction, SigHandler, SigSet, Signal},
         wait::{waitpid, WaitStatus},
@@ -24,10 +26,12 @@ use signal_hook::{
 };
 use std::{
     io::{Error as IoError, Read},
+    mem,
     os::unix::{
         io::{AsRawFd, FromRawFd, RawFd},
         net::UnixStream,
     },
+    ptr,
     sync::{
         atomic::{AtomicI32, Ordering},
         Arc, Condvar, Mutex,
@@ -294,6 +298,29 @@ impl JobSignalHandler {
         self.signal_handler.close();
         self.thread.join().unwrap();
     }
+}
+
+pub fn change_sa_restart_flag(flag: bool) -> Result<(), IoError> {
+    macro_rules! sigaction {
+        ($new: expr, $old: expr) => {
+            match libc::sigaction(Signal::SIGINT as libc::c_int, $new, $old) {
+                -1 => Err(IoError::from_raw_os_error(errno())),
+                r => Ok(r),
+            }
+        };
+    }
+
+    unsafe {
+        let mut sa: libc::sigaction = mem::zeroed();
+        sigaction!(ptr::null(), &mut sa)?;
+
+        sa.sa_flags = match flag {
+            true => sa.sa_flags | libc::SA_RESTART,
+            false => sa.sa_flags & !libc::SA_RESTART,
+        };
+        sigaction!(&sa, ptr::null_mut())?;
+    };
+    Ok(())
 }
 
 #[cfg(test)]

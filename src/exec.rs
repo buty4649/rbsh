@@ -15,13 +15,12 @@ use super::{
         word::{Word, WordKind, WordList},
         ConnecterKind, Unit, UnitKind,
     },
-    signal::{close_signal_handler, restore_tty_signals, JobSignalHandler},
+    signal::{change_sa_restart_flag, close_signal_handler, restore_tty_signals, JobSignalHandler},
     status::ExitStatus,
 };
 use is_executable::IsExecutable;
 use nix::{
-    errno::{errno, Errno},
-    libc,
+    errno::Errno,
     sys::signal::Signal,
     unistd::{ForkResult, Pid},
 };
@@ -33,10 +32,8 @@ use std::{
     ffi::CString,
     fs::File,
     io::{Error as IoError, Read},
-    mem,
     os::unix::io::{FromRawFd, RawFd},
     path::PathBuf,
-    ptr,
 };
 use syscall::{SysCallResult, SysCallWrapper, Wrapper};
 
@@ -1026,29 +1023,6 @@ fn close(ctx: &Context, fd: RawFd) -> SysCallResult<()> {
         Err(e) if e.errno() == Errno::EBADF => Ok(()),
         Err(e) => Err(e),
     }
-}
-
-fn change_sa_restart_flag(flag: bool) -> Result<(), IoError> {
-    macro_rules! sigaction {
-        ($new: expr, $old: expr) => {
-            match libc::sigaction(Signal::SIGINT as libc::c_int, $new, $old) {
-                -1 => Err(IoError::from_raw_os_error(errno())),
-                r => Ok(r),
-            }
-        };
-    }
-
-    unsafe {
-        let mut sa: libc::sigaction = mem::zeroed();
-        sigaction!(ptr::null(), &mut sa)?;
-
-        sa.sa_flags = match flag {
-            true => sa.sa_flags | libc::SA_RESTART,
-            false => sa.sa_flags & !libc::SA_RESTART,
-        };
-        sigaction!(&sa, ptr::null_mut())?;
-    };
-    Ok(())
 }
 
 include!("exec_test.rs");
