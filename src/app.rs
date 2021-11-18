@@ -11,7 +11,7 @@ use super::{
     status::ExitStatus,
     Config, APP_NAME, VERSION,
 };
-use std::path::PathBuf;
+use std::path::Path;
 
 pub struct App {
     config: Config,
@@ -64,8 +64,7 @@ impl<'a> App {
 
         let mut rl: Box<dyn ReadLine> = match args.value_of("script-file") {
             Some(file) => {
-                let mut p = PathBuf::new();
-                p.push(file);
+                let p = Path::new(file);
                 let file = match ReadFromFile::new(self.ctx.wrapper(), Some(p)) {
                     Ok(f) => f,
                     Err(e) => {
@@ -90,10 +89,8 @@ impl<'a> App {
             },
         };
 
-        let mut path = PathBuf::new();
-        path.push(self.config.history_file());
-        if let Some(e) = rl.load_history(path).err() {
-            eprintln!("load history error: {:?}", e);
+        if let Some(e) = rl.load_history(self.config.history_file_path()).err() {
+            eprintln!("reddish: load history error: {:?}", e);
         }
 
         let status = ExitStatus::new(0);
@@ -117,8 +114,12 @@ impl<'a> App {
                     cmdline.push_str(&line);
                     match parse_command_line(&cmdline, linenumber) {
                         Ok(cmds) => {
-                            if !cmds.ignore_history() {
-                                rl.add_history_entry(&cmdline);
+                            if !cmds.ignore_history() && rl.add_history_entry(&cmdline) {
+                                if let Some(e) =
+                                    rl.save_history(self.config.history_file_path()).err()
+                                {
+                                    eprintln!("reddish: save history error: {:?}", e)
+                                }
                             }
                             for cmd in cmds.to_vec() {
                                 executor.execute_command(cmd, None);

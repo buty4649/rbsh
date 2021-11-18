@@ -1,5 +1,5 @@
 use crate::APP_NAME;
-use std::{fs::create_dir_all, path::PathBuf};
+use std::{fs::create_dir_all, path::Path};
 use xdg::BaseDirectories;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,11 +25,10 @@ impl Config {
         Config { history_file }
     }
 
-    pub fn history_file(&self) -> String {
-        let mut path = PathBuf::new();
-        path.push(&*self.history_file);
+    pub fn history_file_path(&self) -> &Path {
+        let path = Path::new(&self.history_file);
         create_dir_all(path.parent().unwrap()).unwrap();
-        self.history_file.to_string()
+        path
     }
 }
 

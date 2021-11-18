@@ -4,14 +4,18 @@ use std::{
     fs::File,
     io::{BufRead, BufReader, Error as IoError},
     os::unix::io::{AsRawFd, FromRawFd},
-    path::PathBuf,
+    path::Path,
 };
 
 pub trait ReadLine {
     fn readline(&mut self, prompt: &str) -> Result<String, ReadLineError>;
     fn keep_linenumer(&self) -> bool;
 
-    fn load_history(&mut self, _: PathBuf) -> Result<(), ReadLineError> {
+    fn load_history(&mut self, _: &Path) -> Result<(), ReadLineError> {
+        Ok(())
+    }
+
+    fn save_history(&mut self, _: &Path) -> Result<(), ReadLineError> {
         Ok(())
     }
 
@@ -33,7 +37,7 @@ pub struct ReadFromFile {
 }
 
 impl ReadFromFile {
-    pub fn new(wrapper: &Wrapper, path: Option<PathBuf>) -> Result<Self, IoError> {
+    pub fn new(wrapper: &Wrapper, path: Option<&Path>) -> Result<Self, IoError> {
         let fd = match path {
             Some(path) => {
                 let file = File::open(path)?;
@@ -74,7 +78,6 @@ impl ReadFromTTY {
     pub fn new() -> Self {
         let mut editor = Editor::new();
 
-        editor.set_auto_add_history(true);
         editor.set_check_cursor_position(true);
         Self { editor }
     }
@@ -92,8 +95,13 @@ impl ReadLine for ReadFromTTY {
         false
     }
 
-    fn load_history(&mut self, path: PathBuf) -> Result<(), ReadLineError> {
-        self.editor.load_history(&path)?;
+    fn load_history(&mut self, path: &Path) -> Result<(), ReadLineError> {
+        self.editor.load_history(path)?;
+        Ok(())
+    }
+
+    fn save_history(&mut self, path: &Path) -> Result<(), ReadLineError> {
+        self.editor.save_history(path)?;
         Ok(())
     }
 
