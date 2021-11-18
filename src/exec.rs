@@ -200,6 +200,12 @@ enum SimpleCommandKind {
     SetEnv {
         env: Env,
     },
+    Break {
+        args: Args,
+    },
+    Continue {
+        args: Args,
+    },
     Builtin {
         env: Env,
         command: String,
@@ -220,6 +226,9 @@ pub struct Executor<'a> {
     handler: JobSignalHandler,
     pub job_id: u16,
     jobs: Vec<Job>,
+    loop_level: usize,
+    breaking: usize,
+    continuing: usize,
 }
 
 impl<'a> Executor<'a> {
@@ -229,6 +238,9 @@ impl<'a> Executor<'a> {
             handler: JobSignalHandler::start()?,
             job_id: 0,
             jobs: vec![],
+            loop_level: 0,
+            breaking: 0,
+            continuing: 0,
         })
     }
 
@@ -237,6 +249,17 @@ impl<'a> Executor<'a> {
     }
 
     pub fn execute_command(&mut self, cmd: Unit, option: Option<ExecOption>) -> ExitStatus {
+        self.handler.reset_interrupt_flag();
+        self.handler.reset_forground();
+
+        self.loop_level = 0;
+        self.breaking = 0;
+        self.continuing = 0;
+
+        self.execute_command_internal(cmd, option)
+    }
+
+    fn execute_command_internal(&mut self, cmd: Unit, option: Option<ExecOption>) -> ExitStatus {
         let option = option.unwrap_or_else(|| ExecOptionBuilder::new().build());
 
         let ret = match cmd.kind() {
@@ -455,6 +478,9 @@ impl<'a> Executor<'a> {
                 });
                 ExitStatus::success()
             }
+            SimpleCommandKind::Break { .. } | SimpleCommandKind::Continue { .. } => {
+                self.do_break_or_continue(kind)
+            }
             SimpleCommandKind::Builtin { env, command, args } => {
                 let old_env_vars = env
                     .iter()
@@ -488,6 +514,53 @@ impl<'a> Executor<'a> {
         }
     }
 
+    fn do_break_or_continue(&mut self, kind: SimpleCommandKind) -> ExitStatus {
+        let (command, args) = match kind {
+            SimpleCommandKind::Break { args } => ("break", args),
+            SimpleCommandKind::Continue { args } => ("continue", args),
+            _ => unreachable![],
+        };
+
+        if self.loop_level == 0 {
+            eprintln!(
+                "reddish: {}: only meaningful in a `for', `while', or `until' loop",
+                command
+            );
+            return ExitStatus::failure();
+        }
+
+        let count = match args.len() {
+            0 => Some(self.loop_level),
+            1 => args[0].parse::<usize>().map_or_else(
+                |e| {
+                    eprintln!("reddish: {}: {}", command, e);
+                    None
+                },
+                Some,
+            ),
+            _ => {
+                eprintln!("reddish: {}: too many arguments", command);
+                None
+            }
+        };
+
+        match count {
+            None => ExitStatus::failure(),
+            Some(c) => {
+                let c = match c > self.loop_level {
+                    true => self.loop_level,
+                    false => c,
+                };
+                match command {
+                    "break" => self.breaking = c,
+                    "continue" => self.continuing = c,
+                    _ => unreachable![],
+                }
+                ExitStatus::success()
+            }
+        }
+    }
+
     fn execute_connecter(
         &mut self,
         left: Unit,
@@ -496,7 +569,7 @@ impl<'a> Executor<'a> {
         option: ExecOption,
     ) -> ExitStatus {
         let option = ExecOptionBuilder::from(option).piping(false).build();
-        let condition = self.execute_command(left, Some(option));
+        let condition = self.execute_command_internal(left, Some(option));
 
         let option = ExecOptionBuilder::from(option)
             .input(None)
@@ -504,9 +577,11 @@ impl<'a> Executor<'a> {
             .build();
         match kind {
             ConnecterKind::And if condition.is_success() => {
-                self.execute_command(right, Some(option))
+                self.execute_command_internal(right, Some(option))
             }
-            ConnecterKind::Or if condition.is_error() => self.execute_command(right, Some(option)),
+            ConnecterKind::Or if condition.is_error() => {
+                self.execute_command_internal(right, Some(option))
+            }
             _ => condition,
         }
     }
@@ -520,7 +595,7 @@ impl<'a> Executor<'a> {
     ) -> ExitStatus {
         let (pipe_read, pipe_write) = pipe(self.ctx).unwrap();
 
-        self.execute_command(
+        self.execute_command_internal(
             left,
             Some(
                 ExecOptionBuilder::from(option)
@@ -538,7 +613,7 @@ impl<'a> Executor<'a> {
             self.wrapper().tcsetpgrp(0, job.pgid).ok();
         }
 
-        self.execute_command(
+        self.execute_command_internal(
             right,
             Some(
                 ExecOptionBuilder::from(option)
@@ -589,11 +664,11 @@ impl<'a> Executor<'a> {
     ) -> ExitStatus {
         let (restore, option) = self.update_option_and_apply_redirect(option, redirect);
 
-        let ret = match self.execute_command(condition, Some(option)) {
+        let ret = match self.execute_command_internal(condition, Some(option)) {
             status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
                 let s = true_case
                     .into_iter()
-                    .map(|command| self.execute_command(command, Some(option)));
+                    .map(|command| self.execute_command_internal(command, Some(option)));
                 s.last().unwrap()
             }
             status if false_case.is_none() => status,
@@ -601,7 +676,7 @@ impl<'a> Executor<'a> {
                 let s = false_case
                     .unwrap()
                     .into_iter()
-                    .map(|command| self.execute_command(command, Some(option)));
+                    .map(|command| self.execute_command_internal(command, Some(option)));
                 s.last().unwrap()
             }
         };
@@ -619,28 +694,52 @@ impl<'a> Executor<'a> {
         option: ExecOption,
     ) -> ExitStatus {
         let (restore, option) = self.update_option_and_apply_redirect(option, redirect);
+        self.loop_level += 1;
 
         'exec: loop {
             macro_rules! interrupt {
                 () => {
                     if self.handler.is_interrupt() {
+                        self.breaking = self.loop_level - 1;
                         break 'exec;
+                    }
+                };
+            }
+            macro_rules! break_or_continue {
+                () => {
+                    if self.breaking > 0 {
+                        self.breaking -= 1;
+                        break 'exec;
+                    }
+
+                    if self.continuing > 0 {
+                        self.continuing -= 1;
+                        if self.continuing > 0 {
+                            break 'exec;
+                        } else {
+                            continue 'exec;
+                        }
                     }
                 };
             }
 
             interrupt!();
-            match self.execute_command(condition.clone(), Some(option)) {
-                status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
-                    for c in command.to_vec() {
-                        interrupt!();
-                        self.execute_command(c, Some(option));
-                    }
+            let status = self.execute_command_internal(condition.clone(), Some(option));
+            break_or_continue!();
+
+            if (!inverse && status.is_success()) || (inverse && status.is_error()) {
+                for c in command.to_vec() {
+                    interrupt!();
+                    self.execute_command_internal(c, Some(option));
+
+                    break_or_continue!();
                 }
-                _ => break 'exec,
+            } else {
+                break 'exec;
             }
         }
 
+        self.loop_level -= 1;
         restore.apply(self.ctx, false).unwrap();
         ExitStatus::new(0)
     }
@@ -678,6 +777,7 @@ impl<'a> Executor<'a> {
         };
 
         let (restore, option) = self.update_option_and_apply_redirect(option, redirect);
+        self.loop_level += 1;
         'exec: for word in list.iter() {
             self.ctx.set_var(&*identifier, &*word);
             for c in command.to_vec() {
@@ -685,9 +785,22 @@ impl<'a> Executor<'a> {
                     break 'exec;
                 }
 
-                self.execute_command(c, Some(option));
+                self.execute_command_internal(c, Some(option));
+
+                if self.breaking > 0 {
+                    self.breaking -= 1;
+                    break 'exec;
+                }
+
+                if self.continuing > 0 {
+                    self.continuing -= 1;
+                    if self.continuing > 0 {
+                        break 'exec;
+                    }
+                }
             }
         }
+        self.loop_level -= 1;
         restore.apply(self.ctx, false).ok();
 
         ExitStatus::new(0)
@@ -941,9 +1054,13 @@ fn expand_command_line(ctx: &Context, list: Vec<WordList>) -> Result<SimpleComma
     let command = cmds.remove(0);
     let args = cmds;
 
-    match is_builtin_command(&command) {
-        true => Ok(SimpleCommandKind::Builtin { env, command, args }),
-        false => Ok(SimpleCommandKind::External { env, command, args }),
+    match &*command {
+        "break" => Ok(SimpleCommandKind::Break { args }),
+        "continue" | "next" => Ok(SimpleCommandKind::Continue { args }),
+        _ => match is_builtin_command(&command) {
+            true => Ok(SimpleCommandKind::Builtin { env, command, args }),
+            false => Ok(SimpleCommandKind::External { env, command, args }),
+        },
     }
 }
 

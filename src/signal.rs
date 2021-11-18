@@ -158,10 +158,12 @@ impl JobSignalHandlerInner {
         self.interrupt = true
     }
 
-    pub fn reset_interrupt_flag(&mut self) -> bool {
-        let ret = self.interrupt;
-        self.interrupt = false;
-        ret
+    pub fn get_interrupt_flag(&mut self) -> bool {
+        self.interrupt
+    }
+
+    pub fn reset_interrupt_flag(&mut self) {
+        self.interrupt = false
     }
 
     pub fn push_status(&mut self, s: WaitStatus) {
@@ -264,7 +266,7 @@ impl JobSignalHandler {
         let (mutex, cvar) = &*self.inner;
         let mut list = match block {
             true => cvar.wait_while(mutex.lock().unwrap(), |inner| {
-                !inner.reset_interrupt_flag() && !inner.has_pid(pid)
+                !inner.get_interrupt_flag() && !inner.has_pid(pid)
             }),
             false => mutex.lock(),
         }
@@ -281,6 +283,11 @@ impl JobSignalHandler {
     }
 
     pub fn is_interrupt(&mut self) -> bool {
+        let (mutex, _) = &*self.inner;
+        mutex.lock().unwrap().get_interrupt_flag()
+    }
+
+    pub fn reset_interrupt_flag(&mut self) {
         let (mutex, _) = &*self.inner;
         mutex.lock().unwrap().reset_interrupt_flag()
     }
