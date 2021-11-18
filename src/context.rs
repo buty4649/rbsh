@@ -91,7 +91,7 @@ impl Context {
             "?" => Some(self.inner.borrow().status.code().to_string()),
             "$" => {
                 let pid = self.wrapper.getpid();
-                Some(format!("{}", pid).to_string())
+                Some(format!("{}", pid))
             }
             _ => None,
         }

@@ -1,4 +1,3 @@
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Location {
     column: usize,

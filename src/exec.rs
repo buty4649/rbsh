@@ -654,7 +654,7 @@ impl<'a> Executor<'a> {
         option: ExecOption,
     ) -> ExitStatus {
         let identifier = match identifier.take() {
-            (string, kind, _) if kind == WordKind::Normal => string.to_string(),
+            (string, kind, _) if kind == WordKind::Normal => string,
             (string, kind, _) => {
                 let _ = match kind {
                     WordKind::Normal => unreachable![],

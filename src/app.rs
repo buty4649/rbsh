@@ -32,7 +32,7 @@ impl<'a> App {
 
     fn new(wrapper: Wrapper) -> Result<Self, std::io::Error> {
         let config = Config::new();
-        let ctx = Context::new(wrapper.clone());
+        let ctx = Context::new(wrapper);
         Ok(Self { config, ctx })
     }
 

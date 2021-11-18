@@ -7,8 +7,8 @@ use super::{
 };
 
 use nix::{
-    libc,
     errno::errno,
+    libc,
     sys::{
         signal::{killpg, SaFlags, SigAction, SigHandler, SigSet, Signal},
         wait::{waitpid, WaitStatus},
