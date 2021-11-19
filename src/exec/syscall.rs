@@ -44,7 +44,7 @@ mod mockable {
     };
     use std::{
         collections::HashMap, convert::Infallible, env, ffi::CString, os::unix::io::RawFd,
-        process::exit,
+        path::PathBuf, process::exit,
     };
 
     #[cfg(test)]
@@ -126,6 +126,10 @@ mod mockable {
 
         fn read(&self, fd: RawFd, buf: &mut [u8]) -> SysCallResult<usize> {
             syscall!(read, fd, buf)
+        }
+
+        fn set_current_dir(&self, path: PathBuf) -> Result<(), std::io::Error> {
+            env::set_current_dir(path)
         }
 
         fn setpgid(&self, pid: Pid, pgid: Pid) -> SysCallResult<()> {

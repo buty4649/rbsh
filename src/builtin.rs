@@ -1,3 +1,4 @@
+mod cd;
 mod echo;
 mod read;
 
@@ -19,6 +20,7 @@ static BUILTIN: Lazy<Vec<Builtin>> = Lazy::new(|| {
         };
     }
     builtin![
+        {"cd", cd::cd},
         {"echo", echo::echo},
         {"read", read::read},
     ]
