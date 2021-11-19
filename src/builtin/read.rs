@@ -7,8 +7,6 @@ use crate::{
 use clap::{App, AppSettings, Arg, ArgMatches, Result as ClapResult};
 use std::{io, os::unix::io::RawFd};
 
-const DEFAULT_IFS: &str = " \t\n";
-
 pub fn read(ctx: &Context, args: &[String]) -> ExitStatus {
     let args = match parse_args(args) {
         Ok(m) => m,
@@ -41,9 +39,7 @@ pub fn read(ctx: &Context, args: &[String]) -> ExitStatus {
                 .values_of("name")
                 .map_or(vec!["REPLY"], |v| v.collect());
 
-            let ifs = ctx
-                .get_var("IFS")
-                .unwrap_or_else(|| DEFAULT_IFS.to_string());
+            let ifs = ctx.get_var("IFS").unwrap_or_default();
             let pat = ifs.chars().collect::<Vec<_>>();
             let mut vars = input.trim_end_matches('\n').splitn(names.len(), &pat[..]);
             for name in names {

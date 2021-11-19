@@ -5,7 +5,7 @@ pub mod syscall;
 pub use redirect::SHELL_FDBASE;
 pub use syscall::SysCallError;
 
-use super::{
+use crate::{
     builtin::{builtin_command_exec, is_builtin_command},
     context::Context,
     location::Location,
@@ -62,20 +62,6 @@ impl WordParser for WordList {
             result.push_str(&*s);
         }
         Ok(result)
-    }
-}
-
-pub trait IsPresent {
-    fn is_present(&self) -> bool;
-}
-impl<T> IsPresent for Vec<T> {
-    fn is_present(&self) -> bool {
-        !self.is_empty()
-    }
-}
-impl<T, U> IsPresent for HashMap<T, U> {
-    fn is_present(&self) -> bool {
-        !self.is_empty()
     }
 }
 
@@ -370,7 +356,7 @@ impl<'a> Executor<'a> {
             }
         };
 
-        self.ctx.set_staus(ret);
+        self.ctx.set_status(ret);
         ret
     }
 

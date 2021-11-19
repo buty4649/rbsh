@@ -2,13 +2,13 @@ use super::exec::syscall::{SysCallWrapper, Wrapper};
 use rustyline::{config::Configurer, error::ReadlineError, Editor};
 use std::{
     fs::File,
-    io::{BufRead, BufReader, Error as IoError},
+    io::{stdin, BufRead, BufReader, Error as IoError, Read, Stdin},
     os::unix::io::{AsRawFd, FromRawFd},
     path::Path,
 };
 
 pub trait ReadLine {
-    fn readline(&mut self, prompt: &str) -> Result<String, ReadLineError>;
+    fn readline(&mut self, _: &str) -> Result<String, ReadLineError>;
     fn keep_linenumer(&self) -> bool;
 
     fn load_history(&mut self, _: &Path) -> Result<(), ReadLineError> {
@@ -32,21 +32,37 @@ pub enum ReadLineError {
     Utf8Error,
 }
 
+pub struct ReadFromStdin {
+    reader: BufReader<Stdin>,
+}
+
+impl ReadFromStdin {
+    pub fn new() -> Self {
+        let reader = BufReader::new(stdin());
+        Self { reader }
+    }
+}
+
+impl ReadLine for ReadFromStdin {
+    fn readline(&mut self, _: &str) -> Result<String, ReadLineError> {
+        read_line_from_bufreader(&mut self.reader)
+    }
+
+    fn keep_linenumer(&self) -> bool {
+        true
+    }
+}
+
 pub struct ReadFromFile {
     reader: BufReader<File>,
 }
 
 impl ReadFromFile {
-    pub fn new(wrapper: &Wrapper, path: Option<&Path>) -> Result<Self, IoError> {
-        let fd = match path {
-            Some(path) => {
-                let file = File::open(path)?;
-                wrapper
-                    .dup_fd(file.as_raw_fd(), 255)
-                    .map_err(|e| IoError::from_raw_os_error(e.errno() as i32))?
-            }
-            None => 0,
-        };
+    pub fn new(wrapper: &Wrapper, path: &Path) -> Result<Self, IoError> {
+        let file = File::open(path)?;
+        let fd = wrapper
+            .dup_fd(file.as_raw_fd(), 255)
+            .map_err(|e| IoError::from_raw_os_error(e.errno() as i32))?;
         let file = unsafe { File::from_raw_fd(fd) };
         Ok(Self {
             reader: BufReader::new(file),
@@ -55,18 +71,43 @@ impl ReadFromFile {
 }
 
 impl ReadLine for ReadFromFile {
-    fn readline(&mut self, _prompt: &str) -> Result<String, ReadLineError> {
-        let mut result = String::new();
-
-        match self.reader.read_line(&mut result) {
-            Ok(size) if size == 0 => Err(ReadLineError::Eof),
-            Ok(_) => Ok(result.trim_end_matches('\n').to_string()),
-            Err(e) => Err(ReadLineError::Io(e)),
-        }
+    fn readline(&mut self, _: &str) -> Result<String, ReadLineError> {
+        read_line_from_bufreader(&mut self.reader)
     }
 
     fn keep_linenumer(&self) -> bool {
         true
+    }
+}
+
+pub struct ReadFromString<'a> {
+    reader: BufReader<&'a [u8]>,
+}
+
+impl<'a> ReadFromString<'a> {
+    pub fn new(input: &'a str) -> Self {
+        let reader = BufReader::new(input.as_bytes());
+        Self { reader }
+    }
+}
+
+impl<'a> ReadLine for ReadFromString<'a> {
+    fn readline(&mut self, _: &str) -> Result<String, ReadLineError> {
+        read_line_from_bufreader(&mut self.reader)
+    }
+
+    fn keep_linenumer(&self) -> bool {
+        true
+    }
+}
+
+fn read_line_from_bufreader<R: Read>(reader: &mut BufReader<R>) -> Result<String, ReadLineError> {
+    let mut result = String::new();
+
+    match reader.read_line(&mut result) {
+        Ok(size) if size == 0 => Err(ReadLineError::Eof),
+        Ok(_) => Ok(result.trim_end_matches('\n').to_string()),
+        Err(e) => Err(ReadLineError::Io(e)),
     }
 }
 

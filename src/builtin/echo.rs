@@ -1,4 +1,4 @@
-use crate::{context::Context, status::ExitStatus, utils::escape::Escape};
+use crate::{context::Context, status::ExitStatus, utils::Escape};
 use clap::{App, AppSettings, Arg};
 
 pub fn echo(_: &Context, args: &[String]) -> ExitStatus {

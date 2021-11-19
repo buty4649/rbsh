@@ -14,6 +14,8 @@ pub struct Context {
 struct ContextInner {
     local_vars: HashMap<String, String>,
     status: ExitStatus,
+    bin_name: String,
+    positional_parameters: Vec<String>,
 }
 
 impl ContextInner {
@@ -21,6 +23,8 @@ impl ContextInner {
         Self {
             local_vars: HashMap::new(),
             status: ExitStatus::default(),
+            bin_name: String::new(),
+            positional_parameters: vec![],
         }
     }
 }
@@ -43,8 +47,16 @@ impl Context {
         self.wrapper.env_vars()
     }
 
-    pub fn set_staus(&self, s: ExitStatus) {
+    pub fn set_status(&self, s: ExitStatus) {
         self.inner.borrow_mut().status = s
+    }
+
+    pub fn set_bin_name(&self, b: String) {
+        self.inner.borrow_mut().bin_name = b
+    }
+
+    pub fn set_positional_parameters(&self, p: &[String]) {
+        self.inner.borrow_mut().positional_parameters = p.to_vec();
     }
 
     pub fn set_var<T: AsRef<str>>(&self, name: T, value: T) -> Option<String> {
@@ -63,6 +75,10 @@ impl Context {
         };
 
         old_var
+    }
+
+    pub fn get_status(&self) -> ExitStatus {
+        self.inner.borrow().status
     }
 
     pub fn get_var<T: AsRef<str>>(&self, name: T) -> Option<String> {
@@ -87,9 +103,26 @@ impl Context {
     }
 
     fn get_special_var<T: AsRef<str>>(&self, name: T) -> Option<String> {
-        match name.as_ref() {
-            "?" => Some(self.inner.borrow().status.code().to_string()),
-            "$" => {
+        let mut c = name.as_ref().chars();
+        match c.next() {
+            Some('0') => Some(self.inner.borrow().bin_name.to_string()),
+            Some(n) if n.is_digit(10) => {
+                let mut index = n.to_digit(10).unwrap();
+                for n in c {
+                    if !n.is_digit(10) {
+                        break;
+                    }
+                    index *= 10;
+                    index += n.to_digit(10).unwrap();
+                }
+                self.inner
+                    .borrow()
+                    .positional_parameters
+                    .get((index - 1) as usize)
+                    .map(|s| s.to_string())
+            }
+            Some('?') => Some(self.inner.borrow().status.code().to_string()),
+            Some('$') => {
                 let pid = self.wrapper.getpid();
                 Some(format!("{}", pid))
             }
