@@ -1,7 +1,9 @@
+use nix::errno::Errno;
+
 pub type SysCallResult<T> = Result<T, SysCallError>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SysCallError(String, nix::errno::Errno);
+pub struct SysCallError(String, Errno);
 
 impl SysCallError {
     pub fn new<T: AsRef<str>>(name: T, errno: nix::errno::Errno) -> Self {
@@ -30,7 +32,9 @@ mod mockable {
     use super::{SysCallError, SysCallResult};
     use crate::status::ExitStatus;
     use nix::{
+        errno,
         fcntl::{fcntl, open, FcntlArg, OFlag},
+        libc::{c_int, c_ulong, prctl},
         sys::{
             signal::{sigaction, SigAction, Signal},
             stat::Mode,
@@ -49,6 +53,12 @@ mod mockable {
 
     #[cfg(test)]
     use mockall::automock;
+
+    #[repr(C)]
+    #[allow(non_camel_case_types)]
+    pub enum PrCtlFlag {
+        PR_SET_NAME = 15,
+    }
 
     macro_rules! syscall {
         ($i: ident $(, $e: expr )*) => {
@@ -124,6 +134,17 @@ mod mockable {
             syscall!(pipe2, OFlag::O_CLOEXEC)
         }
 
+        fn prctl(&self, flag: PrCtlFlag, arg1: c_ulong) -> SysCallResult<()> {
+            match unsafe { prctl(flag as c_int, arg1) } {
+                0 => Ok(()),
+                -1 => {
+                    let e = SysCallError::new("prctl", errno::from_i32(errno::errno()));
+                    Err(e)
+                }
+                _ => unreachable![],
+            }
+        }
+
         fn read(&self, fd: RawFd, buf: &mut [u8]) -> SysCallResult<usize> {
             syscall!(read, fd, buf)
         }
@@ -158,6 +179,7 @@ mod mockable {
     }
 }
 
+pub use mockable::PrCtlFlag;
 pub use mockable::SysCallWrapper;
 
 cfg_if::cfg_if! {

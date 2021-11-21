@@ -62,7 +62,6 @@ pub fn read(ctx: &Context, args: &[String]) -> ExitStatus {
 fn parse_args<'a>(args: &[String]) -> ClapResult<ArgMatches<'a>> {
     App::new("read")
         .about("read from input")
-        .after_help("")
         .setting(AppSettings::NoBinaryName)
         .arg(
             Arg::with_name("fd")

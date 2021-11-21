@@ -307,26 +307,37 @@ impl JobSignalHandler {
     }
 }
 
-pub fn change_sa_restart_flag(flag: bool) -> Result<(), IoError> {
-    macro_rules! sigaction {
-        ($new: expr, $old: expr) => {
-            match libc::sigaction(Signal::SIGINT as libc::c_int, $new, $old) {
-                -1 => Err(IoError::from_raw_os_error(errno())),
-                r => Ok(r),
-            }
-        };
-    }
+macro_rules! sigaction {
+    ($sig: expr, $new: expr, $old: expr) => {
+        match libc::sigaction($sig, $new, $old) {
+            -1 => Err(IoError::from_raw_os_error(errno())),
+            r => Ok(r),
+        }
+    };
+}
 
+pub fn change_sa_restart_flag(flag: bool) -> Result<(), IoError> {
     unsafe {
         let mut sa: libc::sigaction = mem::zeroed();
-        sigaction!(ptr::null(), &mut sa)?;
+        sigaction!(Signal::SIGINT as libc::c_int, ptr::null(), &mut sa)?;
 
         sa.sa_flags = match flag {
             true => sa.sa_flags | libc::SA_RESTART,
             false => sa.sa_flags & !libc::SA_RESTART,
         };
-        sigaction!(&sa, ptr::null_mut())?;
+        sigaction!(Signal::SIGINT as libc::c_int, &sa, ptr::null_mut())?;
     };
+    Ok(())
+}
+
+pub fn reset_signal_handler() -> Result<(), IoError> {
+    unsafe {
+        let mut sa: libc::sigaction = mem::zeroed();
+        sa.sa_flags = libc::SA_RESETHAND;
+        sigaction!(Signal::SIGINT as libc::c_int, &sa, ptr::null_mut())?;
+        sigaction!(Signal::SIGCHLD as libc::c_int, &sa, ptr::null_mut())?;
+    };
+
     Ok(())
 }
 

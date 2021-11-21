@@ -218,6 +218,7 @@ impl<'a> App {
         ];
 
         self.ctx.set_bin_name(params.bin_name.to_string());
-        self.ctx.set_positional_parameters(&params.positional_parameters)
+        self.ctx
+            .set_positional_parameters(&params.positional_parameters)
     }
 }

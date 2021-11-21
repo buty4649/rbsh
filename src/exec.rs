@@ -1,3 +1,4 @@
+mod mruby;
 mod option;
 mod redirect;
 
@@ -15,10 +16,14 @@ use crate::{
         word::{Word, WordKind, WordList},
         ConnecterKind, Unit, UnitKind,
     },
-    signal::{change_sa_restart_flag, close_signal_handler, restore_tty_signals, JobSignalHandler},
+    signal::{
+        change_sa_restart_flag, close_signal_handler, reset_signal_handler, restore_tty_signals,
+        JobSignalHandler,
+    },
     status::ExitStatus,
 };
 use is_executable::IsExecutable;
+use mruby::mruby_exec;
 use nix::{
     errno::Errno,
     sys::signal::Signal,
@@ -26,6 +31,7 @@ use nix::{
 };
 use option::{ExecOption, ExecOptionBuilder};
 use redirect::ApplyRedirect;
+use rust_mruby::MRuby;
 use std::{
     collections::HashMap,
     env,
@@ -35,7 +41,7 @@ use std::{
     os::unix::io::{FromRawFd, RawFd},
     path::PathBuf,
 };
-use syscall::{SysCallResult, SysCallWrapper, Wrapper};
+use syscall::{PrCtlFlag, SysCallResult, SysCallWrapper, Wrapper};
 
 pub trait WordParser {
     fn to_string(self, context: &Context) -> Result<String, IoError>;
@@ -192,6 +198,10 @@ enum SimpleCommandKind {
     Continue {
         args: Args,
     },
+    MRuby {
+        env: Env,
+        args: Args,
+    },
     Builtin {
         env: Env,
         command: String,
@@ -215,6 +225,7 @@ pub struct Executor<'a> {
     loop_level: usize,
     breaking: usize,
     continuing: usize,
+    mrb: MRuby,
 }
 
 impl<'a> Executor<'a> {
@@ -227,6 +238,7 @@ impl<'a> Executor<'a> {
             loop_level: 0,
             breaking: 0,
             continuing: 0,
+            mrb: MRuby::new(),
         })
     }
 
@@ -381,8 +393,11 @@ impl<'a> Executor<'a> {
         };
 
         let background = background || option.piping();
-        let is_external_command = matches!(kind, SimpleCommandKind::External { .. });
-        if background || is_external_command {
+        let need_fork = matches!(
+            kind,
+            SimpleCommandKind::MRuby { .. } | SimpleCommandKind::External { .. }
+        );
+        if background || need_fork {
             let pgid = option.pgid();
             match self.fork(pgid) {
                 Err(e) => {
@@ -445,11 +460,11 @@ impl<'a> Executor<'a> {
             self.wrapper().close(fd).ok();
         }
 
-        let restore = match redirect.apply(self.ctx, !(background || is_external_command)) {
+        let restore = match redirect.apply(self.ctx, !(background || need_fork)) {
             Ok(r) => r,
             Err(e) => {
                 eprintln!("{:?}", e);
-                return match is_external_command {
+                return match need_fork {
                     false => ExitStatus::failure(),
                     true => self.wrapper().exit(1),
                 };
@@ -466,6 +481,30 @@ impl<'a> Executor<'a> {
             }
             SimpleCommandKind::Break { .. } | SimpleCommandKind::Continue { .. } => {
                 self.do_break_or_continue(kind)
+            }
+            SimpleCommandKind::MRuby { env, args } => {
+                let name = CString::new("mruby").unwrap();
+                if let Some(e) = self
+                    .wrapper()
+                    .prctl(PrCtlFlag::PR_SET_NAME, name.as_ptr() as nix::libc::c_ulong)
+                    .err()
+                {
+                    eprintln!("mruby: prctl: {}", e.desc());
+                }
+
+                match reset_signal_handler() {
+                    Ok(_) => {
+                        env.iter().for_each(|(k, v)| {
+                            self.ctx.set_var(k, v);
+                        });
+
+                        self.ctx.wrapper().exit(mruby_exec(&self.mrb, &args).code())
+                    }
+                    Err(e) => {
+                        eprintln!("mruby: {}", e);
+                        ExitStatus::failure()
+                    }
+                }
             }
             SimpleCommandKind::Builtin { env, command, args } => {
                 let old_env_vars = env
@@ -1043,6 +1082,7 @@ fn expand_command_line(ctx: &Context, list: Vec<WordList>) -> Result<SimpleComma
     match &*command {
         "break" => Ok(SimpleCommandKind::Break { args }),
         "continue" | "next" => Ok(SimpleCommandKind::Continue { args }),
+        "mruby" => Ok(SimpleCommandKind::MRuby { env, args }),
         _ => match is_builtin_command(&command) {
             true => Ok(SimpleCommandKind::Builtin { env, command, args }),
             false => Ok(SimpleCommandKind::External { env, command, args }),
