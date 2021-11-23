@@ -1,3 +1,2 @@
-bin/
-mruby/
-src/parser.tab.c
+/target/
+**/*.rs.bk

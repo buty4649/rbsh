@@ -143,12 +143,12 @@ fi
 
 condition1に指定されたコマンドを実行し最後に実行されたコマンドの終了ステータスが0の場合commands1を実行します。終了ステータスが0以外でelifまたはelseが指定されていた場合は、それぞれの処理に移ります。elif/elsifが指定されている場合、condition2に指定されたコマンドを実行し終了ステータスを確認します。終了ステータスが0の場合commands2を実行します。elseの場合はcommands3を実行します。
 
-### until文
+### unless文
 
 書式:
 
 ```
-until condition1 [;] [then]
+unless condition1 [;] [then]
   commands1
 [else command2]
 end
