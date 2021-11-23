@@ -10,25 +10,26 @@ reddish-shellはRubyが使えるシェル実装です。[mruby](https://github.c
 
 reddish-shellにおけるコンセプトは以下の通りです。
 
-* mrubyを使いワンバイナリーで構成する
+* Rubyのような構文
 * bashスクリプトが80%くらい動く
-* 実装はなるべくRubyで行いC言語での実装を最小限にする
+* mrubyを内蔵してRubyスクリプトも実行できる
+* ワンバイナリーで動く
 
 動作環境
 ---------
 
 以下の環境で動作することを確認しています。
 
-* Ubuntu 20.10
+* Ubuntu 21.04
 
 インストール方法
 ----------------
 
 現在、ビルドされたバイナリの配布は行っていないため、ソースからビルドする必要があります。ビルドするためには、以下の環境を用意します。
 
-* Ubuntu 20.10
-* gcc 10.2.0
-* Ruby
+* Ubuntu 21.04
+* Rust 1.56.0
+* Ruby 3.0.2
 * rake
 * curl
 * git
@@ -38,8 +39,8 @@ reddish-shellにおけるコンセプトは以下の通りです。
 ```
 $ git clone https://github.com/buty4649/reddish-shell
 $ cd reddish-shell
-$ rake
-$ ./mruby/bin/reddish
+$ cargo build --release
+$ ./target/release/reddish
 ```
 
 オプション
@@ -50,12 +51,6 @@ reddish-shellを起動時に以下のオプションを設定することがで�
 <dl>
   <dt>-c string<dt>
   <dd>stringをコマンドとして実行します。</dd>
-
-  <dt>-i</dt>
-  <dd>対話モードで起動する(内部的にはlinenoiseを無効化する)。</dd>
-
-  <dt>-r [scriptfile], --ruby [scriptfile<dt>
-  <dd>Rubyモードとして起動します。scriptfileが指定されている場合そのファイルを、指定されていない場合は標準入力から読み込まれたデータをRubyのスクリプトとして解釈し、内蔵のRubyエンジンで実行します。</dd>
 
   <dt>--version</dt>
   <dd>バージョン情報を表示します。</dd>
