@@ -16,7 +16,7 @@ jobs:
     - name: rust-cache
       uses: Swatinem/rust-cache@v1
     - name: fmt
-      run: cargo fmt --all --vebose
+      run: cargo fmt --all --verbose
     - name: clippy
       run: cargo clippy
     - name: test
