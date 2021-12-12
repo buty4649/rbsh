@@ -1,3 +1,5 @@
+[![CI](https://github.com/buty4649/reddish-shell/actions/workflows/ci.yaml/badge.svg)](https://github.com/buty4649/reddish-shell/actions/workflows/ci.yaml)
+
 reddish-shell: Ruby powered shell
 =================================
 

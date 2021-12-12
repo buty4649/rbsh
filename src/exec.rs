@@ -1059,7 +1059,7 @@ fn expand_command_line(ctx: &Context, list: Vec<WordList>) -> Result<SimpleComma
             Some(wl) if wl.is_var_name() => {
                 let wl = iter.next().unwrap();
                 let s = wl.to_string(ctx)?;
-                let (k, v) = s.split_once("=").unwrap();
+                let (k, v) = s.split_once('=').unwrap();
                 env.insert(k.to_string(), v.to_string());
             }
             _ => break,
