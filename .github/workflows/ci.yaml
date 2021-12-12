@@ -25,6 +25,8 @@ jobs:
       uses: Swatinem/rust-cache@v1
 
     - name: build
+      env:
+        MRUBY_BUILD_CONFIG: ${{ env.GITHUB_WORKSPACE }}/build_config.rb
       uses: actions-rs/cargo@v1
       with:
         command: build
