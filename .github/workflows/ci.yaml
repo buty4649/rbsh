@@ -26,7 +26,7 @@ jobs:
 
     - name: build
       env:
-        MRUBY_BUILD_CONFIG: ${{ env.GITHUB_WORKSPACE }}/build_config.rb
+        MRUBY_BUILD_CONFIG: ${{ github.workspace }}/build_config.rb
       uses: actions-rs/cargo@v1
       with:
         command: build
