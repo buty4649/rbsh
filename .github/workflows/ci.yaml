@@ -3,6 +3,8 @@ on: push
 
 jobs:
   test:
+    env:
+      MRUBY_BUILD_CONFIG: ${{ github.workspace }}/build_config.rb
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -25,8 +27,6 @@ jobs:
       uses: Swatinem/rust-cache@v1
 
     - name: build
-      env:
-        MRUBY_BUILD_CONFIG: ${{ github.workspace }}/build_config.rb
       uses: actions-rs/cargo@v1
       with:
         command: build
