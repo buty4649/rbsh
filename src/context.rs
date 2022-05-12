@@ -106,10 +106,10 @@ impl Context {
         let mut c = name.as_ref().chars();
         match c.next() {
             Some('0') => Some(self.inner.borrow().bin_name.to_string()),
-            Some(n) if n.is_digit(10) => {
+            Some(n) if n.is_ascii_digit() => {
                 let mut index = n.to_digit(10).unwrap();
                 for n in c {
-                    if !n.is_digit(10) {
+                    if !n.is_ascii_digit() {
                         break;
                     }
                     index *= 10;

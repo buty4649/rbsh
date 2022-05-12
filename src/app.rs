@@ -33,7 +33,7 @@ pub struct App {
     ctx: Context,
 }
 
-impl<'a> App {
+impl App {
     pub fn run(args: Vec<String>) -> i32 {
         let wrapper = Wrapper::new();
         match Self::new(wrapper) {
