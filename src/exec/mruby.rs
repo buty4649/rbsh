@@ -1,5 +1,5 @@
 use crate::status::ExitStatus;
-use clap::{App, AppSettings, Arg, ArgMatches, Result as ClapResult};
+use clap::{Arg, ArgMatches, Command, Result as ClapResult};
 use rust_mruby::MRuby;
 use std::{fs::File, io, io::Read};
 
@@ -78,13 +78,13 @@ fn read_from_stdin() -> Result<String, io::Error> {
     Ok(s.to_string())
 }
 
-fn parse_args<'a>(args: &[String]) -> ClapResult<ArgMatches<'a>> {
-    App::new("mruby")
+fn parse_args(args: &[String]) -> ClapResult<ArgMatches> {
+    Command::new("mruby")
         .about("Run the internal mruby")
-        .setting(AppSettings::NoBinaryName)
-        .arg(Arg::with_name("command").short("e").takes_value(true))
-        .arg(Arg::with_name("option").multiple(true))
-        .template(
+        .no_binary_name(true)
+        .arg(Arg::new("command").short('e').takes_value(true))
+        .arg(Arg::new("option").multiple_values(true))
+        .help_template(
             "{bin} - {about}
 
 USAGE:
@@ -92,5 +92,5 @@ USAGE:
 
 {all-args}",
         )
-        .get_matches_from_safe(args)
+        .try_get_matches_from(args)
 }

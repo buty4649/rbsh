@@ -33,7 +33,7 @@ pub struct App {
     ctx: Context,
 }
 
-impl<'a> App {
+impl App {
     pub fn run(args: Vec<String>) -> i32 {
         let wrapper = Wrapper::new();
         match Self::new(wrapper) {
@@ -53,12 +53,12 @@ impl<'a> App {
 
     fn parse_args(&self, args: Vec<String>) -> Result<AppParameter, io::Error> {
         let mut bin_name = args[0].to_string();
-        let args = &clap::App::new(APP_NAME)
+        let args = &clap::Command::new(APP_NAME)
             .bin_name("reddish")
             .version(VERSION)
             .about("Ruby-powerd shell.")
-            .arg(clap::Arg::with_name("command").short("c").takes_value(true))
-            .arg(clap::Arg::with_name("option").multiple(true))
+            .arg(clap::Arg::new("command").short('c').takes_value(true))
+            .arg(clap::Arg::new("option").multiple_values(true))
             .get_matches_from(args);
 
         let command = args.value_of("command");

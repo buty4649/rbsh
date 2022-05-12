@@ -4,7 +4,7 @@ use crate::{
     signal::change_sa_restart_flag,
     status::ExitStatus,
 };
-use clap::{App, AppSettings, Arg, ArgMatches, Result as ClapResult};
+use clap::{Arg, ArgMatches, Command, Result as ClapResult};
 use std::{io, os::unix::io::RawFd};
 
 pub fn read(ctx: &Context, args: &[String]) -> ExitStatus {
@@ -59,18 +59,18 @@ pub fn read(ctx: &Context, args: &[String]) -> ExitStatus {
     status
 }
 
-fn parse_args<'a>(args: &[String]) -> ClapResult<ArgMatches<'a>> {
-    App::new("read")
+fn parse_args(args: &[String]) -> ClapResult<ArgMatches> {
+    Command::new("read")
         .about("read from input")
-        .setting(AppSettings::NoBinaryName)
+        .no_binary_name(true)
         .arg(
-            Arg::with_name("fd")
-                .short("u")
+            Arg::new("fd")
+                .short('u')
                 .takes_value(true)
                 .default_value("0"),
         )
-        .arg(Arg::with_name("name").multiple(true))
-        .template(
+        .arg(Arg::new("name").multiple_values(true))
+        .help_template(
             "{bin} - {about}
 
 USAGE:
@@ -78,7 +78,7 @@ USAGE:
 
 {all-args}",
         )
-        .get_matches_from_safe(args)
+        .try_get_matches_from(args)
 }
 
 fn readline(wrapper: &Wrapper, fd: RawFd, output: &mut String) -> Result<usize, io::Error> {

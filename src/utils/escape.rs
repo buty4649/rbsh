@@ -49,7 +49,7 @@ impl Escape for &str {
                 // \xHH: Hex
                 // \uHHHH: Unicode(16bit)
                 // \UHHHHHHHH: Unicode(32bit)
-                'x' | 'u' | 'U' if c[1].is_digit(16) => {
+                'x' | 'u' | 'U' if c[1].is_ascii_hexdigit() => {
                     let max = match c.remove(0) {
                         'x' => 2,
                         'u' => 4,
@@ -58,7 +58,7 @@ impl Escape for &str {
                     };
                     let mut code = 0;
                     for _ in 1..=max {
-                        if c.is_empty() || !c[0].is_digit(16) {
+                        if c.is_empty() || !c[0].is_ascii_hexdigit() {
                             break;
                         }
                         code *= 16;
