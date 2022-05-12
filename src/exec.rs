@@ -52,9 +52,7 @@ impl WordParser for Word {
         let (s, k, _) = self.take();
         match k {
             WordKind::Normal | WordKind::Quote | WordKind::Literal => Ok(s),
-            WordKind::Variable | WordKind::Parameter => {
-                Ok(ctx.get_var(s).unwrap_or_else(String::new))
-            }
+            WordKind::Variable | WordKind::Parameter => Ok(ctx.get_var(s).unwrap_or_default()),
             WordKind::Command => Executor::capture_command_output(ctx, s),
         }
     }
@@ -753,7 +751,7 @@ impl<'a> Executor<'a> {
             break_or_continue!();
 
             if (!inverse && status.is_success()) || (inverse && status.is_error()) {
-                for c in command.to_vec() {
+                for c in command.iter().cloned() {
                     interrupt!();
                     self.execute_command_internal(c, Some(option));
 
@@ -805,7 +803,7 @@ impl<'a> Executor<'a> {
         self.loop_level += 1;
         'exec: for word in list.iter() {
             self.ctx.set_var(&*identifier, &*word);
-            for c in command.to_vec() {
+            for c in command.iter().cloned() {
                 if self.handler.is_interrupt() {
                     break 'exec;
                 }

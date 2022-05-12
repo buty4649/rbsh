@@ -282,7 +282,7 @@ impl JobSignalHandler {
         }
     }
 
-    pub fn is_interrupt(&mut self) -> bool {
+    pub fn is_interrupt(&self) -> bool {
         let (mutex, _) = &*self.inner;
         mutex.lock().unwrap().get_interrupt_flag()
     }
