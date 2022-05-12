@@ -1,15 +1,15 @@
 use crate::{context::Context, status::ExitStatus, utils::Escape};
-use clap::{App, AppSettings, Arg};
+use clap::{Arg, Command};
 
 pub fn echo(_: &Context, args: &[String]) -> ExitStatus {
-    let args = App::new("echo")
-        .setting(AppSettings::NoBinaryName)
+    let args = Command::new("echo")
+        .no_binary_name(true)
         .args(&[
-            Arg::with_name("do_not_output_newline")
-                .short("n")
-                .multiple(true),
-            Arg::with_name("escape").short("e").multiple(true),
-            Arg::with_name("strings").multiple(true),
+            Arg::new("do_not_output_newline")
+                .short('n')
+                .multiple_values(true),
+            Arg::new("escape").short('e').multiple_values(true),
+            Arg::new("strings").multiple_values(true),
         ])
         .get_matches_from(args);
 
