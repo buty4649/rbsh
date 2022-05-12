@@ -1,13 +1,14 @@
+#![allow(clippy::new_without_default)]
+
 use super::{
-    exec::syscall::{SysCallWrapper, Wrapper},
     status::ExitStatus,
+    syscall::{env_get, env_set, env_unset, getpid},
 };
 use std::{cell::RefCell, collections::HashMap};
 
 #[derive(Debug, Clone)]
 pub struct Context {
     inner: RefCell<ContextInner>,
-    wrapper: Wrapper,
 }
 
 #[derive(Debug, Clone)]
@@ -30,22 +31,21 @@ impl ContextInner {
 }
 
 impl Context {
-    pub fn new(wrapper: Wrapper) -> Self {
+    pub fn new() -> Self {
         let inner = ContextInner::new();
 
         Self {
             inner: RefCell::new(inner),
-            wrapper,
         }
     }
 
-    pub fn wrapper(&self) -> &Wrapper {
-        &self.wrapper
-    }
+    //pub fn wrapper(&self) -> &Wrapper {
+    //    &self.wrapper
+    //}
 
-    pub fn env_vars(&self) -> HashMap<String, String> {
-        self.wrapper.env_vars()
-    }
+    //pub fn env_vars(&self) -> HashMap<String, String> {
+    //    self.wrapper.env_vars()
+    //}
 
     pub fn set_status(&self, s: ExitStatus) {
         self.inner.borrow_mut().status = s
@@ -64,8 +64,8 @@ impl Context {
         let value = value.as_ref();
 
         let old_var = self.get_var(name);
-        match self.wrapper.env_get(name) {
-            Ok(_) => self.wrapper.env_set(name, value),
+        match env_get(name) {
+            Ok(_) => env_set(name, value),
             Err(_) => {
                 self.inner
                     .borrow_mut()
@@ -99,7 +99,7 @@ impl Context {
     }
 
     fn get_env<T: AsRef<str>>(&self, name: T) -> Option<String> {
-        self.wrapper.env_get(name.as_ref()).ok()
+        env_get(name.as_ref()).ok()
     }
 
     fn get_special_var<T: AsRef<str>>(&self, name: T) -> Option<String> {
@@ -123,7 +123,7 @@ impl Context {
             }
             Some('?') => Some(self.inner.borrow().status.code().to_string()),
             Some('$') => {
-                let pid = self.wrapper.getpid();
+                let pid = getpid();
                 Some(format!("{}", pid))
             }
             _ => None,
@@ -134,8 +134,8 @@ impl Context {
         let name = name.as_ref();
         let old_var = self.get_var(name);
 
-        match self.wrapper.env_get(name) {
-            Ok(_) => self.wrapper.env_unset(name),
+        match env_get(name) {
+            Ok(_) => env_unset(name),
             Err(_) => {
                 self.inner.borrow_mut().local_vars.remove(name);
             }

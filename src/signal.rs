@@ -1,9 +1,7 @@
 use super::{
-    exec::{
-        syscall::{SysCallResult, SysCallWrapper, Wrapper},
-        SHELL_FDBASE,
-    },
+    exec::SHELL_FDBASE,
     status::ExitStatus,
+    syscall::{dup_fd, sigaction, SysCallResult},
 };
 
 use nix::{
@@ -41,28 +39,28 @@ use std::{
 
 const TTYSIGNALS: [i32; 5] = [SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU];
 
-pub fn recognize_sigpipe(wrapper: &Wrapper) -> SysCallResult<()> {
+pub fn recognize_sigpipe() -> SysCallResult<()> {
     // Ignore SIGPIPE by default
     // https://github.com/rust-lang/rust/pull/13158
     let sa = SigAction::new(SigHandler::SigDfl, SaFlags::empty(), SigSet::empty());
-    wrapper.sigaction(Signal::SIGPIPE, &sa)?;
+    sigaction(Signal::SIGPIPE, &sa)?;
     Ok(())
 }
 
-pub fn ignore_tty_signals(wrapper: &Wrapper) -> SysCallResult<()> {
+pub fn ignore_tty_signals() -> SysCallResult<()> {
     let sa = SigAction::new(SigHandler::SigIgn, SaFlags::empty(), SigSet::empty());
     for sig in TTYSIGNALS {
         let sig = Signal::try_from(sig).unwrap();
-        wrapper.sigaction(sig, &sa)?;
+        sigaction(sig, &sa)?;
     }
     Ok(())
 }
 
-pub fn restore_tty_signals(wrapper: &Wrapper) -> SysCallResult<()> {
+pub fn restore_tty_signals() -> SysCallResult<()> {
     let sa = SigAction::new(SigHandler::SigDfl, SaFlags::empty(), SigSet::empty());
     for sig in TTYSIGNALS {
         let sig = Signal::try_from(sig).unwrap();
-        wrapper.sigaction(sig, &sa)?;
+        sigaction(sig, &sa)?;
     }
     Ok(())
 }
@@ -75,17 +73,13 @@ struct SignalHandler {
 
 impl SignalHandler {
     fn new(signals: Vec<nix::libc::c_int>) -> Result<Self, IoError> {
-        Self::new_at(Wrapper::new(), signals)
+        Self::new_at(signals)
     }
 
-    fn new_at(wrapper: Wrapper, signals: Vec<nix::libc::c_int>) -> Result<Self, IoError> {
+    fn new_at(signals: Vec<nix::libc::c_int>) -> Result<Self, IoError> {
         let (stream_read, stream_write) = UnixStream::pair()?;
-        let read = wrapper
-            .dup_fd(stream_read.as_raw_fd(), SHELL_FDBASE)
-            .unwrap();
-        let write = wrapper
-            .dup_fd(stream_write.as_raw_fd(), SHELL_FDBASE)
-            .unwrap();
+        let read = dup_fd(stream_read.as_raw_fd(), SHELL_FDBASE).unwrap();
+        let write = dup_fd(stream_write.as_raw_fd(), SHELL_FDBASE).unwrap();
         unsafe { SIGNAL_HANDLER_FD.set((read, write)).unwrap() };
         let stream_read = unsafe { UnixStream::from_raw_fd(read) };
         let stream_write = unsafe { UnixStream::from_raw_fd(write) };
@@ -343,62 +337,28 @@ pub fn reset_signal_handler() -> Result<(), IoError> {
 
 #[cfg(test)]
 pub mod test {
-    use super::*;
-    use crate::context::Context;
-    use mockall::predicate::{eq, function};
-
-    pub fn mock_ignore_tty_signals(mock: &mut Wrapper) {
-        for sig in TTYSIGNALS {
-            let sig = Signal::try_from(sig).unwrap();
-            mock.expect_sigaction()
-                .times(1)
-                .with(
-                    eq(sig),
-                    function(|&sa: &SigAction| {
-                        sa.handler() == SigHandler::SigIgn && sa.flags().is_empty()
-                        //&& sa.mask().is_empty() I don't know how to do this.
-                    }),
-                )
-                .return_const(Ok(SigAction::new(
-                    SigHandler::SigDfl,
-                    SaFlags::empty(),
-                    SigSet::empty(),
-                )));
-        }
-    }
-
-    pub fn mock_restore_tty_signals(mock: &mut Wrapper) {
-        for sig in TTYSIGNALS {
-            let sig = Signal::try_from(sig).unwrap();
-            mock.expect_sigaction()
-                .times(1)
-                .with(
-                    eq(sig),
-                    function(|&sa: &SigAction| {
-                        sa.handler() == SigHandler::SigDfl && sa.flags().is_empty()
-                        //&& sa.mask().is_empty() I don't know how to do this.
-                    }),
-                )
-                .return_const(Ok(SigAction::new(
-                    SigHandler::SigDfl,
-                    SaFlags::empty(),
-                    SigSet::empty(),
-                )));
-        }
-    }
+    use super::{ignore_tty_signals, restore_tty_signals, SaFlags, SigAction, SigHandler, SigSet};
+    use crate::syscall;
 
     #[test]
     fn test_ignore_tty_signals() {
-        let mut mock = Wrapper::new();
-        mock_ignore_tty_signals(&mut mock);
-        let ctx = Context::new(mock);
-        ignore_tty_signals(ctx.wrapper()).unwrap();
+        let ctx = syscall::sigaction_context();
+        ctx.expect().return_const(Ok(SigAction::new(
+            SigHandler::SigDfl,
+            SaFlags::empty(),
+            SigSet::empty(),
+        )));
+        ignore_tty_signals().unwrap();
     }
 
     #[test]
     fn test_reset_tty_signals() {
-        let mut mock = Wrapper::new();
-        mock_restore_tty_signals(&mut mock);
-        restore_tty_signals(&mock).unwrap();
+        let ctx = syscall::sigaction_context();
+        ctx.expect().return_const(Ok(SigAction::new(
+            SigHandler::SigDfl,
+            SaFlags::empty(),
+            SigSet::empty(),
+        )));
+        restore_tty_signals().unwrap();
     }
 }

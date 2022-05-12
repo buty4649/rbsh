@@ -5,6 +5,7 @@ mod context;
 mod error;
 mod exec;
 mod location;
+mod mockable_syscall;
 mod parser;
 mod read_line;
 mod signal;
@@ -17,6 +18,10 @@ pub use context::Context;
 pub use parser::parse_command_line;
 
 use clap::crate_version;
+use mockall_double::double;
+
+#[double]
+use mockable_syscall::inner as syscall;
 
 static APP_NAME: &str = "reddish";
 static VERSION: &str = crate_version!();

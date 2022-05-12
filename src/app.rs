@@ -1,16 +1,14 @@
 use crate::{
     context::Context,
     error::ShellErrorKind,
-    exec::{
-        syscall::{SysCallWrapper, Wrapper},
-        Executor,
-    },
+    exec::Executor,
     parse_command_line,
     read_line::{
         ReadFromFile, ReadFromStdin, ReadFromString, ReadFromTTY, ReadLine, ReadLineError,
     },
     signal::{ignore_tty_signals, recognize_sigpipe},
     status::ExitStatus,
+    syscall::isatty,
     Config, APP_NAME, VERSION,
 };
 use std::{io, path::Path};
@@ -35,8 +33,7 @@ pub struct App {
 
 impl App {
     pub fn run(args: Vec<String>) -> i32 {
-        let wrapper = Wrapper::new();
-        match Self::new(wrapper) {
+        match Self::new() {
             Ok(mut app) => app.exec(args),
             Err(e) => {
                 eprintln!("error: {}", e);
@@ -45,9 +42,9 @@ impl App {
         }
     }
 
-    fn new(wrapper: Wrapper) -> Result<Self, std::io::Error> {
+    fn new() -> Result<Self, std::io::Error> {
         let config = Config::new();
-        let ctx = Context::new(wrapper);
+        let ctx = Context::new();
         Ok(Self { config, ctx })
     }
 
@@ -96,7 +93,7 @@ impl App {
     }
 
     fn isatty(&self) -> bool {
-        self.ctx.wrapper().isatty(0).unwrap_or(false)
+        isatty(0).unwrap_or(false)
     }
 
     fn exec(&mut self, args: Vec<String>) -> i32 {
@@ -114,7 +111,7 @@ impl App {
             InputSource::Stdin => Box::new(ReadFromStdin::new()),
             InputSource::File(path) => {
                 let path = Path::new(&*path);
-                let file = match ReadFromFile::new(self.ctx.wrapper(), path) {
+                let file = match ReadFromFile::new(path) {
                     Ok(f) => f,
                     Err(e) => {
                         eprintln!("reddish: {}", e);
@@ -132,10 +129,10 @@ impl App {
 
         // Ignore SIGPIPE by default
         // https://github.com/rust-lang/rust/pull/13158
-        recognize_sigpipe(self.ctx.wrapper()).unwrap();
+        recognize_sigpipe().unwrap();
 
         if self.isatty() {
-            ignore_tty_signals(self.ctx.wrapper()).unwrap();
+            ignore_tty_signals().unwrap();
         }
 
         let mut executor = match Executor::new(&self.ctx) {

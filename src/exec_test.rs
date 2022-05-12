@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod test {
-    use super::syscall::Wrapper;
     use super::*;
     use crate::location::Location;
 
@@ -113,7 +112,7 @@ mod test {
 
     #[test]
     fn test_expand_command_line() {
-        let ctx = Context::new(Wrapper::new());
+        let ctx = Context::new();
         assert_eq!(
             Some(SimpleCommandKind::External {
                 env: HashMap::new(),

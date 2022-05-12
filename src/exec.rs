@@ -2,9 +2,7 @@ mod mruby;
 mod option;
 mod redirect;
 
-pub mod syscall;
 pub use redirect::SHELL_FDBASE;
-pub use syscall::SysCallError;
 
 use crate::{
     builtin::{builtin_command_exec, is_builtin_command},
@@ -21,6 +19,10 @@ use crate::{
         JobSignalHandler,
     },
     status::ExitStatus,
+    syscall::{
+        self, dup2, dup_fd, env_vars, execve, exit, fork, getpgid, getpid, isatty, prctl, read,
+        setpgid, tcgetpgrp, tcsetpgrp, waitpid, PrCtlFlag, SysCallError, SysCallResult,
+    },
 };
 use is_executable::IsExecutable;
 use mruby::mruby_exec;
@@ -41,7 +43,6 @@ use std::{
     os::unix::io::{FromRawFd, RawFd},
     path::PathBuf,
 };
-use syscall::{PrCtlFlag, SysCallResult, SysCallWrapper, Wrapper};
 
 pub trait WordParser {
     fn to_string(self, context: &Context) -> Result<String, IoError>;
@@ -179,8 +180,8 @@ impl ChildProcess {
         self.pgid
     }
 
-    fn start(&self, wrapper: &Wrapper) {
-        wrapper.close(self.pipe).ok();
+    fn start(&self) {
+        syscall::close(self.pipe).ok();
     }
 }
 
@@ -240,10 +241,6 @@ impl<'a> Executor<'a> {
         })
     }
 
-    fn wrapper(&self) -> &Wrapper {
-        self.ctx.wrapper()
-    }
-
     pub fn execute_command(&mut self, cmd: Unit, option: Option<ExecOption>) -> ExitStatus {
         self.handler.reset_interrupt_flag();
         self.handler.reset_forground();
@@ -285,7 +282,7 @@ impl<'a> Executor<'a> {
                                 return ExitStatus::failure();
                             }
                             Ok(Some(child)) => {
-                                child.start(self.wrapper());
+                                child.start();
                                 let ret = self.start_job(child.pid(), child.pgid());
                                 if cmd.background() {
                                     let job = self.jobs.last().unwrap();
@@ -297,7 +294,7 @@ impl<'a> Executor<'a> {
                             }
                             Ok(None) => {
                                 self.handler = JobSignalHandler::start().unwrap();
-                                let pgid = pgid.unwrap_or_else(|| self.wrapper().getpid());
+                                let pgid = pgid.unwrap_or_else(getpid);
                                 ExecOptionBuilder::from(option).pgid(pgid).build()
                             }
                         }
@@ -305,7 +302,7 @@ impl<'a> Executor<'a> {
                 };
 
                 if let Some(fd) = option.leak_fd() {
-                    match close(self.ctx, fd) {
+                    match close(fd) {
                         Ok(_) => (),
                         Err(e) => {
                             eprintln!("{}, {}", e.name(), e.desc());
@@ -361,7 +358,7 @@ impl<'a> Executor<'a> {
 
                 match background {
                     false => ret,
-                    true => self.wrapper().exit(ret.code()),
+                    true => exit(ret.code()),
                 }
             }
         };
@@ -404,19 +401,17 @@ impl<'a> Executor<'a> {
                 }
                 Ok(Some(child)) => match background {
                     true => {
-                        child.start(self.wrapper());
+                        child.start();
                         return self.start_job(child.pid(), child.pgid());
                     }
                     false => {
-                        let old_pgrp = match self.wrapper().isatty(0).unwrap_or(false) {
+                        let old_pgrp = match isatty(0).unwrap_or(false) {
                             false => None,
                             true => match pgid {
                                 Some(_) => None,
-                                None => self
-                                    .wrapper()
-                                    .tcgetpgrp(0)
+                                None => tcgetpgrp(0)
                                     .map(|old| {
-                                        self.wrapper().tcsetpgrp(0, child.pgid()).ok();
+                                        tcsetpgrp(0, child.pgid()).ok();
                                         old
                                     })
                                     .ok(),
@@ -425,7 +420,7 @@ impl<'a> Executor<'a> {
 
                         self.handler.set_forground(child.pgid());
                         self.start_job(child.pid(), child.pgid());
-                        child.start(self.wrapper());
+                        child.start();
                         let status = self
                             .handler
                             .wait_for(child.pid(), true)
@@ -434,7 +429,7 @@ impl<'a> Executor<'a> {
                         self.jobs.pop(); // remove current job
 
                         if let Some(pgid) = old_pgrp {
-                            self.wrapper().tcsetpgrp(0, pgid).ok();
+                            tcsetpgrp(0, pgid).ok();
                         }
 
                         return status;
@@ -455,7 +450,7 @@ impl<'a> Executor<'a> {
         }
 
         if let Some(fd) = option.leak_fd() {
-            self.wrapper().close(fd).ok();
+            syscall::close(fd).ok();
         }
 
         let restore = match redirect.apply(self.ctx, !(background || need_fork)) {
@@ -464,7 +459,7 @@ impl<'a> Executor<'a> {
                 eprintln!("{:?}", e);
                 return match need_fork {
                     false => ExitStatus::failure(),
-                    true => self.wrapper().exit(1),
+                    true => exit(1),
                 };
             }
         };
@@ -482,10 +477,8 @@ impl<'a> Executor<'a> {
             }
             SimpleCommandKind::MRuby { env, args } => {
                 let name = CString::new("mruby").unwrap();
-                if let Some(e) = self
-                    .wrapper()
-                    .prctl(PrCtlFlag::PR_SET_NAME, name.as_ptr() as nix::libc::c_ulong)
-                    .err()
+                if let Some(e) =
+                    prctl(PrCtlFlag::PR_SET_NAME, name.as_ptr() as nix::libc::c_ulong).err()
                 {
                     eprintln!("mruby: prctl: {}", e.desc());
                 }
@@ -496,7 +489,7 @@ impl<'a> Executor<'a> {
                             self.ctx.set_var(k, v);
                         });
 
-                        self.ctx.wrapper().exit(mruby_exec(&self.mrb, &args).code())
+                        exit(mruby_exec(&self.mrb, &args).code())
                     }
                     Err(e) => {
                         eprintln!("mruby: {}", e);
@@ -525,14 +518,14 @@ impl<'a> Executor<'a> {
                 status
             }
             SimpleCommandKind::External { env, command, args } => {
-                execute_external_command(self.ctx, env, command, args)
+                execute_external_command(env, command, args)
             }
         };
 
         restore.apply(self.ctx, false).ok();
 
         match background {
-            true => self.wrapper().exit(status.code()),
+            true => exit(status.code()),
             false => status,
         }
     }
@@ -616,7 +609,7 @@ impl<'a> Executor<'a> {
         both: bool,
         option: ExecOption,
     ) -> ExitStatus {
-        let (pipe_read, pipe_write) = pipe(self.ctx).unwrap();
+        let (pipe_read, pipe_write) = pipe().unwrap();
 
         self.execute_command_internal(
             left,
@@ -631,9 +624,9 @@ impl<'a> Executor<'a> {
         );
 
         let piping = option.piping();
-        if !piping && self.wrapper().isatty(0).unwrap_or(false) {
+        if !piping && isatty(0).unwrap_or(false) {
             let job = self.jobs.last().unwrap();
-            self.wrapper().tcsetpgrp(0, job.pgid).ok();
+            tcsetpgrp(0, job.pgid).ok();
         }
 
         self.execute_command_internal(
@@ -648,8 +641,8 @@ impl<'a> Executor<'a> {
             ),
         );
 
-        close(self.ctx, pipe_read).unwrap();
-        close(self.ctx, pipe_write).unwrap();
+        close(pipe_read).unwrap();
+        close(pipe_write).unwrap();
 
         if piping {
             ExitStatus::success()
@@ -667,9 +660,9 @@ impl<'a> Executor<'a> {
                 .collect::<Vec<_>>();
             self.handler.reset_forground();
 
-            if !piping && self.wrapper().isatty(0).unwrap_or(false) {
-                let pgid = self.wrapper().getpgid(None).unwrap();
-                self.wrapper().tcsetpgrp(0, pgid).ok();
+            if !piping && isatty(0).unwrap_or(false) {
+                let pgid = getpgid(None).unwrap();
+                tcsetpgrp(0, pgid).ok();
             }
 
             statuses.last().unwrap_or(&ExitStatus::success()).to_owned()
@@ -833,17 +826,17 @@ impl<'a> Executor<'a> {
         &mut self,
         pgid: Option<Pid>,
     ) -> std::result::Result<Option<ChildProcess>, SysCallError> {
-        let (tmp_read, tmp_write) = pipe(self.ctx)?;
-        match self.wrapper().fork() {
+        let (tmp_read, tmp_write) = pipe()?;
+        match fork() {
             Err(e) => {
-                self.wrapper().close(tmp_read).ok();
-                self.wrapper().close(tmp_write).ok();
+                syscall::close(tmp_read).ok();
+                syscall::close(tmp_write).ok();
                 Err(e)
             }
             Ok(ForkResult::Parent { child }) => {
                 let new_pgid = pgid.unwrap_or(child);
-                self.wrapper().setpgid(child, new_pgid).ok();
-                self.wrapper().close(tmp_read).ok();
+                setpgid(child, new_pgid).ok();
+                syscall::close(tmp_read).ok();
 
                 let ret = ChildProcess::new(child, new_pgid, tmp_write);
                 Ok(Some(ret))
@@ -851,18 +844,18 @@ impl<'a> Executor<'a> {
             Ok(ForkResult::Child) => {
                 close_signal_handler();
 
-                self.wrapper().close(tmp_write).ok();
+                syscall::close(tmp_write).ok();
 
                 // Synchronize with the parent process.
                 loop {
                     let mut buf = [0];
-                    match self.wrapper().read(tmp_read, &mut buf) {
+                    match read(tmp_read, &mut buf) {
                         // Read again because it was interrupted by Signal.
                         Err(e) if e.errno() == nix::errno::Errno::EINTR => (),
                         _ => break,
                     }
                 }
-                self.wrapper().close(tmp_read).ok();
+                syscall::close(tmp_read).ok();
 
                 Ok(None)
             }
@@ -957,16 +950,16 @@ impl<'a> Executor<'a> {
         ctx: &Context,
         command: I,
     ) -> Result<String, std::io::Error> {
-        let (pipe_read, pipe_write) = ctx.wrapper().pipe().unwrap();
+        let (pipe_read, pipe_write) = pipe().unwrap();
 
-        match ctx.wrapper().fork() {
+        match fork() {
             Err(e) => {
                 eprintln!("{}: {}", e.name(), e.desc());
                 Err(IoError::from_raw_os_error(e.errno() as i32))
             }
             Ok(ForkResult::Parent { child }) => {
-                ctx.wrapper().setpgid(child, child).unwrap();
-                ctx.wrapper().close(pipe_write).unwrap();
+                setpgid(child, child).unwrap();
+                syscall::close(pipe_write).unwrap();
                 change_sa_restart_flag(false)?;
 
                 let mut pipe = unsafe { File::from_raw_fd(pipe_read) };
@@ -984,11 +977,11 @@ impl<'a> Executor<'a> {
                         Err(e) => break Err(e),
                     }
                 };
-                ctx.wrapper().close(pipe_read).unwrap();
+                syscall::close(pipe_read).unwrap();
                 change_sa_restart_flag(true)?;
 
                 let pgid = Pid::from_raw(-child.as_raw());
-                ctx.wrapper().waitpid(pgid, None).ok();
+                waitpid(pgid, None).ok();
 
                 match read_result {
                     Ok(_) => {
@@ -1001,23 +994,21 @@ impl<'a> Executor<'a> {
             Ok(ForkResult::Child) => {
                 close_signal_handler();
 
-                let pid = ctx.wrapper().getpid();
-                ctx.wrapper().setpgid(pid, pid).unwrap();
-                let old_pgrp = match ctx.wrapper().isatty(0).unwrap_or(false) {
+                let pid = getpid();
+                setpgid(pid, pid).unwrap();
+                let old_pgrp = match isatty(0).unwrap_or(false) {
                     false => None,
-                    true => ctx
-                        .wrapper()
-                        .tcgetpgrp(0)
+                    true => tcgetpgrp(0)
                         .map(|old| {
-                            ctx.wrapper().tcsetpgrp(0, pid).ok();
+                            tcsetpgrp(0, pid).ok();
                             old
                         })
                         .ok(),
                 };
 
-                ctx.wrapper().close(pipe_read).unwrap();
-                ctx.wrapper().dup2(pipe_write, 1).unwrap();
-                ctx.wrapper().close(pipe_write).unwrap();
+                syscall::close(pipe_read).unwrap();
+                dup2(pipe_write, 1).unwrap();
+                syscall::close(pipe_write).unwrap();
 
                 let mut e = Executor::new(ctx).unwrap();
                 let option = ExecOptionBuilder::new().quiet(true).pgid(pid).build();
@@ -1028,12 +1019,12 @@ impl<'a> Executor<'a> {
                             e.execute_command(cmd, Some(option));
                         }
                         if let Some(pgrp) = old_pgrp {
-                            ctx.wrapper().tcsetpgrp(0, pgrp).unwrap();
+                            tcsetpgrp(0, pgrp).unwrap();
                         }
                         ExitStatus::success()
                     }
                 };
-                ctx.wrapper().exit(status.code());
+                exit(status.code());
 
                 unreachable![]
             }
@@ -1116,7 +1107,6 @@ fn assume_command(command: &str) -> PathBuf {
 }
 
 fn execute_external_command(
-    ctx: &Context,
     env: HashMap<String, String>,
     command: String,
     args: Vec<String>,
@@ -1126,7 +1116,7 @@ fn execute_external_command(
     cmds.append(&mut args.to_cstring());
 
     let env = {
-        let mut t = ctx.env_vars();
+        let mut t = env_vars();
         t.extend(env);
         t
     }
@@ -1134,32 +1124,32 @@ fn execute_external_command(
     .map(|(k, v)| format!("{}={}", k, v).to_cstring())
     .collect::<Vec<_>>();
 
-    restore_tty_signals(ctx.wrapper()).unwrap();
+    restore_tty_signals().unwrap();
 
-    match ctx.wrapper().execve(cmdpath, &cmds, &env) {
+    match execve(cmdpath, &cmds, &env) {
         Ok(_) => unreachable![],
         Err(e) if e.errno() == Errno::ENOENT => {
             eprintln!("{}: command not found", command);
-            ctx.wrapper().exit(127)
+            exit(127)
         }
         Err(e) => {
             eprintln!("execve faile: {}", e.errno());
-            ctx.wrapper().exit(1)
+            exit(1)
         }
     }
 }
 
-fn pipe(ctx: &Context) -> SysCallResult<(RawFd, RawFd)> {
-    let (tmp_read, tmp_write) = ctx.wrapper().pipe()?;
-    let read = ctx.wrapper().dup_fd(tmp_read, SHELL_FDBASE)?;
-    let write = ctx.wrapper().dup_fd(tmp_write, SHELL_FDBASE)?;
-    ctx.wrapper().close(tmp_read)?;
-    ctx.wrapper().close(tmp_write)?;
+fn pipe() -> SysCallResult<(RawFd, RawFd)> {
+    let (tmp_read, tmp_write) = syscall::pipe()?;
+    let read = dup_fd(tmp_read, SHELL_FDBASE)?;
+    let write = dup_fd(tmp_write, SHELL_FDBASE)?;
+    syscall::close(tmp_read)?;
+    syscall::close(tmp_write)?;
     Ok((read, write))
 }
 
-fn close(ctx: &Context, fd: RawFd) -> SysCallResult<()> {
-    match ctx.wrapper().close(fd) {
+fn close(fd: RawFd) -> SysCallResult<()> {
+    match syscall::close(fd) {
         Ok(_) => Ok(()),
         Err(e) if e.errno() == Errno::EBADF => Ok(()),
         Err(e) => Err(e),
