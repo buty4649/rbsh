@@ -684,6 +684,7 @@ impl Executor {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn execute_if_command(
         &mut self,
         ctx: &mut Context,
