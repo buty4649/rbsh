@@ -2,7 +2,7 @@ use crate::{context::Context, status::ExitStatus, syscall};
 use dirs::home_dir;
 use std::path::PathBuf;
 
-pub fn cd(_: &Context, args: &[String]) -> ExitStatus {
+pub fn cd(_: &mut Context, args: &[String]) -> ExitStatus {
     let path = if args.is_empty() {
         home_dir().unwrap_or_default()
     } else {

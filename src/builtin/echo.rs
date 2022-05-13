@@ -1,7 +1,7 @@
 use crate::{context::Context, status::ExitStatus, utils::Escape};
 use clap::{Arg, Command};
 
-pub fn echo(_: &Context, args: &[String]) -> ExitStatus {
+pub fn echo(_: &mut Context, args: &[String]) -> ExitStatus {
     let args = Command::new("echo")
         .no_binary_name(true)
         .args(&[

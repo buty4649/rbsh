@@ -7,7 +7,7 @@ use once_cell::sync::Lazy;
 
 struct Builtin {
     name: &'static str,
-    func: fn(&Context, &[String]) -> ExitStatus,
+    func: fn(&mut Context, &[String]) -> ExitStatus,
 }
 
 static BUILTIN: Lazy<Vec<Builtin>> = Lazy::new(|| {
@@ -34,7 +34,7 @@ pub fn is_builtin_command<T: AsRef<str>>(name: T) -> bool {
     find_builtin_command(name.as_ref()).is_some()
 }
 
-pub fn builtin_command_exec(ctx: &Context, command: String, args: &[String]) -> ExitStatus {
+pub fn builtin_command_exec(ctx: &mut Context, command: String, args: &[String]) -> ExitStatus {
     match find_builtin_command(&*command) {
         None => {
             eprintln!("builtin: {} is not a shell builtin", command);

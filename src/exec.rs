@@ -213,8 +213,7 @@ enum SimpleCommandKind {
 type Env = HashMap<String, String>;
 type Args = Vec<String>;
 
-pub struct Executor<'a> {
-    ctx: &'a Context,
+pub struct Executor {
     handler: JobSignalHandler,
     pub job_id: u16,
     jobs: Vec<Job>,
@@ -224,10 +223,9 @@ pub struct Executor<'a> {
     mrb: MRuby,
 }
 
-impl<'a> Executor<'a> {
-    pub fn new(ctx: &'a Context) -> std::result::Result<Self, std::io::Error> {
+impl Executor {
+    pub fn new() -> std::result::Result<Self, std::io::Error> {
         Ok(Self {
-            ctx,
             handler: JobSignalHandler::start()?,
             job_id: 0,
             jobs: vec![],
@@ -238,7 +236,12 @@ impl<'a> Executor<'a> {
         })
     }
 
-    pub fn execute_command(&mut self, cmd: Unit, option: Option<ExecOption>) -> ExitStatus {
+    pub fn execute_command(
+        &mut self,
+        ctx: &mut Context,
+        cmd: Unit,
+        option: Option<ExecOption>,
+    ) -> ExitStatus {
         self.handler.reset_interrupt_flag();
         self.handler.reset_forground();
 
@@ -246,15 +249,21 @@ impl<'a> Executor<'a> {
         self.breaking = 0;
         self.continuing = 0;
 
-        self.execute_command_internal(cmd, option)
+        self.execute_command_internal(ctx, cmd, option)
     }
 
-    fn execute_command_internal(&mut self, cmd: Unit, option: Option<ExecOption>) -> ExitStatus {
+    fn execute_command_internal(
+        &mut self,
+        ctx: &mut Context,
+        cmd: Unit,
+        option: Option<ExecOption>,
+    ) -> ExitStatus {
         let option = option.unwrap_or_else(|| ExecOptionBuilder::new().build());
 
         let ret = match cmd.kind() {
             UnitKind::SimpleCommand { command, redirect } => {
-                let ret = self.execute_simple_command(command, redirect, cmd.background(), option);
+                let ret =
+                    self.execute_simple_command(ctx, command, redirect, cmd.background(), option);
                 if cmd.background() {
                     let job = self.jobs.last().unwrap();
                     if option.verbose() {
@@ -314,10 +323,10 @@ impl<'a> Executor<'a> {
                         redirect: _,
                     } => unreachable![],
                     UnitKind::Connecter { left, right, kind } => {
-                        self.execute_connecter(*left, *right, kind, option)
+                        self.execute_connecter(ctx, *left, *right, kind, option)
                     }
                     UnitKind::Pipe { left, right, both } => {
-                        self.execute_pipe(*left, *right, both, option)
+                        self.execute_pipe(ctx, *left, *right, both, option)
                     }
                     UnitKind::If {
                         condition,
@@ -325,7 +334,7 @@ impl<'a> Executor<'a> {
                         false_case,
                         redirect,
                     } => self.execute_if_command(
-                        *condition, true_case, false_case, redirect, false, option,
+                        ctx, *condition, true_case, false_case, redirect, false, option,
                     ),
                     UnitKind::Unless {
                         condition,
@@ -333,24 +342,27 @@ impl<'a> Executor<'a> {
                         true_case,
                         redirect,
                     } => self.execute_if_command(
-                        *condition, false_case, true_case, redirect, true, option,
+                        ctx, *condition, false_case, true_case, redirect, true, option,
                     ),
                     UnitKind::While {
                         condition,
                         command,
                         redirect,
-                    } => self.execute_while_command(*condition, command, redirect, false, option),
+                    } => self
+                        .execute_while_command(ctx, *condition, command, redirect, false, option),
                     UnitKind::Until {
                         condition,
                         command,
                         redirect,
-                    } => self.execute_while_command(*condition, command, redirect, true, option),
+                    } => {
+                        self.execute_while_command(ctx, *condition, command, redirect, true, option)
+                    }
                     UnitKind::For {
                         identifier,
                         list,
                         command,
                         redirect,
-                    } => self.execute_for_command(identifier, list, command, redirect, option),
+                    } => self.execute_for_command(ctx, identifier, list, command, redirect, option),
                 };
 
                 match background {
@@ -360,18 +372,19 @@ impl<'a> Executor<'a> {
             }
         };
 
-        self.ctx.set_status(ret);
+        ctx.status = ret;
         ret
     }
 
     fn execute_simple_command(
         &mut self,
+        ctx: &mut Context,
         command: Vec<WordList>,
         mut redirect: RedirectList,
         background: bool,
         option: ExecOption,
     ) -> ExitStatus {
-        let kind = match expand_command_line(self.ctx, command) {
+        let kind = match expand_command_line(ctx, command) {
             Ok(ret) => ret,
             Err(e) => {
                 return match e.kind() {
@@ -450,7 +463,7 @@ impl<'a> Executor<'a> {
             syscall::close(fd).ok();
         }
 
-        let restore = match redirect.apply(self.ctx, !(background || need_fork)) {
+        let restore = match redirect.apply(ctx, !(background || need_fork)) {
             Ok(r) => r,
             Err(e) => {
                 eprintln!("{:?}", e);
@@ -465,7 +478,7 @@ impl<'a> Executor<'a> {
             SimpleCommandKind::Noop => ExitStatus::success(),
             SimpleCommandKind::SetEnv { env } => {
                 env.iter().for_each(|(k, v)| {
-                    self.ctx.set_var(k, v);
+                    ctx.set_var(k, v);
                 });
                 ExitStatus::success()
             }
@@ -484,7 +497,7 @@ impl<'a> Executor<'a> {
                 match reset_signal_handler() {
                     Ok(_) => {
                         env.iter().for_each(|(k, v)| {
-                            self.ctx.set_var(k, v);
+                            ctx.set_var(k, v);
                         });
 
                         syscall::exit(mruby_exec(&self.mrb, &args).code())
@@ -499,17 +512,17 @@ impl<'a> Executor<'a> {
                 let old_env_vars = env
                     .iter()
                     .map(|(k, v)| {
-                        let old_var = self.ctx.set_var(k, v);
+                        let old_var = ctx.set_var(k, v);
                         (k, old_var)
                     })
                     .collect::<Vec<_>>();
 
-                let status = builtin_command_exec(self.ctx, command, &args);
+                let status = builtin_command_exec(ctx, command, &args);
 
                 old_env_vars.iter().for_each(|(k, v)| {
                     match v {
-                        None => self.ctx.unset_var(k),
-                        Some(v) => self.ctx.set_var(k, &v),
+                        None => ctx.unset_var(k),
+                        Some(v) => ctx.set_var(k, &v),
                     };
                 });
 
@@ -520,7 +533,7 @@ impl<'a> Executor<'a> {
             }
         };
 
-        restore.apply(self.ctx, false).ok();
+        restore.apply(ctx, false).ok();
 
         match background {
             true => syscall::exit(status.code()),
@@ -577,13 +590,14 @@ impl<'a> Executor<'a> {
 
     fn execute_connecter(
         &mut self,
+        ctx: &mut Context,
         left: Unit,
         right: Unit,
         kind: ConnecterKind,
         option: ExecOption,
     ) -> ExitStatus {
         let option = ExecOptionBuilder::from(option).piping(false).build();
-        let condition = self.execute_command_internal(left, Some(option));
+        let condition = self.execute_command_internal(ctx, left, Some(option));
 
         let option = ExecOptionBuilder::from(option)
             .input(None)
@@ -591,10 +605,10 @@ impl<'a> Executor<'a> {
             .build();
         match kind {
             ConnecterKind::And if condition.is_success() => {
-                self.execute_command_internal(right, Some(option))
+                self.execute_command_internal(ctx, right, Some(option))
             }
             ConnecterKind::Or if condition.is_error() => {
-                self.execute_command_internal(right, Some(option))
+                self.execute_command_internal(ctx, right, Some(option))
             }
             _ => condition,
         }
@@ -602,6 +616,7 @@ impl<'a> Executor<'a> {
 
     fn execute_pipe(
         &mut self,
+        ctx: &mut Context,
         left: Unit,
         right: Unit,
         both: bool,
@@ -610,6 +625,7 @@ impl<'a> Executor<'a> {
         let (pipe_read, pipe_write) = pipe().unwrap();
 
         self.execute_command_internal(
+            ctx,
             left,
             Some(
                 ExecOptionBuilder::from(option)
@@ -628,6 +644,7 @@ impl<'a> Executor<'a> {
         }
 
         self.execute_command_internal(
+            ctx,
             right,
             Some(
                 ExecOptionBuilder::from(option)
@@ -669,6 +686,7 @@ impl<'a> Executor<'a> {
 
     fn execute_if_command(
         &mut self,
+        ctx: &mut Context,
         condition: Unit,
         true_case: Vec<Unit>,
         false_case: Option<Vec<Unit>>,
@@ -676,13 +694,13 @@ impl<'a> Executor<'a> {
         inverse: bool,
         option: ExecOption,
     ) -> ExitStatus {
-        let (restore, option) = self.update_option_and_apply_redirect(option, redirect);
+        let (restore, option) = self.update_option_and_apply_redirect(ctx, option, redirect);
 
-        let ret = match self.execute_command_internal(condition, Some(option)) {
+        let ret = match self.execute_command_internal(ctx, condition, Some(option)) {
             status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
                 let s = true_case
                     .into_iter()
-                    .map(|command| self.execute_command_internal(command, Some(option)));
+                    .map(|command| self.execute_command_internal(ctx, command, Some(option)));
                 s.last().unwrap()
             }
             status if false_case.is_none() => status,
@@ -690,24 +708,25 @@ impl<'a> Executor<'a> {
                 let s = false_case
                     .unwrap()
                     .into_iter()
-                    .map(|command| self.execute_command_internal(command, Some(option)));
+                    .map(|command| self.execute_command_internal(ctx, command, Some(option)));
                 s.last().unwrap()
             }
         };
 
-        restore.apply(self.ctx, false).unwrap();
+        restore.apply(ctx, false).unwrap();
         ret
     }
 
     fn execute_while_command(
         &mut self,
+        ctx: &mut Context,
         condition: Unit,
         command: Vec<Unit>,
         redirect: RedirectList,
         inverse: bool,
         option: ExecOption,
     ) -> ExitStatus {
-        let (restore, option) = self.update_option_and_apply_redirect(option, redirect);
+        let (restore, option) = self.update_option_and_apply_redirect(ctx, option, redirect);
         self.loop_level += 1;
 
         'exec: loop {
@@ -738,13 +757,13 @@ impl<'a> Executor<'a> {
             }
 
             interrupt!();
-            let status = self.execute_command_internal(condition.clone(), Some(option));
+            let status = self.execute_command_internal(ctx, condition.clone(), Some(option));
             break_or_continue!();
 
             if (!inverse && status.is_success()) || (inverse && status.is_error()) {
                 for c in command.iter().cloned() {
                     interrupt!();
-                    self.execute_command_internal(c, Some(option));
+                    self.execute_command_internal(ctx, c, Some(option));
 
                     break_or_continue!();
                 }
@@ -754,12 +773,13 @@ impl<'a> Executor<'a> {
         }
 
         self.loop_level -= 1;
-        restore.apply(self.ctx, false).unwrap();
+        restore.apply(ctx, false).unwrap();
         ExitStatus::new(0)
     }
 
     fn execute_for_command(
         &mut self,
+        ctx: &mut Context,
         identifier: Word,
         list: Option<Vec<WordList>>,
         command: Vec<Unit>,
@@ -786,20 +806,20 @@ impl<'a> Executor<'a> {
             None => vec![], // Normally, it returns $@.
             Some(list) => list
                 .into_iter()
-                .map(|w| w.to_string(self.ctx).unwrap())
+                .map(|w| w.to_string(ctx).unwrap())
                 .collect::<Vec<_>>(),
         };
 
-        let (restore, option) = self.update_option_and_apply_redirect(option, redirect);
+        let (restore, option) = self.update_option_and_apply_redirect(ctx, option, redirect);
         self.loop_level += 1;
         'exec: for word in list.iter() {
-            self.ctx.set_var(&*identifier, &*word);
+            ctx.set_var(&*identifier, &*word);
             for c in command.iter().cloned() {
                 if self.handler.is_interrupt() {
                     break 'exec;
                 }
 
-                self.execute_command_internal(c, Some(option));
+                self.execute_command_internal(ctx, c, Some(option));
 
                 if self.breaking > 0 {
                     self.breaking -= 1;
@@ -815,7 +835,7 @@ impl<'a> Executor<'a> {
             }
         }
         self.loop_level -= 1;
-        restore.apply(self.ctx, false).ok();
+        restore.apply(ctx, false).ok();
 
         ExitStatus::new(0)
     }
@@ -915,6 +935,7 @@ impl<'a> Executor<'a> {
 
     fn update_option_and_apply_redirect(
         &self,
+        ctx: &Context,
         option: ExecOption,
         mut redirect: RedirectList,
     ) -> (RedirectList, ExecOption) {
@@ -933,9 +954,7 @@ impl<'a> Executor<'a> {
         }
 
         (
-            redirect
-                .apply(self.ctx, !option.piping())
-                .unwrap_or_default(),
+            redirect.apply(ctx, !option.piping()).unwrap_or_default(),
             ExecOptionBuilder::from(option)
                 .input(None)
                 .output(None)
@@ -1008,13 +1027,13 @@ impl<'a> Executor<'a> {
                 syscall::dup2(pipe_write, 1).unwrap();
                 syscall::close(pipe_write).unwrap();
 
-                let mut e = Executor::new(ctx).unwrap();
+                let mut e = Executor::new().unwrap();
                 let option = ExecOptionBuilder::new().quiet(true).pgid(pid).build();
                 let status = match parse_command_line(command, 0) {
                     Err(_) => ExitStatus::failure(),
                     Ok(cmds) => {
                         for cmd in cmds.to_vec() {
-                            e.execute_command(cmd, Some(option));
+                            e.execute_command(&mut ctx.clone(), cmd, Some(option));
                         }
                         if let Some(pgrp) = old_pgrp {
                             syscall::tcsetpgrp(0, pgrp).unwrap();

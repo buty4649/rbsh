@@ -135,7 +135,7 @@ impl App {
             ignore_tty_signals().unwrap();
         }
 
-        let mut executor = match Executor::new(&self.ctx) {
+        let mut executor = match Executor::new() {
             Ok(e) => e,
             Err(e) => {
                 eprintln!("Error: {}", e);
@@ -163,7 +163,7 @@ impl App {
                                 }
                             }
                             for cmd in cmds.to_vec() {
-                                executor.execute_command(cmd, None);
+                                executor.execute_command(&mut self.ctx, cmd, None);
                             }
 
                             if rl.keep_linenumer() {
@@ -196,7 +196,7 @@ impl App {
         }
 
         executor.close();
-        self.ctx.get_status().code()
+        self.ctx.status.code()
     }
 
     fn set_shell_variables(&mut self, params: &AppParameter) {
@@ -214,8 +214,7 @@ impl App {
             {IFS, " \t\n"},
         ];
 
-        self.ctx.set_bin_name(params.bin_name.to_string());
-        self.ctx
-            .set_positional_parameters(&params.positional_parameters)
+        self.ctx.bin_name = params.bin_name.to_string();
+        self.ctx.positional_parameters = params.positional_parameters.clone();
     }
 }

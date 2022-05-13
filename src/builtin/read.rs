@@ -2,7 +2,7 @@ use crate::{context::Context, signal::change_sa_restart_flag, status::ExitStatus
 use clap::{Arg, ArgMatches, Command, Result as ClapResult};
 use std::{io, os::unix::io::RawFd};
 
-pub fn read(ctx: &Context, args: &[String]) -> ExitStatus {
+pub fn read(ctx: &mut Context, args: &[String]) -> ExitStatus {
     let args = match parse_args(args) {
         Ok(m) => m,
         Err(e) => {
