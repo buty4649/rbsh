@@ -8,7 +8,7 @@ use crate::{
         word::WordList,
     },
     status::Result,
-    syscall::{self, dup2, dup_fd, isatty, SysCallResult},
+    syscall::{self, SysCallResult},
 };
 use nix::{fcntl::OFlag, sys::stat::Mode};
 use std::collections::HashSet;
@@ -81,7 +81,13 @@ impl RedirectApplier {
         Ok(self.restore_list())
     }
 
-    fn open(&mut self, ctx: &Context, fd: RawFd, wordlist: WordList, flag: OFlag) -> SysCallResult<()> {
+    fn open(
+        &mut self,
+        ctx: &Context,
+        fd: RawFd,
+        wordlist: WordList,
+        flag: OFlag,
+    ) -> SysCallResult<()> {
         let file = wordlist.to_string(ctx).unwrap();
         let mode = Mode::from_bits(0o666).unwrap();
         let new_fd = syscall::open(&*file, flag, mode)?;
@@ -98,10 +104,10 @@ impl RedirectApplier {
 
     fn copy(&mut self, src: RawFd, dest: RawFd) -> SysCallResult<()> {
         match dest {
-            fd if self.save && fd <= 2 && isatty(dest).unwrap_or(false) => {
+            fd if self.save && fd <= 2 && syscall::isatty(dest).unwrap_or(false) => {
                 self.savefd[dest as usize] = match self.savefd[dest as usize] {
                     Some(f) => Some(f),
-                    None => Some(dup_fd(dest, SHELL_FDBASE)?),
+                    None => Some(syscall::dup_fd(dest, SHELL_FDBASE)?),
                 }
             }
             fd if fd >= 3 => {
@@ -110,15 +116,15 @@ impl RedirectApplier {
             _ => (),
         }
 
-        dup2(src, dest)?;
+        syscall::dup2(src, dest)?;
         Ok(())
     }
 
     fn close(&mut self, fd: RawFd) -> SysCallResult<()> {
-        if self.save && fd <= 2 && isatty(fd).unwrap_or(false) {
+        if self.save && fd <= 2 && syscall::isatty(fd).unwrap_or(false) {
             self.savefd[fd as usize] = match self.savefd[fd as usize] {
                 Some(f) => Some(f),
-                None => Some(dup_fd(fd, SHELL_FDBASE)?),
+                None => Some(syscall::dup_fd(fd, SHELL_FDBASE)?),
             }
         }
         syscall::close(fd).unwrap();

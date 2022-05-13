@@ -1,7 +1,7 @@
 use super::{
     exec::SHELL_FDBASE,
     status::ExitStatus,
-    syscall::{dup_fd, sigaction, SysCallResult},
+    syscall::{self, SysCallResult},
 };
 
 use nix::{
@@ -43,7 +43,7 @@ pub fn recognize_sigpipe() -> SysCallResult<()> {
     // Ignore SIGPIPE by default
     // https://github.com/rust-lang/rust/pull/13158
     let sa = SigAction::new(SigHandler::SigDfl, SaFlags::empty(), SigSet::empty());
-    sigaction(Signal::SIGPIPE, &sa)?;
+    syscall::sigaction(Signal::SIGPIPE, &sa)?;
     Ok(())
 }
 
@@ -51,7 +51,7 @@ pub fn ignore_tty_signals() -> SysCallResult<()> {
     let sa = SigAction::new(SigHandler::SigIgn, SaFlags::empty(), SigSet::empty());
     for sig in TTYSIGNALS {
         let sig = Signal::try_from(sig).unwrap();
-        sigaction(sig, &sa)?;
+        syscall::sigaction(sig, &sa)?;
     }
     Ok(())
 }
@@ -60,7 +60,7 @@ pub fn restore_tty_signals() -> SysCallResult<()> {
     let sa = SigAction::new(SigHandler::SigDfl, SaFlags::empty(), SigSet::empty());
     for sig in TTYSIGNALS {
         let sig = Signal::try_from(sig).unwrap();
-        sigaction(sig, &sa)?;
+        syscall::sigaction(sig, &sa)?;
     }
     Ok(())
 }
@@ -78,8 +78,8 @@ impl SignalHandler {
 
     fn new_at(signals: Vec<nix::libc::c_int>) -> Result<Self, IoError> {
         let (stream_read, stream_write) = UnixStream::pair()?;
-        let read = dup_fd(stream_read.as_raw_fd(), SHELL_FDBASE).unwrap();
-        let write = dup_fd(stream_write.as_raw_fd(), SHELL_FDBASE).unwrap();
+        let read = syscall::dup_fd(stream_read.as_raw_fd(), SHELL_FDBASE).unwrap();
+        let write = syscall::dup_fd(stream_write.as_raw_fd(), SHELL_FDBASE).unwrap();
         unsafe { SIGNAL_HANDLER_FD.set((read, write)).unwrap() };
         let stream_read = unsafe { UnixStream::from_raw_fd(read) };
         let stream_write = unsafe { UnixStream::from_raw_fd(write) };

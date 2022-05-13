@@ -19,10 +19,7 @@ use crate::{
         JobSignalHandler,
     },
     status::ExitStatus,
-    syscall::{
-        self, dup2, dup_fd, env_vars, execve, exit, fork, getpgid, getpid, isatty, prctl, read,
-        setpgid, tcgetpgrp, tcsetpgrp, waitpid, PrCtlFlag, SysCallError, SysCallResult,
-    },
+    syscall::{self, PrCtlFlag, SysCallError, SysCallResult},
 };
 use is_executable::IsExecutable;
 use mruby::mruby_exec;
@@ -294,7 +291,7 @@ impl<'a> Executor<'a> {
                             }
                             Ok(None) => {
                                 self.handler = JobSignalHandler::start().unwrap();
-                                let pgid = pgid.unwrap_or_else(getpid);
+                                let pgid = pgid.unwrap_or_else(syscall::getpid);
                                 ExecOptionBuilder::from(option).pgid(pgid).build()
                             }
                         }
@@ -358,7 +355,7 @@ impl<'a> Executor<'a> {
 
                 match background {
                     false => ret,
-                    true => exit(ret.code()),
+                    true => syscall::exit(ret.code()),
                 }
             }
         };
@@ -405,13 +402,13 @@ impl<'a> Executor<'a> {
                         return self.start_job(child.pid(), child.pgid());
                     }
                     false => {
-                        let old_pgrp = match isatty(0).unwrap_or(false) {
+                        let old_pgrp = match syscall::isatty(0).unwrap_or(false) {
                             false => None,
                             true => match pgid {
                                 Some(_) => None,
-                                None => tcgetpgrp(0)
+                                None => syscall::tcgetpgrp(0)
                                     .map(|old| {
-                                        tcsetpgrp(0, child.pgid()).ok();
+                                        syscall::tcsetpgrp(0, child.pgid()).ok();
                                         old
                                     })
                                     .ok(),
@@ -429,7 +426,7 @@ impl<'a> Executor<'a> {
                         self.jobs.pop(); // remove current job
 
                         if let Some(pgid) = old_pgrp {
-                            tcsetpgrp(0, pgid).ok();
+                            syscall::tcsetpgrp(0, pgid).ok();
                         }
 
                         return status;
@@ -459,7 +456,7 @@ impl<'a> Executor<'a> {
                 eprintln!("{:?}", e);
                 return match need_fork {
                     false => ExitStatus::failure(),
-                    true => exit(1),
+                    true => syscall::exit(1),
                 };
             }
         };
@@ -478,7 +475,8 @@ impl<'a> Executor<'a> {
             SimpleCommandKind::MRuby { env, args } => {
                 let name = CString::new("mruby").unwrap();
                 if let Some(e) =
-                    prctl(PrCtlFlag::PR_SET_NAME, name.as_ptr() as nix::libc::c_ulong).err()
+                    syscall::prctl(PrCtlFlag::PR_SET_NAME, name.as_ptr() as nix::libc::c_ulong)
+                        .err()
                 {
                     eprintln!("mruby: prctl: {}", e.desc());
                 }
@@ -489,7 +487,7 @@ impl<'a> Executor<'a> {
                             self.ctx.set_var(k, v);
                         });
 
-                        exit(mruby_exec(&self.mrb, &args).code())
+                        syscall::exit(mruby_exec(&self.mrb, &args).code())
                     }
                     Err(e) => {
                         eprintln!("mruby: {}", e);
@@ -525,7 +523,7 @@ impl<'a> Executor<'a> {
         restore.apply(self.ctx, false).ok();
 
         match background {
-            true => exit(status.code()),
+            true => syscall::exit(status.code()),
             false => status,
         }
     }
@@ -624,9 +622,9 @@ impl<'a> Executor<'a> {
         );
 
         let piping = option.piping();
-        if !piping && isatty(0).unwrap_or(false) {
+        if !piping && syscall::isatty(0).unwrap_or(false) {
             let job = self.jobs.last().unwrap();
-            tcsetpgrp(0, job.pgid).ok();
+            syscall::tcsetpgrp(0, job.pgid).ok();
         }
 
         self.execute_command_internal(
@@ -660,9 +658,9 @@ impl<'a> Executor<'a> {
                 .collect::<Vec<_>>();
             self.handler.reset_forground();
 
-            if !piping && isatty(0).unwrap_or(false) {
-                let pgid = getpgid(None).unwrap();
-                tcsetpgrp(0, pgid).ok();
+            if !piping && syscall::isatty(0).unwrap_or(false) {
+                let pgid = syscall::getpgid(None).unwrap();
+                syscall::tcsetpgrp(0, pgid).ok();
             }
 
             statuses.last().unwrap_or(&ExitStatus::success()).to_owned()
@@ -827,7 +825,7 @@ impl<'a> Executor<'a> {
         pgid: Option<Pid>,
     ) -> std::result::Result<Option<ChildProcess>, SysCallError> {
         let (tmp_read, tmp_write) = pipe()?;
-        match fork() {
+        match syscall::fork() {
             Err(e) => {
                 syscall::close(tmp_read).ok();
                 syscall::close(tmp_write).ok();
@@ -835,7 +833,7 @@ impl<'a> Executor<'a> {
             }
             Ok(ForkResult::Parent { child }) => {
                 let new_pgid = pgid.unwrap_or(child);
-                setpgid(child, new_pgid).ok();
+                syscall::setpgid(child, new_pgid).ok();
                 syscall::close(tmp_read).ok();
 
                 let ret = ChildProcess::new(child, new_pgid, tmp_write);
@@ -849,7 +847,7 @@ impl<'a> Executor<'a> {
                 // Synchronize with the parent process.
                 loop {
                     let mut buf = [0];
-                    match read(tmp_read, &mut buf) {
+                    match syscall::read(tmp_read, &mut buf) {
                         // Read again because it was interrupted by Signal.
                         Err(e) if e.errno() == nix::errno::Errno::EINTR => (),
                         _ => break,
@@ -952,13 +950,13 @@ impl<'a> Executor<'a> {
     ) -> Result<String, std::io::Error> {
         let (pipe_read, pipe_write) = pipe().unwrap();
 
-        match fork() {
+        match syscall::fork() {
             Err(e) => {
                 eprintln!("{}: {}", e.name(), e.desc());
                 Err(IoError::from_raw_os_error(e.errno() as i32))
             }
             Ok(ForkResult::Parent { child }) => {
-                setpgid(child, child).unwrap();
+                syscall::setpgid(child, child).unwrap();
                 syscall::close(pipe_write).unwrap();
                 change_sa_restart_flag(false)?;
 
@@ -981,7 +979,7 @@ impl<'a> Executor<'a> {
                 change_sa_restart_flag(true)?;
 
                 let pgid = Pid::from_raw(-child.as_raw());
-                waitpid(pgid, None).ok();
+                syscall::waitpid(pgid, None).ok();
 
                 match read_result {
                     Ok(_) => {
@@ -994,20 +992,20 @@ impl<'a> Executor<'a> {
             Ok(ForkResult::Child) => {
                 close_signal_handler();
 
-                let pid = getpid();
-                setpgid(pid, pid).unwrap();
-                let old_pgrp = match isatty(0).unwrap_or(false) {
+                let pid = syscall::getpid();
+                syscall::setpgid(pid, pid).unwrap();
+                let old_pgrp = match syscall::isatty(0).unwrap_or(false) {
                     false => None,
-                    true => tcgetpgrp(0)
+                    true => syscall::tcgetpgrp(0)
                         .map(|old| {
-                            tcsetpgrp(0, pid).ok();
+                            syscall::tcsetpgrp(0, pid).ok();
                             old
                         })
                         .ok(),
                 };
 
                 syscall::close(pipe_read).unwrap();
-                dup2(pipe_write, 1).unwrap();
+                syscall::dup2(pipe_write, 1).unwrap();
                 syscall::close(pipe_write).unwrap();
 
                 let mut e = Executor::new(ctx).unwrap();
@@ -1019,12 +1017,12 @@ impl<'a> Executor<'a> {
                             e.execute_command(cmd, Some(option));
                         }
                         if let Some(pgrp) = old_pgrp {
-                            tcsetpgrp(0, pgrp).unwrap();
+                            syscall::tcsetpgrp(0, pgrp).unwrap();
                         }
                         ExitStatus::success()
                     }
                 };
-                exit(status.code());
+                syscall::exit(status.code());
 
                 unreachable![]
             }
@@ -1116,7 +1114,7 @@ fn execute_external_command(
     cmds.append(&mut args.to_cstring());
 
     let env = {
-        let mut t = env_vars();
+        let mut t = syscall::env_vars();
         t.extend(env);
         t
     }
@@ -1126,23 +1124,23 @@ fn execute_external_command(
 
     restore_tty_signals().unwrap();
 
-    match execve(cmdpath, &cmds, &env) {
+    match syscall::execve(cmdpath, &cmds, &env) {
         Ok(_) => unreachable![],
         Err(e) if e.errno() == Errno::ENOENT => {
             eprintln!("{}: command not found", command);
-            exit(127)
+            syscall::exit(127)
         }
         Err(e) => {
             eprintln!("execve faile: {}", e.errno());
-            exit(1)
+            syscall::exit(1)
         }
     }
 }
 
 fn pipe() -> SysCallResult<(RawFd, RawFd)> {
     let (tmp_read, tmp_write) = syscall::pipe()?;
-    let read = dup_fd(tmp_read, SHELL_FDBASE)?;
-    let write = dup_fd(tmp_write, SHELL_FDBASE)?;
+    let read = syscall::dup_fd(tmp_read, SHELL_FDBASE)?;
+    let write = syscall::dup_fd(tmp_write, SHELL_FDBASE)?;
     syscall::close(tmp_read)?;
     syscall::close(tmp_write)?;
     Ok((read, write))

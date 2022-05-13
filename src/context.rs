@@ -1,9 +1,6 @@
 #![allow(clippy::new_without_default)]
 
-use super::{
-    status::ExitStatus,
-    syscall::{env_get, env_set, env_unset, getpid},
-};
+use super::{status::ExitStatus, syscall};
 use std::{cell::RefCell, collections::HashMap};
 
 #[derive(Debug, Clone)]
@@ -64,8 +61,8 @@ impl Context {
         let value = value.as_ref();
 
         let old_var = self.get_var(name);
-        match env_get(name) {
-            Ok(_) => env_set(name, value),
+        match syscall::env_get(name) {
+            Ok(_) => syscall::env_set(name, value),
             Err(_) => {
                 self.inner
                     .borrow_mut()
@@ -99,7 +96,7 @@ impl Context {
     }
 
     fn get_env<T: AsRef<str>>(&self, name: T) -> Option<String> {
-        env_get(name.as_ref()).ok()
+        syscall::env_get(name.as_ref()).ok()
     }
 
     fn get_special_var<T: AsRef<str>>(&self, name: T) -> Option<String> {
@@ -123,7 +120,7 @@ impl Context {
             }
             Some('?') => Some(self.inner.borrow().status.code().to_string()),
             Some('$') => {
-                let pid = getpid();
+                let pid = syscall::getpid();
                 Some(format!("{}", pid))
             }
             _ => None,
@@ -134,8 +131,8 @@ impl Context {
         let name = name.as_ref();
         let old_var = self.get_var(name);
 
-        match env_get(name) {
-            Ok(_) => env_unset(name),
+        match syscall::env_get(name) {
+            Ok(_) => syscall::env_unset(name),
             Err(_) => {
                 self.inner.borrow_mut().local_vars.remove(name);
             }

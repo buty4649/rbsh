@@ -1,4 +1,4 @@
-use crate::{context::Context, status::ExitStatus, syscall::set_current_dir};
+use crate::{context::Context, status::ExitStatus, syscall};
 use dirs::home_dir;
 use std::path::PathBuf;
 
@@ -15,7 +15,7 @@ pub fn cd(_: &Context, args: &[String]) -> ExitStatus {
         path
     };
 
-    match set_current_dir(path) {
+    match syscall::set_current_dir(path) {
         Ok(_) => ExitStatus::success(),
         Err(e) => {
             eprintln!("reddish: cd: {}", e);
