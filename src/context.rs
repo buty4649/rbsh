@@ -1,5 +1,3 @@
-#![allow(clippy::new_without_default)]
-
 use super::{status::ExitStatus, syscall};
 use std::collections::HashMap;
 
@@ -85,5 +83,11 @@ impl Context {
         }
 
         old_var
+    }
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Self::new()
     }
 }
