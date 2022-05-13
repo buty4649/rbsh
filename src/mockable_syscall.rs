@@ -44,6 +44,7 @@ macro_rules! syscall {
 
 #[automock]
 pub mod inner {
+    // Bug?: Workaround for mockall code to be detected as dead_code.
     #![allow(dead_code)]
 
     pub use super::{PrCtlFlag, SysCallError, SysCallResult};
