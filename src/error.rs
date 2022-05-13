@@ -1,7 +1,7 @@
 use super::{
-    exec::SysCallError,
     location::{Annotate, Location},
     parser::token::{Token, TokenKind},
+    syscall::SysCallError,
 };
 use std::str::Utf8Error;
 

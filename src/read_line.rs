@@ -1,4 +1,4 @@
-use super::exec::syscall::{SysCallWrapper, Wrapper};
+use crate::syscall;
 use rustyline::{config::Configurer, error::ReadlineError, Editor};
 use std::{
     fs::File,
@@ -58,10 +58,9 @@ pub struct ReadFromFile {
 }
 
 impl ReadFromFile {
-    pub fn new(wrapper: &Wrapper, path: &Path) -> Result<Self, IoError> {
+    pub fn new(path: &Path) -> Result<Self, IoError> {
         let file = File::open(path)?;
-        let fd = wrapper
-            .dup_fd(file.as_raw_fd(), 255)
+        let fd = syscall::dup_fd(file.as_raw_fd(), 255)
             .map_err(|e| IoError::from_raw_os_error(e.errno() as i32))?;
         let file = unsafe { File::from_raw_fd(fd) };
         Ok(Self {

@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod test {
-    use super::super::syscall::Wrapper;
     use super::*;
     use crate::{
         location::Location,
@@ -31,16 +30,11 @@ mod test {
         };
     }
 
-    macro_rules! ctx {
-        ($m: expr) => {
-            &Context::new($m)
-        };
-    }
-
     #[test]
     fn test_read_from() {
-        let mut mock = Wrapper::new();
-        mock.expect_open()
+        let open_context = syscall::open_context();
+        open_context
+            .expect()
             .times(1)
             .with(
                 eq("foobar"),
@@ -50,7 +44,7 @@ mod test {
             .return_const(Ok(3));
         assert!(r!(false)
             .exec(
-                ctx!(mock),
+                &Context::new(),
                 vec![Redirect::read_from(
                     3,
                     wordlist![word!("foobar")],
@@ -59,8 +53,9 @@ mod test {
             )
             .is_ok());
 
-        let mut mock = Wrapper::new();
-        mock.expect_open()
+        open_context.checkpoint();
+        open_context
+            .expect()
             .times(1)
             .with(
                 eq("foobar"),
@@ -68,17 +63,24 @@ mod test {
                 eq(Mode::from_bits(0o666).unwrap()),
             )
             .return_const(Ok(3));
-        mock.expect_dup2()
+
+        let dup2_context = syscall::dup2_context();
+        dup2_context
+            .expect()
             .times(1)
             .with(eq(3), eq(0))
             .return_const(Ok(0));
-        mock.expect_close()
+
+        let close_context = syscall::close_context();
+        close_context
+            .expect()
             .times(1)
             .with(eq(3))
             .return_const(Ok(()));
+
         assert!(r!(false)
             .exec(
-                ctx!(mock),
+                &Context::new(),
                 vec![Redirect::read_from(
                     0,
                     wordlist![word!("foobar")],
@@ -90,8 +92,9 @@ mod test {
 
     #[test]
     fn test_write_to() {
-        let mut mock = Wrapper::new();
-        mock.expect_open()
+        let open_context = syscall::open_context();
+        open_context
+            .expect()
             .times(1)
             .with(
                 eq("foobar"),
@@ -101,7 +104,7 @@ mod test {
             .return_const(Ok(3));
         assert!(r!(false)
             .exec(
-                ctx!(mock),
+                &Context::new(),
                 vec![Redirect::write_to(
                     3,
                     wordlist![word!("foobar")],
@@ -110,9 +113,10 @@ mod test {
                 )],
             )
             .is_ok());
+        open_context.checkpoint();
 
-        let mut mock = Wrapper::new();
-        mock.expect_open()
+        open_context
+            .expect()
             .times(1)
             .with(
                 eq("foobar"),
@@ -120,17 +124,23 @@ mod test {
                 eq(Mode::from_bits(0o666).unwrap()),
             )
             .return_const(Ok(3));
-        mock.expect_dup2()
+
+        let dup2_context = syscall::dup2_context();
+        dup2_context
+            .expect()
             .times(1)
             .with(eq(3), eq(1))
             .return_const(Ok(1));
-        mock.expect_close()
+
+        let close_context = syscall::close_context();
+        close_context
+            .expect()
             .times(1)
             .with(eq(3))
             .return_const(Ok(()));
         assert!(r!(false)
             .exec(
-                ctx!(mock),
+                &Context::new(),
                 vec![Redirect::write_to(
                     1,
                     wordlist![word!("foobar")],
@@ -143,8 +153,9 @@ mod test {
 
     #[test]
     fn test_write_both() {
-        let mut mock = Wrapper::new();
-        mock.expect_open()
+        let open_context = syscall::open_context();
+        open_context
+            .expect()
             .times(1)
             .with(
                 eq("foobar"),
@@ -152,21 +163,29 @@ mod test {
                 eq(Mode::from_bits(0o666).unwrap()),
             )
             .return_const(Ok(3));
-        mock.expect_dup2()
+
+        let dup2_context = syscall::dup2_context();
+        dup2_context
+            .expect()
             .times(1)
             .with(eq(3), eq(1))
             .return_const(Ok(1));
-        mock.expect_dup2()
+        dup2_context
+            .expect()
             .times(1)
             .with(eq(1), eq(2))
             .return_const(Ok(2));
-        mock.expect_close()
+
+        let close_context = syscall::close_context();
+        close_context
+            .expect()
             .times(1)
             .with(eq(3))
             .return_const(Ok(()));
+
         assert!(r!(false)
             .exec(
-                ctx!(mock),
+                &Context::new(),
                 vec![Redirect::write_both(
                     wordlist![word!("foobar")],
                     Location::new(1, 1),
@@ -177,30 +196,35 @@ mod test {
 
     #[test]
     fn test_copy() {
-        let mut mock = Wrapper::new();
-        mock.expect_dup2()
+        let dup2_context = syscall::dup2_context();
+        dup2_context
+            .expect()
             .times(1)
             .with(eq(3), eq(4))
             .return_const(Ok(4));
         assert!(r!(false)
             .exec(
-                ctx!(mock),
+                &Context::new(),
                 vec![Redirect::copy(3, 4, false, Location::new(1, 1))],
             )
             .is_ok());
+        dup2_context.checkpoint();
 
-        let mut mock = Wrapper::new();
-        mock.expect_dup2()
+        dup2_context
+            .expect()
             .times(1)
             .with(eq(3), eq(4))
             .return_const(Ok(4));
-        mock.expect_close()
+
+        let close_context = syscall::close_context();
+        close_context
+            .expect()
             .times(1)
             .with(eq(3))
             .return_const(Ok(()));
         assert!(r!(false)
             .exec(
-                ctx!(mock),
+                &Context::new(),
                 vec![Redirect::copy(3, 4, true, Location::new(1, 1))],
             )
             .is_ok());
@@ -208,8 +232,9 @@ mod test {
 
     #[test]
     fn test_append() {
-        let mut mock = Wrapper::new();
-        mock.expect_open()
+        let open_context = syscall::open_context();
+        open_context
+            .expect()
             .times(1)
             .with(
                 eq("foobar"),
@@ -219,7 +244,7 @@ mod test {
             .return_const(Ok(3));
         assert!(r!(false)
             .exec(
-                ctx!(mock),
+                &Context::new(),
                 vec![Redirect::append(
                     3,
                     wordlist![word!("foobar")],
@@ -227,9 +252,10 @@ mod test {
                 )],
             )
             .is_ok());
+        open_context.checkpoint();
 
-        let mut mock = Wrapper::new();
-        mock.expect_open()
+        open_context
+            .expect()
             .times(1)
             .with(
                 eq("foobar"),
@@ -237,17 +263,24 @@ mod test {
                 eq(Mode::from_bits(0o666).unwrap()),
             )
             .return_const(Ok(3));
-        mock.expect_dup2()
+
+        let dup2_context = syscall::dup2_context();
+        dup2_context
+            .expect()
             .times(1)
             .with(eq(3), eq(1))
             .return_const(Ok(1));
-        mock.expect_close()
+
+        let close_context = syscall::close_context();
+        close_context
+            .expect()
             .times(1)
             .with(eq(3))
             .return_const(Ok(()));
+
         assert!(r!(false)
             .exec(
-                ctx!(mock),
+                &Context::new(),
                 vec![Redirect::append(
                     1,
                     wordlist![word!("foobar")],
@@ -259,8 +292,9 @@ mod test {
 
     #[test]
     fn test_append_both() {
-        let mut mock = Wrapper::new();
-        mock.expect_open()
+        let open_context = syscall::open_context();
+        open_context
+            .expect()
             .times(1)
             .with(
                 eq("foobar"),
@@ -268,21 +302,28 @@ mod test {
                 eq(Mode::from_bits(0o666).unwrap()),
             )
             .return_const(Ok(3));
-        mock.expect_dup2()
+
+        let dup2_context = syscall::dup2_context();
+        dup2_context
+            .expect()
             .times(1)
             .with(eq(3), eq(1))
             .return_const(Ok(1));
-        mock.expect_dup2()
+        dup2_context
+            .expect()
             .times(1)
             .with(eq(1), eq(2))
             .return_const(Ok(2));
-        mock.expect_close()
+
+        let close_context = syscall::close_context();
+        close_context
+            .expect()
             .times(1)
             .with(eq(3))
             .return_const(Ok(()));
         assert!(r!(false)
             .exec(
-                ctx!(mock),
+                &Context::new(),
                 vec![Redirect::append_both(
                     wordlist![word!("foobar")],
                     Location::new(1, 1),
@@ -293,20 +334,25 @@ mod test {
 
     #[test]
     fn test_close() {
-        let mut mock = Wrapper::new();
-        mock.expect_close()
+        let close_context = syscall::close_context();
+        close_context
+            .expect()
             .times(1)
             .with(eq(1))
             .return_const(Ok(()));
         assert!(r!(false)
-            .exec(ctx!(mock), vec![Redirect::close(1, Location::new(1, 1))])
+            .exec(
+                &Context::new(),
+                vec![Redirect::close(1, Location::new(1, 1))]
+            )
             .is_ok());
     }
 
     #[test]
     fn test_read_write() {
-        let mut mock = Wrapper::new();
-        mock.expect_open()
+        let open_context = syscall::open_context();
+        open_context
+            .expect()
             .times(1)
             .with(
                 eq("foobar"),
@@ -316,7 +362,7 @@ mod test {
             .return_const(Ok(3));
         assert!(r!(false)
             .exec(
-                ctx!(mock),
+                &Context::new(),
                 vec![Redirect::read_write(
                     3,
                     wordlist![word!("foobar")],
@@ -324,9 +370,10 @@ mod test {
                 )],
             )
             .is_ok());
+        open_context.checkpoint();
 
-        let mut mock = Wrapper::new();
-        mock.expect_open()
+        open_context
+            .expect()
             .times(1)
             .with(
                 eq("foobar"),
@@ -334,17 +381,23 @@ mod test {
                 eq(Mode::from_bits(0o666).unwrap()),
             )
             .return_const(Ok(3));
-        mock.expect_dup2()
+
+        let dup2_context = syscall::dup2_context();
+        dup2_context
+            .expect()
             .times(1)
             .with(eq(3), eq(0))
             .return_const(Ok(0));
-        mock.expect_close()
+
+        let close_context = syscall::close_context();
+        close_context
+            .expect()
             .times(1)
             .with(eq(3))
             .return_const(Ok(()));
         assert!(r!(false)
             .exec(
-                ctx!(mock),
+                &Context::new(),
                 vec![Redirect::read_write(
                     0,
                     wordlist![word!("foobar")],

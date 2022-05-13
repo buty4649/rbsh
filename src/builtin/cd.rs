@@ -1,8 +1,8 @@
-use crate::{context::Context, exec::syscall::SysCallWrapper, status::ExitStatus};
+use crate::{context::Context, status::ExitStatus, syscall};
 use dirs::home_dir;
 use std::path::PathBuf;
 
-pub fn cd(ctx: &Context, args: &[String]) -> ExitStatus {
+pub fn cd(_: &mut Context, args: &[String]) -> ExitStatus {
     let path = if args.is_empty() {
         home_dir().unwrap_or_default()
     } else {
@@ -15,7 +15,7 @@ pub fn cd(ctx: &Context, args: &[String]) -> ExitStatus {
         path
     };
 
-    match ctx.wrapper().set_current_dir(path) {
+    match syscall::set_current_dir(path) {
         Ok(_) => ExitStatus::success(),
         Err(e) => {
             eprintln!("reddish: cd: {}", e);

@@ -1,13 +1,8 @@
-use crate::{
-    context::Context,
-    exec::syscall::{SysCallWrapper, Wrapper},
-    signal::change_sa_restart_flag,
-    status::ExitStatus,
-};
+use crate::{context::Context, signal::change_sa_restart_flag, status::ExitStatus, syscall};
 use clap::{Arg, ArgMatches, Command, Result as ClapResult};
 use std::{io, os::unix::io::RawFd};
 
-pub fn read(ctx: &Context, args: &[String]) -> ExitStatus {
+pub fn read(ctx: &mut Context, args: &[String]) -> ExitStatus {
     let args = match parse_args(args) {
         Ok(m) => m,
         Err(e) => {
@@ -27,7 +22,7 @@ pub fn read(ctx: &Context, args: &[String]) -> ExitStatus {
         None => unreachable![],
     };
     let mut input = String::new();
-    let status = match readline(ctx.wrapper(), fd, &mut input) {
+    let status = match readline(fd, &mut input) {
         Err(e) => {
             if e.kind() != io::ErrorKind::Interrupted {
                 eprintln!("{}", e);
@@ -81,11 +76,11 @@ USAGE:
         .try_get_matches_from(args)
 }
 
-fn readline(wrapper: &Wrapper, fd: RawFd, output: &mut String) -> Result<usize, io::Error> {
+fn readline(fd: RawFd, output: &mut String) -> Result<usize, io::Error> {
     change_sa_restart_flag(false)?;
     let mut size = 0;
     let mut buf = [0u8; 1024];
-    let result = match wrapper.read(fd, &mut buf) {
+    let result = match syscall::read(fd, &mut buf) {
         Err(e) => Err(io::Error::from_raw_os_error(e.code())),
         Ok(s) => {
             let u = std::str::from_utf8(&buf[..s]).unwrap();

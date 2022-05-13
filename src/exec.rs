@@ -2,9 +2,7 @@ mod mruby;
 mod option;
 mod redirect;
 
-pub mod syscall;
 pub use redirect::SHELL_FDBASE;
-pub use syscall::SysCallError;
 
 use crate::{
     builtin::{builtin_command_exec, is_builtin_command},
@@ -21,6 +19,7 @@ use crate::{
         JobSignalHandler,
     },
     status::ExitStatus,
+    syscall::{self, PrCtlFlag, SysCallError, SysCallResult},
 };
 use is_executable::IsExecutable;
 use mruby::mruby_exec;
@@ -41,7 +40,6 @@ use std::{
     os::unix::io::{FromRawFd, RawFd},
     path::PathBuf,
 };
-use syscall::{PrCtlFlag, SysCallResult, SysCallWrapper, Wrapper};
 
 pub trait WordParser {
     fn to_string(self, context: &Context) -> Result<String, IoError>;
@@ -179,8 +177,8 @@ impl ChildProcess {
         self.pgid
     }
 
-    fn start(&self, wrapper: &Wrapper) {
-        wrapper.close(self.pipe).ok();
+    fn start(&self) {
+        syscall::close(self.pipe).ok();
     }
 }
 
@@ -215,8 +213,7 @@ enum SimpleCommandKind {
 type Env = HashMap<String, String>;
 type Args = Vec<String>;
 
-pub struct Executor<'a> {
-    ctx: &'a Context,
+pub struct Executor {
     handler: JobSignalHandler,
     pub job_id: u16,
     jobs: Vec<Job>,
@@ -226,10 +223,9 @@ pub struct Executor<'a> {
     mrb: MRuby,
 }
 
-impl<'a> Executor<'a> {
-    pub fn new(ctx: &'a Context) -> std::result::Result<Self, std::io::Error> {
+impl Executor {
+    pub fn new() -> std::result::Result<Self, std::io::Error> {
         Ok(Self {
-            ctx,
             handler: JobSignalHandler::start()?,
             job_id: 0,
             jobs: vec![],
@@ -240,11 +236,12 @@ impl<'a> Executor<'a> {
         })
     }
 
-    fn wrapper(&self) -> &Wrapper {
-        self.ctx.wrapper()
-    }
-
-    pub fn execute_command(&mut self, cmd: Unit, option: Option<ExecOption>) -> ExitStatus {
+    pub fn execute_command(
+        &mut self,
+        ctx: &mut Context,
+        cmd: Unit,
+        option: Option<ExecOption>,
+    ) -> ExitStatus {
         self.handler.reset_interrupt_flag();
         self.handler.reset_forground();
 
@@ -252,15 +249,21 @@ impl<'a> Executor<'a> {
         self.breaking = 0;
         self.continuing = 0;
 
-        self.execute_command_internal(cmd, option)
+        self.execute_command_internal(ctx, cmd, option)
     }
 
-    fn execute_command_internal(&mut self, cmd: Unit, option: Option<ExecOption>) -> ExitStatus {
+    fn execute_command_internal(
+        &mut self,
+        ctx: &mut Context,
+        cmd: Unit,
+        option: Option<ExecOption>,
+    ) -> ExitStatus {
         let option = option.unwrap_or_else(|| ExecOptionBuilder::new().build());
 
         let ret = match cmd.kind() {
             UnitKind::SimpleCommand { command, redirect } => {
-                let ret = self.execute_simple_command(command, redirect, cmd.background(), option);
+                let ret =
+                    self.execute_simple_command(ctx, command, redirect, cmd.background(), option);
                 if cmd.background() {
                     let job = self.jobs.last().unwrap();
                     if option.verbose() {
@@ -285,7 +288,7 @@ impl<'a> Executor<'a> {
                                 return ExitStatus::failure();
                             }
                             Ok(Some(child)) => {
-                                child.start(self.wrapper());
+                                child.start();
                                 let ret = self.start_job(child.pid(), child.pgid());
                                 if cmd.background() {
                                     let job = self.jobs.last().unwrap();
@@ -297,7 +300,7 @@ impl<'a> Executor<'a> {
                             }
                             Ok(None) => {
                                 self.handler = JobSignalHandler::start().unwrap();
-                                let pgid = pgid.unwrap_or_else(|| self.wrapper().getpid());
+                                let pgid = pgid.unwrap_or_else(syscall::getpid);
                                 ExecOptionBuilder::from(option).pgid(pgid).build()
                             }
                         }
@@ -305,7 +308,7 @@ impl<'a> Executor<'a> {
                 };
 
                 if let Some(fd) = option.leak_fd() {
-                    match close(self.ctx, fd) {
+                    match close(fd) {
                         Ok(_) => (),
                         Err(e) => {
                             eprintln!("{}, {}", e.name(), e.desc());
@@ -320,10 +323,10 @@ impl<'a> Executor<'a> {
                         redirect: _,
                     } => unreachable![],
                     UnitKind::Connecter { left, right, kind } => {
-                        self.execute_connecter(*left, *right, kind, option)
+                        self.execute_connecter(ctx, *left, *right, kind, option)
                     }
                     UnitKind::Pipe { left, right, both } => {
-                        self.execute_pipe(*left, *right, both, option)
+                        self.execute_pipe(ctx, *left, *right, both, option)
                     }
                     UnitKind::If {
                         condition,
@@ -331,7 +334,7 @@ impl<'a> Executor<'a> {
                         false_case,
                         redirect,
                     } => self.execute_if_command(
-                        *condition, true_case, false_case, redirect, false, option,
+                        ctx, *condition, true_case, false_case, redirect, false, option,
                     ),
                     UnitKind::Unless {
                         condition,
@@ -339,45 +342,49 @@ impl<'a> Executor<'a> {
                         true_case,
                         redirect,
                     } => self.execute_if_command(
-                        *condition, false_case, true_case, redirect, true, option,
+                        ctx, *condition, false_case, true_case, redirect, true, option,
                     ),
                     UnitKind::While {
                         condition,
                         command,
                         redirect,
-                    } => self.execute_while_command(*condition, command, redirect, false, option),
+                    } => self
+                        .execute_while_command(ctx, *condition, command, redirect, false, option),
                     UnitKind::Until {
                         condition,
                         command,
                         redirect,
-                    } => self.execute_while_command(*condition, command, redirect, true, option),
+                    } => {
+                        self.execute_while_command(ctx, *condition, command, redirect, true, option)
+                    }
                     UnitKind::For {
                         identifier,
                         list,
                         command,
                         redirect,
-                    } => self.execute_for_command(identifier, list, command, redirect, option),
+                    } => self.execute_for_command(ctx, identifier, list, command, redirect, option),
                 };
 
                 match background {
                     false => ret,
-                    true => self.wrapper().exit(ret.code()),
+                    true => syscall::exit(ret.code()),
                 }
             }
         };
 
-        self.ctx.set_status(ret);
+        ctx.status = ret;
         ret
     }
 
     fn execute_simple_command(
         &mut self,
+        ctx: &mut Context,
         command: Vec<WordList>,
         mut redirect: RedirectList,
         background: bool,
         option: ExecOption,
     ) -> ExitStatus {
-        let kind = match expand_command_line(self.ctx, command) {
+        let kind = match expand_command_line(ctx, command) {
             Ok(ret) => ret,
             Err(e) => {
                 return match e.kind() {
@@ -404,19 +411,17 @@ impl<'a> Executor<'a> {
                 }
                 Ok(Some(child)) => match background {
                     true => {
-                        child.start(self.wrapper());
+                        child.start();
                         return self.start_job(child.pid(), child.pgid());
                     }
                     false => {
-                        let old_pgrp = match self.wrapper().isatty(0).unwrap_or(false) {
+                        let old_pgrp = match syscall::isatty(0).unwrap_or(false) {
                             false => None,
                             true => match pgid {
                                 Some(_) => None,
-                                None => self
-                                    .wrapper()
-                                    .tcgetpgrp(0)
+                                None => syscall::tcgetpgrp(0)
                                     .map(|old| {
-                                        self.wrapper().tcsetpgrp(0, child.pgid()).ok();
+                                        syscall::tcsetpgrp(0, child.pgid()).ok();
                                         old
                                     })
                                     .ok(),
@@ -425,7 +430,7 @@ impl<'a> Executor<'a> {
 
                         self.handler.set_forground(child.pgid());
                         self.start_job(child.pid(), child.pgid());
-                        child.start(self.wrapper());
+                        child.start();
                         let status = self
                             .handler
                             .wait_for(child.pid(), true)
@@ -434,7 +439,7 @@ impl<'a> Executor<'a> {
                         self.jobs.pop(); // remove current job
 
                         if let Some(pgid) = old_pgrp {
-                            self.wrapper().tcsetpgrp(0, pgid).ok();
+                            syscall::tcsetpgrp(0, pgid).ok();
                         }
 
                         return status;
@@ -455,16 +460,16 @@ impl<'a> Executor<'a> {
         }
 
         if let Some(fd) = option.leak_fd() {
-            self.wrapper().close(fd).ok();
+            syscall::close(fd).ok();
         }
 
-        let restore = match redirect.apply(self.ctx, !(background || need_fork)) {
+        let restore = match redirect.apply(ctx, !(background || need_fork)) {
             Ok(r) => r,
             Err(e) => {
                 eprintln!("{:?}", e);
                 return match need_fork {
                     false => ExitStatus::failure(),
-                    true => self.wrapper().exit(1),
+                    true => syscall::exit(1),
                 };
             }
         };
@@ -473,7 +478,7 @@ impl<'a> Executor<'a> {
             SimpleCommandKind::Noop => ExitStatus::success(),
             SimpleCommandKind::SetEnv { env } => {
                 env.iter().for_each(|(k, v)| {
-                    self.ctx.set_var(k, v);
+                    ctx.set_var(k, v);
                 });
                 ExitStatus::success()
             }
@@ -482,10 +487,9 @@ impl<'a> Executor<'a> {
             }
             SimpleCommandKind::MRuby { env, args } => {
                 let name = CString::new("mruby").unwrap();
-                if let Some(e) = self
-                    .wrapper()
-                    .prctl(PrCtlFlag::PR_SET_NAME, name.as_ptr() as nix::libc::c_ulong)
-                    .err()
+                if let Some(e) =
+                    syscall::prctl(PrCtlFlag::PR_SET_NAME, name.as_ptr() as nix::libc::c_ulong)
+                        .err()
                 {
                     eprintln!("mruby: prctl: {}", e.desc());
                 }
@@ -493,10 +497,10 @@ impl<'a> Executor<'a> {
                 match reset_signal_handler() {
                     Ok(_) => {
                         env.iter().for_each(|(k, v)| {
-                            self.ctx.set_var(k, v);
+                            ctx.set_var(k, v);
                         });
 
-                        self.ctx.wrapper().exit(mruby_exec(&self.mrb, &args).code())
+                        syscall::exit(mruby_exec(&self.mrb, &args).code())
                     }
                     Err(e) => {
                         eprintln!("mruby: {}", e);
@@ -508,31 +512,31 @@ impl<'a> Executor<'a> {
                 let old_env_vars = env
                     .iter()
                     .map(|(k, v)| {
-                        let old_var = self.ctx.set_var(k, v);
+                        let old_var = ctx.set_var(k, v);
                         (k, old_var)
                     })
                     .collect::<Vec<_>>();
 
-                let status = builtin_command_exec(self.ctx, command, &args);
+                let status = builtin_command_exec(ctx, command, &args);
 
                 old_env_vars.iter().for_each(|(k, v)| {
                     match v {
-                        None => self.ctx.unset_var(k),
-                        Some(v) => self.ctx.set_var(k, &v),
+                        None => ctx.unset_var(k),
+                        Some(v) => ctx.set_var(k, &v),
                     };
                 });
 
                 status
             }
             SimpleCommandKind::External { env, command, args } => {
-                execute_external_command(self.ctx, env, command, args)
+                execute_external_command(env, command, args)
             }
         };
 
-        restore.apply(self.ctx, false).ok();
+        restore.apply(ctx, false).ok();
 
         match background {
-            true => self.wrapper().exit(status.code()),
+            true => syscall::exit(status.code()),
             false => status,
         }
     }
@@ -586,13 +590,14 @@ impl<'a> Executor<'a> {
 
     fn execute_connecter(
         &mut self,
+        ctx: &mut Context,
         left: Unit,
         right: Unit,
         kind: ConnecterKind,
         option: ExecOption,
     ) -> ExitStatus {
         let option = ExecOptionBuilder::from(option).piping(false).build();
-        let condition = self.execute_command_internal(left, Some(option));
+        let condition = self.execute_command_internal(ctx, left, Some(option));
 
         let option = ExecOptionBuilder::from(option)
             .input(None)
@@ -600,10 +605,10 @@ impl<'a> Executor<'a> {
             .build();
         match kind {
             ConnecterKind::And if condition.is_success() => {
-                self.execute_command_internal(right, Some(option))
+                self.execute_command_internal(ctx, right, Some(option))
             }
             ConnecterKind::Or if condition.is_error() => {
-                self.execute_command_internal(right, Some(option))
+                self.execute_command_internal(ctx, right, Some(option))
             }
             _ => condition,
         }
@@ -611,14 +616,16 @@ impl<'a> Executor<'a> {
 
     fn execute_pipe(
         &mut self,
+        ctx: &mut Context,
         left: Unit,
         right: Unit,
         both: bool,
         option: ExecOption,
     ) -> ExitStatus {
-        let (pipe_read, pipe_write) = pipe(self.ctx).unwrap();
+        let (pipe_read, pipe_write) = pipe().unwrap();
 
         self.execute_command_internal(
+            ctx,
             left,
             Some(
                 ExecOptionBuilder::from(option)
@@ -631,12 +638,13 @@ impl<'a> Executor<'a> {
         );
 
         let piping = option.piping();
-        if !piping && self.wrapper().isatty(0).unwrap_or(false) {
+        if !piping && syscall::isatty(0).unwrap_or(false) {
             let job = self.jobs.last().unwrap();
-            self.wrapper().tcsetpgrp(0, job.pgid).ok();
+            syscall::tcsetpgrp(0, job.pgid).ok();
         }
 
         self.execute_command_internal(
+            ctx,
             right,
             Some(
                 ExecOptionBuilder::from(option)
@@ -648,8 +656,8 @@ impl<'a> Executor<'a> {
             ),
         );
 
-        close(self.ctx, pipe_read).unwrap();
-        close(self.ctx, pipe_write).unwrap();
+        close(pipe_read).unwrap();
+        close(pipe_write).unwrap();
 
         if piping {
             ExitStatus::success()
@@ -667,17 +675,19 @@ impl<'a> Executor<'a> {
                 .collect::<Vec<_>>();
             self.handler.reset_forground();
 
-            if !piping && self.wrapper().isatty(0).unwrap_or(false) {
-                let pgid = self.wrapper().getpgid(None).unwrap();
-                self.wrapper().tcsetpgrp(0, pgid).ok();
+            if !piping && syscall::isatty(0).unwrap_or(false) {
+                let pgid = syscall::getpgid(None).unwrap();
+                syscall::tcsetpgrp(0, pgid).ok();
             }
 
             statuses.last().unwrap_or(&ExitStatus::success()).to_owned()
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn execute_if_command(
         &mut self,
+        ctx: &mut Context,
         condition: Unit,
         true_case: Vec<Unit>,
         false_case: Option<Vec<Unit>>,
@@ -685,13 +695,13 @@ impl<'a> Executor<'a> {
         inverse: bool,
         option: ExecOption,
     ) -> ExitStatus {
-        let (restore, option) = self.update_option_and_apply_redirect(option, redirect);
+        let (restore, option) = self.update_option_and_apply_redirect(ctx, option, redirect);
 
-        let ret = match self.execute_command_internal(condition, Some(option)) {
+        let ret = match self.execute_command_internal(ctx, condition, Some(option)) {
             status if (!inverse && status.is_success()) || (inverse && status.is_error()) => {
                 let s = true_case
                     .into_iter()
-                    .map(|command| self.execute_command_internal(command, Some(option)));
+                    .map(|command| self.execute_command_internal(ctx, command, Some(option)));
                 s.last().unwrap()
             }
             status if false_case.is_none() => status,
@@ -699,24 +709,25 @@ impl<'a> Executor<'a> {
                 let s = false_case
                     .unwrap()
                     .into_iter()
-                    .map(|command| self.execute_command_internal(command, Some(option)));
+                    .map(|command| self.execute_command_internal(ctx, command, Some(option)));
                 s.last().unwrap()
             }
         };
 
-        restore.apply(self.ctx, false).unwrap();
+        restore.apply(ctx, false).unwrap();
         ret
     }
 
     fn execute_while_command(
         &mut self,
+        ctx: &mut Context,
         condition: Unit,
         command: Vec<Unit>,
         redirect: RedirectList,
         inverse: bool,
         option: ExecOption,
     ) -> ExitStatus {
-        let (restore, option) = self.update_option_and_apply_redirect(option, redirect);
+        let (restore, option) = self.update_option_and_apply_redirect(ctx, option, redirect);
         self.loop_level += 1;
 
         'exec: loop {
@@ -747,13 +758,13 @@ impl<'a> Executor<'a> {
             }
 
             interrupt!();
-            let status = self.execute_command_internal(condition.clone(), Some(option));
+            let status = self.execute_command_internal(ctx, condition.clone(), Some(option));
             break_or_continue!();
 
             if (!inverse && status.is_success()) || (inverse && status.is_error()) {
                 for c in command.iter().cloned() {
                     interrupt!();
-                    self.execute_command_internal(c, Some(option));
+                    self.execute_command_internal(ctx, c, Some(option));
 
                     break_or_continue!();
                 }
@@ -763,12 +774,13 @@ impl<'a> Executor<'a> {
         }
 
         self.loop_level -= 1;
-        restore.apply(self.ctx, false).unwrap();
+        restore.apply(ctx, false).unwrap();
         ExitStatus::new(0)
     }
 
     fn execute_for_command(
         &mut self,
+        ctx: &mut Context,
         identifier: Word,
         list: Option<Vec<WordList>>,
         command: Vec<Unit>,
@@ -795,20 +807,20 @@ impl<'a> Executor<'a> {
             None => vec![], // Normally, it returns $@.
             Some(list) => list
                 .into_iter()
-                .map(|w| w.to_string(self.ctx).unwrap())
+                .map(|w| w.to_string(ctx).unwrap())
                 .collect::<Vec<_>>(),
         };
 
-        let (restore, option) = self.update_option_and_apply_redirect(option, redirect);
+        let (restore, option) = self.update_option_and_apply_redirect(ctx, option, redirect);
         self.loop_level += 1;
         'exec: for word in list.iter() {
-            self.ctx.set_var(&*identifier, &*word);
+            ctx.set_var(&*identifier, &*word);
             for c in command.iter().cloned() {
                 if self.handler.is_interrupt() {
                     break 'exec;
                 }
 
-                self.execute_command_internal(c, Some(option));
+                self.execute_command_internal(ctx, c, Some(option));
 
                 if self.breaking > 0 {
                     self.breaking -= 1;
@@ -824,7 +836,7 @@ impl<'a> Executor<'a> {
             }
         }
         self.loop_level -= 1;
-        restore.apply(self.ctx, false).ok();
+        restore.apply(ctx, false).ok();
 
         ExitStatus::new(0)
     }
@@ -833,17 +845,17 @@ impl<'a> Executor<'a> {
         &mut self,
         pgid: Option<Pid>,
     ) -> std::result::Result<Option<ChildProcess>, SysCallError> {
-        let (tmp_read, tmp_write) = pipe(self.ctx)?;
-        match self.wrapper().fork() {
+        let (tmp_read, tmp_write) = pipe()?;
+        match syscall::fork() {
             Err(e) => {
-                self.wrapper().close(tmp_read).ok();
-                self.wrapper().close(tmp_write).ok();
+                syscall::close(tmp_read).ok();
+                syscall::close(tmp_write).ok();
                 Err(e)
             }
             Ok(ForkResult::Parent { child }) => {
                 let new_pgid = pgid.unwrap_or(child);
-                self.wrapper().setpgid(child, new_pgid).ok();
-                self.wrapper().close(tmp_read).ok();
+                syscall::setpgid(child, new_pgid).ok();
+                syscall::close(tmp_read).ok();
 
                 let ret = ChildProcess::new(child, new_pgid, tmp_write);
                 Ok(Some(ret))
@@ -851,18 +863,18 @@ impl<'a> Executor<'a> {
             Ok(ForkResult::Child) => {
                 close_signal_handler();
 
-                self.wrapper().close(tmp_write).ok();
+                syscall::close(tmp_write).ok();
 
                 // Synchronize with the parent process.
                 loop {
                     let mut buf = [0];
-                    match self.wrapper().read(tmp_read, &mut buf) {
+                    match syscall::read(tmp_read, &mut buf) {
                         // Read again because it was interrupted by Signal.
                         Err(e) if e.errno() == nix::errno::Errno::EINTR => (),
                         _ => break,
                     }
                 }
-                self.wrapper().close(tmp_read).ok();
+                syscall::close(tmp_read).ok();
 
                 Ok(None)
             }
@@ -924,6 +936,7 @@ impl<'a> Executor<'a> {
 
     fn update_option_and_apply_redirect(
         &self,
+        ctx: &Context,
         option: ExecOption,
         mut redirect: RedirectList,
     ) -> (RedirectList, ExecOption) {
@@ -942,9 +955,7 @@ impl<'a> Executor<'a> {
         }
 
         (
-            redirect
-                .apply(self.ctx, !option.piping())
-                .unwrap_or_default(),
+            redirect.apply(ctx, !option.piping()).unwrap_or_default(),
             ExecOptionBuilder::from(option)
                 .input(None)
                 .output(None)
@@ -957,16 +968,16 @@ impl<'a> Executor<'a> {
         ctx: &Context,
         command: I,
     ) -> Result<String, std::io::Error> {
-        let (pipe_read, pipe_write) = ctx.wrapper().pipe().unwrap();
+        let (pipe_read, pipe_write) = pipe().unwrap();
 
-        match ctx.wrapper().fork() {
+        match syscall::fork() {
             Err(e) => {
                 eprintln!("{}: {}", e.name(), e.desc());
                 Err(IoError::from_raw_os_error(e.errno() as i32))
             }
             Ok(ForkResult::Parent { child }) => {
-                ctx.wrapper().setpgid(child, child).unwrap();
-                ctx.wrapper().close(pipe_write).unwrap();
+                syscall::setpgid(child, child).unwrap();
+                syscall::close(pipe_write).unwrap();
                 change_sa_restart_flag(false)?;
 
                 let mut pipe = unsafe { File::from_raw_fd(pipe_read) };
@@ -984,11 +995,11 @@ impl<'a> Executor<'a> {
                         Err(e) => break Err(e),
                     }
                 };
-                ctx.wrapper().close(pipe_read).unwrap();
+                syscall::close(pipe_read).unwrap();
                 change_sa_restart_flag(true)?;
 
                 let pgid = Pid::from_raw(-child.as_raw());
-                ctx.wrapper().waitpid(pgid, None).ok();
+                syscall::waitpid(pgid, None).ok();
 
                 match read_result {
                     Ok(_) => {
@@ -1001,39 +1012,37 @@ impl<'a> Executor<'a> {
             Ok(ForkResult::Child) => {
                 close_signal_handler();
 
-                let pid = ctx.wrapper().getpid();
-                ctx.wrapper().setpgid(pid, pid).unwrap();
-                let old_pgrp = match ctx.wrapper().isatty(0).unwrap_or(false) {
+                let pid = syscall::getpid();
+                syscall::setpgid(pid, pid).unwrap();
+                let old_pgrp = match syscall::isatty(0).unwrap_or(false) {
                     false => None,
-                    true => ctx
-                        .wrapper()
-                        .tcgetpgrp(0)
+                    true => syscall::tcgetpgrp(0)
                         .map(|old| {
-                            ctx.wrapper().tcsetpgrp(0, pid).ok();
+                            syscall::tcsetpgrp(0, pid).ok();
                             old
                         })
                         .ok(),
                 };
 
-                ctx.wrapper().close(pipe_read).unwrap();
-                ctx.wrapper().dup2(pipe_write, 1).unwrap();
-                ctx.wrapper().close(pipe_write).unwrap();
+                syscall::close(pipe_read).unwrap();
+                syscall::dup2(pipe_write, 1).unwrap();
+                syscall::close(pipe_write).unwrap();
 
-                let mut e = Executor::new(ctx).unwrap();
+                let mut e = Executor::new().unwrap();
                 let option = ExecOptionBuilder::new().quiet(true).pgid(pid).build();
                 let status = match parse_command_line(command, 0) {
                     Err(_) => ExitStatus::failure(),
                     Ok(cmds) => {
                         for cmd in cmds.to_vec() {
-                            e.execute_command(cmd, Some(option));
+                            e.execute_command(&mut ctx.clone(), cmd, Some(option));
                         }
                         if let Some(pgrp) = old_pgrp {
-                            ctx.wrapper().tcsetpgrp(0, pgrp).unwrap();
+                            syscall::tcsetpgrp(0, pgrp).unwrap();
                         }
                         ExitStatus::success()
                     }
                 };
-                ctx.wrapper().exit(status.code());
+                syscall::exit(status.code());
 
                 unreachable![]
             }
@@ -1116,7 +1125,6 @@ fn assume_command(command: &str) -> PathBuf {
 }
 
 fn execute_external_command(
-    ctx: &Context,
     env: HashMap<String, String>,
     command: String,
     args: Vec<String>,
@@ -1126,7 +1134,7 @@ fn execute_external_command(
     cmds.append(&mut args.to_cstring());
 
     let env = {
-        let mut t = ctx.env_vars();
+        let mut t = syscall::env_vars();
         t.extend(env);
         t
     }
@@ -1134,32 +1142,32 @@ fn execute_external_command(
     .map(|(k, v)| format!("{}={}", k, v).to_cstring())
     .collect::<Vec<_>>();
 
-    restore_tty_signals(ctx.wrapper()).unwrap();
+    restore_tty_signals().unwrap();
 
-    match ctx.wrapper().execve(cmdpath, &cmds, &env) {
+    match syscall::execve(cmdpath, &cmds, &env) {
         Ok(_) => unreachable![],
         Err(e) if e.errno() == Errno::ENOENT => {
             eprintln!("{}: command not found", command);
-            ctx.wrapper().exit(127)
+            syscall::exit(127)
         }
         Err(e) => {
             eprintln!("execve faile: {}", e.errno());
-            ctx.wrapper().exit(1)
+            syscall::exit(1)
         }
     }
 }
 
-fn pipe(ctx: &Context) -> SysCallResult<(RawFd, RawFd)> {
-    let (tmp_read, tmp_write) = ctx.wrapper().pipe()?;
-    let read = ctx.wrapper().dup_fd(tmp_read, SHELL_FDBASE)?;
-    let write = ctx.wrapper().dup_fd(tmp_write, SHELL_FDBASE)?;
-    ctx.wrapper().close(tmp_read)?;
-    ctx.wrapper().close(tmp_write)?;
+fn pipe() -> SysCallResult<(RawFd, RawFd)> {
+    let (tmp_read, tmp_write) = syscall::pipe()?;
+    let read = syscall::dup_fd(tmp_read, SHELL_FDBASE)?;
+    let write = syscall::dup_fd(tmp_write, SHELL_FDBASE)?;
+    syscall::close(tmp_read)?;
+    syscall::close(tmp_write)?;
     Ok((read, write))
 }
 
-fn close(ctx: &Context, fd: RawFd) -> SysCallResult<()> {
-    match ctx.wrapper().close(fd) {
+fn close(fd: RawFd) -> SysCallResult<()> {
+    match syscall::close(fd) {
         Ok(_) => Ok(()),
         Err(e) if e.errno() == Errno::EBADF => Ok(()),
         Err(e) => Err(e),
