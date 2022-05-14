@@ -1,9 +1,29 @@
 use crate::{context::Context, signal::change_sa_restart_flag, status::ExitStatus, syscall};
-use clap::{Arg, ArgMatches, Command, Result as ClapResult};
+use clap::Parser;
 use std::{io, os::unix::io::RawFd};
 
+#[derive(Parser, Debug)]
+#[clap(
+    name = "read",
+    about = "read from input",
+    no_binary_name = true,
+    allow_negative_numbers = true,
+    help_template = "{bin} - {about}
+
+USAGE:
+    {usage}
+
+{all-args}"
+)]
+struct ReadOptions {
+    #[clap(short = 'u')]
+    fd: Option<RawFd>,
+
+    names: Vec<String>,
+}
+
 pub fn read(ctx: &mut Context, args: &[String]) -> ExitStatus {
-    let args = match parse_args(args) {
+    let opts = match ReadOptions::try_parse_from(args) {
         Ok(m) => m,
         Err(e) => {
             eprintln!("{}", e);
@@ -11,16 +31,7 @@ pub fn read(ctx: &mut Context, args: &[String]) -> ExitStatus {
         }
     };
 
-    let fd = match args.value_of("fd") {
-        Some(fd) => match fd.parse::<RawFd>() {
-            Ok(fd) => fd,
-            Err(e) => {
-                eprintln!("read: {}", e);
-                return ExitStatus::failure();
-            }
-        },
-        None => unreachable![],
-    };
+    let fd = opts.fd.unwrap_or(0);
     let mut input = String::new();
     let status = match readline(fd, &mut input) {
         Err(e) => {
@@ -30,9 +41,11 @@ pub fn read(ctx: &mut Context, args: &[String]) -> ExitStatus {
             ExitStatus::failure()
         }
         Ok(s) => {
-            let names = args
-                .values_of("name")
-                .map_or(vec!["REPLY"], |v| v.collect());
+            let names = if opts.names.is_empty() {
+                vec!["REPLY"]
+            } else {
+                opts.names.iter().map(AsRef::as_ref).collect()
+            };
 
             let ifs = ctx.get_var("IFS").unwrap_or_default();
             let pat = ifs.chars().collect::<Vec<_>>();
@@ -52,28 +65,6 @@ pub fn read(ctx: &mut Context, args: &[String]) -> ExitStatus {
     change_sa_restart_flag(true).unwrap();
 
     status
-}
-
-fn parse_args(args: &[String]) -> ClapResult<ArgMatches> {
-    Command::new("read")
-        .about("read from input")
-        .no_binary_name(true)
-        .arg(
-            Arg::new("fd")
-                .short('u')
-                .takes_value(true)
-                .default_value("0"),
-        )
-        .arg(Arg::new("name").multiple_values(true))
-        .help_template(
-            "{bin} - {about}
-
-USAGE:
-    {usage}
-
-{all-args}",
-        )
-        .try_get_matches_from(args)
 }
 
 fn readline(fd: RawFd, output: &mut String) -> Result<usize, io::Error> {
