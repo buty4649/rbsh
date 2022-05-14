@@ -1,31 +1,38 @@
 use crate::{context::Context, status::ExitStatus, utils::Escape};
-use clap::{Arg, Command};
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[clap(
+    no_binary_name = true,
+    disable_help_flag = true,
+    disable_version_flag = true,
+    allow_hyphen_values = true,
+    trailing_var_arg = true
+)]
+struct EchoOptions {
+    #[clap(short = 'n')]
+    trim: bool,
+
+    #[clap(short)]
+    escape: bool,
+
+    #[clap(index = 1)]
+    strings: Vec<String>,
+}
 
 pub fn echo(_: &mut Context, args: &[String]) -> ExitStatus {
-    let args = Command::new("echo")
-        .no_binary_name(true)
-        .args(&[
-            Arg::new("do_not_output_newline")
-                .short('n')
-                .multiple_values(true),
-            Arg::new("escape").short('e').multiple_values(true),
-            Arg::new("strings").multiple_values(true),
-        ])
-        .get_matches_from(args);
+    let opts = EchoOptions::try_parse_from(args);
 
-    let strings = args
-        .values_of("strings")
-        .map_or(vec![], |v| v.collect())
-        .iter()
-        .map(|s| match args.occurrences_of("escape") {
-            0 => s.to_string(),
-            _ => s.escape(),
-        })
-        .collect::<Vec<_>>();
-
-    print!("{}", strings.join(" "));
-    if args.occurrences_of("do_not_output_newline") == 0 {
-        println!();
+    match opts {
+        Err(e) => {
+            eprint!("{}", e);
+        }
+        Ok(opts) => {
+            let str = opts.strings.join(" ");
+            let str = if opts.escape { str.escape() } else { str };
+            let str = if opts.trim { str } else { str + "\n" };
+            print!("{str}");
+        }
     }
 
     ExitStatus::success()

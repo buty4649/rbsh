@@ -2,7 +2,7 @@ pub trait Escape {
     fn escape(&self) -> String;
 }
 
-impl Escape for &str {
+impl Escape for String {
     fn escape(&self) -> String {
         let mut result = String::new();
         let mut iter = self.split('\\');
