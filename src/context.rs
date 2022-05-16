@@ -5,7 +5,6 @@ use std::collections::HashMap;
 pub struct Context {
     local_vars: HashMap<String, String>,
     pub status: ExitStatus,
-    pub bin_name: String,
     pub positional_parameters: Vec<String>,
 }
 
@@ -14,7 +13,6 @@ impl Context {
         Self {
             local_vars: HashMap::new(),
             status: ExitStatus::default(),
-            bin_name: String::new(),
             positional_parameters: vec![],
         }
     }
@@ -48,7 +46,6 @@ impl Context {
     fn get_special_var<T: AsRef<str>>(&self, name: T) -> Option<String> {
         let mut c = name.as_ref().chars();
         match c.next() {
-            Some('0') => Some(self.bin_name.to_string()),
             Some(n) if n.is_ascii_digit() => {
                 let mut index = n.to_digit(10).unwrap();
                 for n in c {
@@ -59,7 +56,7 @@ impl Context {
                     index += n.to_digit(10).unwrap();
                 }
                 self.positional_parameters
-                    .get((index - 1) as usize)
+                    .get(index as usize)
                     .map(|s| s.to_string())
             }
             Some('?') => Some(self.status.code().to_string()),

@@ -36,7 +36,6 @@ struct ReddishOptions {
 
 struct AppParameter {
     source: InputSource,
-    bin_name: String,
     positional_parameters: Vec<String>,
 }
 
@@ -63,15 +62,17 @@ impl App {
     }
 
     fn parse_args(&self, args: Vec<String>) -> Result<AppParameter, io::Error> {
-        let bin_name = args[0].to_string();
+        let my_name = args.first().unwrap().to_owned();
         let opts = ReddishOptions::parse_from(args);
+        let mut positional_parameters = opts.parameters.clone();
 
         let source = match opts.command {
             Some(command) => InputSource::Command(command.to_string()),
             None => {
-                if let Some(file) = opts.parameters.first() {
-                    InputSource::File(file.to_string())
+                if let Some(file) = positional_parameters.first() {
+                    InputSource::File(file.to_owned())
                 } else {
+                    positional_parameters.push(my_name);
                     match self.isatty() {
                         true => InputSource::Tty,
                         false => InputSource::Stdin,
@@ -80,13 +81,8 @@ impl App {
             }
         };
 
-        let positional_parameters = match opts.parameters.get(1..) {
-            Some(p) => p.to_owned(),
-            None => Vec::new(),
-        };
         Ok(AppParameter {
             source,
-            bin_name,
             positional_parameters,
         })
     }
@@ -213,7 +209,6 @@ impl App {
             {IFS, " \t\n"},
         ];
 
-        self.ctx.bin_name = params.bin_name.to_string();
         self.ctx.positional_parameters = params.positional_parameters.clone();
     }
 }
