@@ -11,6 +11,7 @@ use crate::{
     syscall::isatty,
     Config, APP_NAME, VERSION,
 };
+use clap::Parser;
 use std::{io, path::Path};
 
 enum InputSource {
@@ -18,6 +19,19 @@ enum InputSource {
     Stdin,
     File(String),
     Command(String),
+}
+
+#[derive(Parser, Debug)]
+#[clap(
+    name = APP_NAME,
+    version = VERSION,
+    about = "Ruby-powerd shell",
+)]
+struct ReddishOptions {
+    #[clap(short)]
+    command: Option<String>,
+
+    parameters: Vec<String>,
 }
 
 struct AppParameter {
@@ -49,31 +63,13 @@ impl App {
     }
 
     fn parse_args(&self, args: Vec<String>) -> Result<AppParameter, io::Error> {
-        let mut bin_name = args[0].to_string();
-        let args = &clap::Command::new(APP_NAME)
-            .bin_name("reddish")
-            .version(VERSION)
-            .about("Ruby-powerd shell.")
-            .arg(clap::Arg::new("command").short('c').takes_value(true))
-            .arg(clap::Arg::new("option").multiple_values(true))
-            .get_matches_from(args);
+        let bin_name = args[0].to_string();
+        let opts = ReddishOptions::parse_from(args);
 
-        let command = args.value_of("command");
-        let mut option = match args.values_of("option") {
-            Some(v) => v.collect::<Vec<_>>(),
-            None => vec![],
-        }
-        .into_iter();
-
-        let source = match command {
-            Some(command) => {
-                if let Some(name) = option.next() {
-                    bin_name = name.to_string();
-                }
-                InputSource::Command(command.to_string())
-            }
+        let source = match opts.command {
+            Some(command) => InputSource::Command(command.to_string()),
             None => {
-                if let Some(file) = option.next() {
+                if let Some(file) = opts.parameters.first() {
                     InputSource::File(file.to_string())
                 } else {
                     match self.isatty() {
@@ -84,7 +80,10 @@ impl App {
             }
         };
 
-        let positional_parameters = option.map(|opt| opt.to_string()).collect::<Vec<_>>();
+        let positional_parameters = match opts.parameters.get(1..) {
+            Some(p) => p.to_owned(),
+            None => Vec::new(),
+        };
         Ok(AppParameter {
             source,
             bin_name,
