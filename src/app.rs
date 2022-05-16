@@ -67,7 +67,7 @@ impl App {
         let mut positional_parameters = opts.parameters.clone();
 
         let source = match opts.command {
-            Some(command) => InputSource::Command(command.to_string()),
+            Some(command) => InputSource::Command(command),
             None => {
                 if let Some(file) = positional_parameters.first() {
                     InputSource::File(file.to_owned())
