@@ -11,6 +11,7 @@ use crate::{
     syscall::isatty,
     Config, APP_NAME, VERSION,
 };
+use clap::Parser;
 use std::{io, path::Path};
 
 enum InputSource {
@@ -20,9 +21,21 @@ enum InputSource {
     Command(String),
 }
 
+#[derive(Parser, Debug)]
+#[clap(
+    name = APP_NAME,
+    version = VERSION,
+    about = "Ruby-powerd shell",
+)]
+struct ReddishOptions {
+    #[clap(short)]
+    command: Option<String>,
+
+    parameters: Vec<String>,
+}
+
 struct AppParameter {
     source: InputSource,
-    bin_name: String,
     positional_parameters: Vec<String>,
 }
 
@@ -49,33 +62,17 @@ impl App {
     }
 
     fn parse_args(&self, args: Vec<String>) -> Result<AppParameter, io::Error> {
-        let mut bin_name = args[0].to_string();
-        let args = &clap::Command::new(APP_NAME)
-            .bin_name("reddish")
-            .version(VERSION)
-            .about("Ruby-powerd shell.")
-            .arg(clap::Arg::new("command").short('c').takes_value(true))
-            .arg(clap::Arg::new("option").multiple_values(true))
-            .get_matches_from(args);
+        let my_name = args.first().unwrap().to_owned();
+        let opts = ReddishOptions::parse_from(args);
+        let mut positional_parameters = opts.parameters.clone();
 
-        let command = args.value_of("command");
-        let mut option = match args.values_of("option") {
-            Some(v) => v.collect::<Vec<_>>(),
-            None => vec![],
-        }
-        .into_iter();
-
-        let source = match command {
-            Some(command) => {
-                if let Some(name) = option.next() {
-                    bin_name = name.to_string();
-                }
-                InputSource::Command(command.to_string())
-            }
+        let source = match opts.command {
+            Some(command) => InputSource::Command(command),
             None => {
-                if let Some(file) = option.next() {
-                    InputSource::File(file.to_string())
+                if let Some(file) = positional_parameters.first() {
+                    InputSource::File(file.to_owned())
                 } else {
+                    positional_parameters.push(my_name);
                     match self.isatty() {
                         true => InputSource::Tty,
                         false => InputSource::Stdin,
@@ -84,10 +81,8 @@ impl App {
             }
         };
 
-        let positional_parameters = option.map(|opt| opt.to_string()).collect::<Vec<_>>();
         Ok(AppParameter {
             source,
-            bin_name,
             positional_parameters,
         })
     }
@@ -214,7 +209,6 @@ impl App {
             {IFS, " \t\n"},
         ];
 
-        self.ctx.bin_name = params.bin_name.to_string();
         self.ctx.positional_parameters = params.positional_parameters.clone();
     }
 }
