@@ -6,7 +6,7 @@ pub use command::{parse_command, ConnecterKind};
 mod command;
 mod lexer;
 
-use super::status::Result;
+use crate::{debug, status::Result};
 use lexer::Lexer;
 use redirect::RedirectList;
 use token::{Token, TokenKind, TokenReader};
@@ -103,8 +103,13 @@ pub enum UnitKind {
     },
 }
 
-pub fn parse_command_line<S: AsRef<str>>(s: S, linenumber: usize) -> Result<CommandList> {
-    let tokens = Lexer::new(s.as_ref(), linenumber).lex()?;
+pub fn parse_command_line<S: AsRef<str>>(
+    s: S,
+    linenumber: usize,
+    debug: bool,
+) -> Result<CommandList> {
+    let tokens = Lexer::new(s.as_ref(), linenumber, debug).lex()?;
+
     let mut tokens = TokenReader::new(tokens);
     let mut result = vec![];
 
@@ -119,5 +124,7 @@ pub fn parse_command_line<S: AsRef<str>>(s: S, linenumber: usize) -> Result<Comm
     }
 
     let result = CommandList::new(result, ignore_history);
+    debug!(debug, "parser result: {:?}", result);
+
     Ok(result)
 }

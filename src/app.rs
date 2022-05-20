@@ -148,7 +148,7 @@ impl App {
             match rl.readline(&prompt) {
                 Ok(line) => {
                     cmdline.push_str(&line);
-                    match parse_command_line(&cmdline, linenumber) {
+                    match parse_command_line(&cmdline, linenumber, self.ctx.debug()) {
                         Ok(cmds) => {
                             if !cmds.ignore_history() && rl.add_history_entry(&cmdline) {
                                 if let Some(e) =

@@ -2,7 +2,7 @@ use super::{
     token::{Token, TokenKind},
     word::WordKind,
 };
-use crate::{error::ShellError, location::Location, status::Result};
+use crate::{debug, error::ShellError, location::Location, status::Result};
 use std::str::{from_utf8, Utf8Error};
 type LexResult = Result<Token>;
 
@@ -14,6 +14,7 @@ pub struct Lexer {
     column: usize,
     token: Vec<Token>,
     begin_command: bool,
+    debug: bool,
 }
 
 macro_rules! lex_simple_token {
@@ -27,7 +28,7 @@ macro_rules! lex_simple_token {
 }
 
 impl Lexer {
-    pub fn new(input: &str, line: usize) -> Self {
+    pub fn new(input: &str, line: usize, debug: bool) -> Self {
         let input = input.as_bytes().to_vec();
         Lexer {
             input,
@@ -36,14 +37,11 @@ impl Lexer {
             column: 1,
             token: vec![],
             begin_command: true,
+            debug,
         }
     }
 
     pub fn lex(&mut self) -> Result<Vec<Token>> {
-        if self.is_eof() {
-            return Ok(vec![]);
-        }
-
         macro_rules! action {
             ($f: ident) => {{
                 let token = self.$f()?;
@@ -123,7 +121,10 @@ impl Lexer {
             }
         }
 
-        Ok(self.token.to_vec())
+        let result = self.token.to_vec();
+        debug!(self.debug, "lex result: {:?}", result);
+
+        Ok(result)
     }
 
     fn is_in_keyword(&self) -> bool {

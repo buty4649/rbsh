@@ -17,6 +17,10 @@ impl Context {
         }
     }
 
+    pub fn debug(&self) -> bool {
+        matches!(self.get_var("REDDISH_DEBUG"), Some(_))
+    }
+
     pub fn set_var<T: AsRef<str>>(&mut self, name: T, value: T) -> Option<String> {
         let name = name.as_ref();
         let value = value.as_ref();
