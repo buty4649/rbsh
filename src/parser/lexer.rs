@@ -95,12 +95,18 @@ impl Lexer {
                 _ if self.is_keyword("done") => keyword!("done", done_keyword),
                 _ if self.is_keyword("until") => keyword!("until", until_keyword),
                 _ if self.is_keyword("for") => keyword!("for", for_keyword),
+                _ if self.is_keyword("case") => keyword!("case", case_keyword),
+                _ if self.is_keyword("esac") => keyword!("esac", esac_keyword),
+                _ if self.starts_with("(") => keyword!("(", left_paren),
+                _ if self.starts_with(")") => keyword!(")", right_paren),
                 _ if self.is_in_keyword() => keyword!("in", in_keyword),
                 _ => action!(lex_word),
             }
 
             self.begin_command = match self.before_token() {
                 Some(TokenKind::Termination)
+                | Some(TokenKind::SemiSemi)
+                | Some(TokenKind::SemiAnd)
                 | Some(TokenKind::NewLine)
                 | Some(TokenKind::GroupStart)
                 | Some(TokenKind::If)
@@ -115,7 +121,10 @@ impl Lexer {
                 | Some(TokenKind::Unless)
                 | Some(TokenKind::While)
                 | Some(TokenKind::Do)
-                | Some(TokenKind::Until) => true,
+                | Some(TokenKind::Until)
+                | Some(TokenKind::For)
+                | Some(TokenKind::Case)
+                | Some(TokenKind::Esac) => true,
                 Some(TokenKind::Space) if self.begin_command => true,
                 _ => false,
             }
@@ -129,8 +138,12 @@ impl Lexer {
 
     fn is_in_keyword(&self) -> bool {
         // "For" "Space" "Word" "Space" "In"
+        // "Case" "Space" "Word" "Space" "In"
         let len = self.token.len();
-        len >= 4 && self.token[len - 4].value() == TokenKind::For && self.starts_with("in")
+        len >= 4
+            && (self.token[len - 4].value() == TokenKind::For
+                || self.token[len - 4].value() == TokenKind::Case)
+            && self.starts_with("in")
     }
 
     fn lex_space(&mut self) -> LexResult {
@@ -142,7 +155,21 @@ impl Lexer {
     }
 
     fn lex_semicolon(&mut self) -> LexResult {
-        lex_simple_token!(self, Token::termination, |c| c == b';')
+        let loc = self.location();
+        self.next();
+
+        let result = match self.peek() {
+            Some(c) if c == b';' => {
+                self.next();
+                Token::semi_semi(loc)
+            }
+            Some(c) if c == b'&' => {
+                self.next();
+                Token::semi_and(loc)
+            }
+            _ => Token::termination(loc),
+        };
+        Ok(result)
     }
 
     fn lex_ampersand(&mut self) -> LexResult {
@@ -380,7 +407,7 @@ impl Lexer {
     fn lex_word(&mut self) -> LexResult {
         let loc = self.location();
         let terminator =
-            |c| is_space(c) || is_line_ending(c) || is_quote(c) || is_symbol(c) || c == b'$';
+            |c| is_space(c) || is_line_ending(c) || is_quote(c) || is_symbol(c) || is_keyword(c);
 
         let word = self.lex_internal_word(true, terminator)?;
         let token = Token::word(word, WordKind::Normal, loc);
@@ -549,6 +576,10 @@ fn is_symbol(c: u8) -> bool {
 
 fn is_number(c: u8) -> bool {
     matches!(c, b'0'..=b'9')
+}
+
+fn is_keyword(c: u8) -> bool {
+    matches!(c, b'$' | b'(' | b')')
 }
 
 include!("lexer_test.rs");

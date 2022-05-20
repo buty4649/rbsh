@@ -2,7 +2,7 @@ use super::{
     redirect::parse_redirect,
     token::TokenReader,
     word::{parse_wordlist, Word},
-    {TokenKind, Unit, UnitKind},
+    {CasePattern, TokenKind, Unit, UnitKind},
 };
 use crate::{error::ShellError, status::Result};
 
@@ -106,6 +106,7 @@ pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>>
         Some(TokenKind::Unless) => parse_unless_statement(tokens)?,
         Some(TokenKind::While) | Some(TokenKind::Until) => parse_while_or_until_statement(tokens)?,
         Some(TokenKind::For) => parse_for_statement(tokens)?,
+        Some(TokenKind::Case) => parse_case_statement(tokens)?,
         _ => return parse_simple_command(tokens),
     };
 
@@ -115,7 +116,8 @@ pub fn parse_shell_command(tokens: &mut TokenReader) -> Result<Option<UnitKind>>
         | Some(UnitKind::Unless { redirect, .. })
         | Some(UnitKind::While { redirect, .. })
         | Some(UnitKind::Until { redirect, .. })
-        | Some(UnitKind::For { redirect, .. }) => {
+        | Some(UnitKind::For { redirect, .. })
+        | Some(UnitKind::Case { redirect, .. }) => {
             tokens.skip_space(false);
             while let Some(r) = parse_redirect(tokens)? {
                 redirect.push(r)
@@ -392,6 +394,99 @@ fn parse_for_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
         identifier,
         list,
         command,
+        redirect: vec![],
+    };
+    Ok(Some(unit))
+}
+
+fn parse_case_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
+    tokens.next(); // 'case'
+
+    // need space
+    match tokens.skip_space(false) {
+        Some(_) => (),
+        None => return Err(tokens.error_unexpected_token()),
+    };
+
+    // need word
+    let word = match tokens.peek_token() {
+        Some(TokenKind::Word(s, kind)) => {
+            let loc = tokens.location();
+            tokens.next();
+            Word::new(s, kind, loc)
+        }
+        _ => return Err(tokens.error_unexpected_token()),
+    };
+
+    // need space
+    match tokens.skip_space(false) {
+        Some(_) => (),
+        None => return Err(tokens.error_unexpected_token()),
+    };
+
+    match tokens.peek_token() {
+        Some(TokenKind::In) => tokens.next(),
+        _ => return Err(tokens.error_unexpected_token()),
+    };
+
+    let mut patterns = vec![];
+    loop {
+        tokens.skip_space(true);
+        crate::debug!(true, "loop1 token: {:?}", tokens.peek_token());
+        match tokens.peek_token() {
+            Some(TokenKind::Esac) | Some(TokenKind::End) => {
+                tokens.next();
+                break;
+            }
+            Some(TokenKind::Word { .. }) => {
+                // pattern for case statement
+                // [()] Word [| Word] )
+
+                let mut case_pattern = CasePattern::new();
+
+                while let Some(TokenKind::Word(w, kind)) = tokens.peek_token() {
+                    let loc = tokens.location();
+                    tokens.next();
+                    case_pattern.add_pattern(Word::new(w, kind, loc));
+                }
+                //tokens.skip_space(false);
+
+                if !matches!(tokens.peek_token(), Some(TokenKind::RightParen)) {
+                    return Err(tokens.error_unexpected_token());
+                }
+                tokens.next();
+                tokens.skip_space(true);
+
+                loop {
+                    tokens.skip_space(true);
+                    crate::debug!(true, "loop2 token: {:?}", tokens.peek_token());
+                    if matches!(
+                        tokens.peek_token(),
+                        Some(TokenKind::SemiSemi) | Some(TokenKind::SemiAnd)
+                    ) {
+                        let token = tokens.next().unwrap();
+                        if token.value() == TokenKind::SemiAnd {
+                            case_pattern.next = true
+                        }
+                        break;
+                    }
+                    tokens.skip_space(true);
+
+                    match parse_command(tokens)? {
+                        Some(command) => case_pattern.add_command(command),
+                        None => return Err(tokens.error_eof()),
+                    }
+                }
+                patterns.push(case_pattern);
+            }
+            None => return Err(tokens.error_eof()),
+            _ => return Err(tokens.error_unexpected_token()),
+        };
+    }
+
+    let unit = UnitKind::Case {
+        word,
+        patterns,
         redirect: vec![],
     };
     Ok(Some(unit))

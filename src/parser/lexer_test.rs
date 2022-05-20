@@ -24,6 +24,11 @@ mod test {
 
     #[test]
     fn test_lex_keyword() {
+        assert_lex!("{", ok![vec![Token::group_start(loc!(1, 1))], loc!(2, 1)]);
+        assert_lex!("}", ok![vec![Token::group_end(loc!(1, 1))], loc!(2, 1)]);
+        assert_lex!("(", ok![vec![Token::left_paren(loc!(1, 1))], loc!(2, 1)]);
+        assert_lex!(")", ok![vec![Token::right_paren(loc!(1, 1))], loc!(2, 1)]);
+
         assert_lex!("if", ok![vec![Token::if_keyword(loc!(1, 1))], loc!(3, 1)]);
 
         assert_lex!(
@@ -68,6 +73,14 @@ mod test {
         );
 
         assert_lex!("for", ok![vec![Token::for_keyword(loc!(1, 1))], loc!(4, 1)]);
+        assert_lex!(
+            "case",
+            ok![vec![Token::case_keyword(loc!(1, 1))], loc!(5, 1)]
+        );
+        assert_lex!(
+            "esac",
+            ok![vec![Token::esac_keyword(loc!(1, 1))], loc!(5, 1)]
+        );
 
         assert_lex!(
             "echo if",
@@ -92,6 +105,19 @@ mod test {
                     Token::in_keyword(loc!(7, 1))
                 ],
                 loc!(9, 1)
+            ]
+        );
+        assert_lex!(
+            "case $a in",
+            ok![
+                vec![
+                    Token::case_keyword(loc!(1, 1)),
+                    Token::space(loc!(5, 1)),
+                    var!("a", loc!(6, 1)),
+                    Token::space(loc!(8, 1)),
+                    Token::in_keyword(loc!(9, 1))
+                ],
+                loc!(11, 1)
             ]
         );
         assert_lex!("in", ok![vec![normal_word!("in")], loc!(3, 1)]);
@@ -119,8 +145,18 @@ mod test {
     fn test_lex_semicolon() {
         assert_lex!(
             lex_semicolon,
-            ";;;\n\t",
-            ok![Token::termination(loc!(1, 1)), loc!(4, 1)]
+            ";\n\t",
+            ok![Token::termination(loc!(1, 1)), loc!(2, 1)]
+        );
+        assert_lex!(
+            lex_semicolon,
+            ";;\n\t",
+            ok![Token::semi_semi(loc!(1, 1)), loc!(3, 1)]
+        );
+        assert_lex!(
+            lex_semicolon,
+            ";&\n\t",
+            ok![Token::semi_and(loc!(1, 1)), loc!(3, 1)]
         );
     }
 

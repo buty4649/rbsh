@@ -363,6 +363,16 @@ impl Executor {
                         command,
                         redirect,
                     } => self.execute_for_command(ctx, identifier, list, command, redirect, option),
+                    UnitKind::Case {
+                        word,
+                        patterns,
+                        redirect,
+                    } => {
+                        println!("word: {:?}", word);
+                        println!("patterns: {:?}", patterns);
+                        println!("redirect: {:?}", redirect);
+                        ExitStatus::success()
+                    }
                 };
 
                 match background {

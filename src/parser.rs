@@ -101,6 +101,36 @@ pub enum UnitKind {
         command: Vec<Unit>,
         redirect: RedirectList,
     },
+    Case {
+        word: Word,
+        patterns: Vec<CasePattern>,
+        redirect: RedirectList,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CasePattern {
+    patterns: Vec<Word>,
+    command: Vec<Unit>,
+    next: bool,
+}
+
+impl CasePattern {
+    fn new() -> Self {
+        Self {
+            patterns: vec![],
+            command: vec![],
+            next: false,
+        }
+    }
+
+    fn add_pattern(&mut self, pattern: Word) {
+        self.patterns.push(pattern)
+    }
+
+    fn add_command(&mut self, command: Unit) {
+        self.command.push(command)
+    }
 }
 
 pub fn parse_command_line<S: AsRef<str>>(

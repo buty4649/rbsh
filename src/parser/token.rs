@@ -30,8 +30,12 @@ pub enum TokenKind {
     HereDocument, // '<<'
     HereString,   // '<<<'
     Termination,  // ';'
+    SemiSemi,     // ';;'
+    SemiAnd,      // ';&'
     GroupStart,   // '{'
     GroupEnd,     // '}'
+    LeftParen,    // '('
+    RightParen,   // ')'
     Hyphen,
     NewLine,
     If,
@@ -47,6 +51,8 @@ pub enum TokenKind {
     Done,
     Until,
     For,
+    Case,
+    Esac,
     In,
     Eof,
 }
@@ -133,6 +139,14 @@ impl Token {
         Self::new(TokenKind::ReadWrite, loc)
     }
 
+    pub fn left_paren(loc: Location) -> Self {
+        Self::new(TokenKind::LeftParen, loc)
+    }
+
+    pub fn right_paren(loc: Location) -> Self {
+        Self::new(TokenKind::RightParen, loc)
+    }
+
     pub fn hyphen(loc: Location) -> Self {
         Self::new(TokenKind::Hyphen, loc)
     }
@@ -147,6 +161,14 @@ impl Token {
 
     pub fn termination(loc: Location) -> Self {
         Self::new(TokenKind::Termination, loc)
+    }
+
+    pub fn semi_semi(loc: Location) -> Self {
+        Self::new(TokenKind::SemiSemi, loc)
+    }
+
+    pub fn semi_and(loc: Location) -> Self {
+        Self::new(TokenKind::SemiAnd, loc)
     }
 
     pub fn group_start(loc: Location) -> Self {
@@ -211,6 +233,14 @@ impl Token {
 
     pub fn for_keyword(loc: Location) -> Self {
         Self::new(TokenKind::For, loc)
+    }
+
+    pub fn case_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::Case, loc)
+    }
+
+    pub fn esac_keyword(loc: Location) -> Self {
+        Self::new(TokenKind::Esac, loc)
     }
 
     pub fn in_keyword(loc: Location) -> Self {
