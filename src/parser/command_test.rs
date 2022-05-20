@@ -16,7 +16,7 @@ mod test {
 
     macro_rules! lex {
         ($e: expr) => {
-            Lexer::new($e, 1).lex().unwrap()
+            Lexer::new($e, 1, false).lex().unwrap()
         };
     }
 

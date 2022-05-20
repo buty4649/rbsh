@@ -25,3 +25,13 @@ use mockable_syscall::inner as syscall;
 
 static APP_NAME: &str = "reddish";
 static VERSION: &str = crate_version!();
+
+#[macro_export]
+macro_rules! debug {
+    ($f:expr, $($arg:tt)*) => {
+        if $f {
+            eprint!("debug: ");
+            eprintln!($($arg)*);
+        }
+    };
+}

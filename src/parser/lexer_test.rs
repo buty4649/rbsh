@@ -7,7 +7,7 @@ mod test {
 
     macro_rules! assert_lex {
         ($f: ident, $s: expr, $expect: expr) => {{
-            let mut lexer = Lexer::new($s, 1);
+            let mut lexer = Lexer::new($s, 1, false);
             let got = lexer.$f().map(|t| (t, lexer.location()));
             assert_eq!($expect, got)
         }};
