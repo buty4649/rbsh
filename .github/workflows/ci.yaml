@@ -35,7 +35,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: -- --test-threads=1
+        args: --workspace -- --test-threads=1
 
     - name: fmt
       uses: actions-rs/cargo@v1
@@ -47,4 +47,4 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: clippy
-        args: -- -D warnings
+        args: --workspace -- -D warnings
