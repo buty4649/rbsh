@@ -1,6 +1,6 @@
 use super::word::WordKind;
 use crate::{
-    error::ShellError,
+    error::Error,
     location::{Annotate, Location},
 };
 use std::iter::Iterator;
@@ -283,25 +283,25 @@ impl TokenReader {
         }
     }
 
-    pub fn error_unexpected_token(&self) -> ShellError {
+    pub fn error_unexpected_token(&self) -> Error {
         if self.is_eof() {
             self.error_eof()
         } else {
             let token = self.tokens[self.pos].clone();
-            ShellError::unexpected_token(token)
+            Error::unexpected_token(token)
         }
     }
 
-    pub fn error_invalid_fd(&self, fd: &str) -> ShellError {
+    pub fn error_invalid_fd(&self, fd: &str) -> Error {
         if self.is_eof() {
             self.error_eof()
         } else {
-            ShellError::invalid_fd(fd, self.location())
+            Error::invalid_fd(fd, self.location())
         }
     }
 
-    pub fn error_eof(&self) -> ShellError {
-        ShellError::eof(self.location())
+    pub fn error_eof(&self) -> Error {
+        Error::eof(self.location())
     }
 }
 

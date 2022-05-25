@@ -4,7 +4,7 @@ use super::{
     word::{parse_wordlist, Word},
     {TokenKind, Unit, UnitKind},
 };
-use crate::{error::ShellError, status::Result};
+use crate::{error::Error, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConnecterKind {
@@ -54,7 +54,7 @@ pub fn parse_connecter(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
                             let left = Box::new(Unit::new(left, false));
                             let right = match parse_connecter(tokens)? {
                                 Some(c) => Box::new(Unit::new(c, false)),
-                                None => return Err(ShellError::unexpected_token(token)),
+                                None => return Err(Error::unexpected_token(token)),
                             };
 
                             let unit = match token.value() {

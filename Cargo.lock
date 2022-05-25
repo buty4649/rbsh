@@ -566,10 +566,15 @@ dependencies = [
  "mockall_double",
  "nix 0.24.1",
  "once_cell",
+ "reddish_parser",
  "rust-mruby",
  "rustyline",
  "signal-hook",
 ]
+
+[[package]]
+name = "reddish_parser"
+version = "0.1.0"
 
 [[package]]
 name = "redox_syscall"

@@ -7,13 +7,6 @@ pub use redirect::SHELL_FDBASE;
 use crate::{
     builtin::{builtin_command_exec, is_builtin_command},
     context::Context,
-    location::Location,
-    parse_command_line,
-    parser::{
-        redirect::{Redirect, RedirectList},
-        word::{Word, WordKind, WordList},
-        ConnecterKind, Unit, UnitKind,
-    },
     signal::{
         change_sa_restart_flag, close_signal_handler, reset_signal_handler, restore_tty_signals,
         JobSignalHandler,
@@ -29,6 +22,10 @@ use nix::{
     unistd::{ForkResult, Pid},
 };
 use option::{ExecOption, ExecOptionBuilder};
+use reddish_parser::{
+    parse_command_line, ConnecterKind, Location, Redirect, RedirectList, Unit, UnitKind, Word,
+    WordKind, WordList,
+};
 use redirect::ApplyRedirect;
 use rust_mruby::MRuby;
 use std::{

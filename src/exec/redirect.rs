@@ -2,15 +2,11 @@ use crate::{
     context::Context,
     error::ShellError,
     exec::WordParser,
-    location::Location,
-    parser::{
-        redirect::{Redirect, RedirectKind, RedirectList},
-        word::WordList,
-    },
     status::Result,
     syscall::{self, SysCallResult},
 };
 use nix::{fcntl::OFlag, sys::stat::Mode};
+use reddish_parser::{Location, Redirect, RedirectKind, RedirectList, WordList};
 use std::collections::HashSet;
 use std::os::unix::io::RawFd;
 

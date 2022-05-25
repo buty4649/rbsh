@@ -2,7 +2,7 @@ use super::{
     token::TokenReader,
     {Token, TokenKind},
 };
-use crate::{location::Location, status::Result};
+use crate::{location::Location, Result};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum WordKind {

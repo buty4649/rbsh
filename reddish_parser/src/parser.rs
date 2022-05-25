@@ -1,16 +1,29 @@
-pub mod redirect;
-pub mod token;
-pub mod word;
-pub use command::{parse_command, ConnecterKind};
+mod redirect;
+mod token;
+mod word;
+use command::parse_command;
 
 mod command;
 mod lexer;
 
-use crate::{debug, status::Result};
+pub use command::ConnecterKind;
+pub use redirect::{Redirect, RedirectKind, RedirectList};
+pub use token::{Token, TokenKind};
+pub use word::{parse_wordlist, Word, WordKind, WordList};
+
+use crate::Result;
 use lexer::Lexer;
-use redirect::RedirectList;
-use token::{Token, TokenKind, TokenReader};
-use word::{parse_wordlist, Word, WordList};
+use token::TokenReader;
+
+#[macro_export]
+macro_rules! debug {
+    ($f:expr, $($arg:tt)*) => {
+        if $f {
+            eprint!("debug: ");
+            eprintln!($($arg)*);
+        }
+    };
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommandList {

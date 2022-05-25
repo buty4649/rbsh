@@ -2,7 +2,7 @@ use super::{
     token::{Token, TokenKind},
     word::WordKind,
 };
-use crate::{debug, error::ShellError, location::Location, status::Result};
+use crate::{debug, error::Error, location::Location, Result};
 use std::str::{from_utf8, Utf8Error};
 type LexResult = Result<Token>;
 
@@ -344,7 +344,7 @@ impl Lexer {
                     result.push(c);
                 }
                 None if allow_eof => break,
-                None => return Err(ShellError::eof(self.location())),
+                None => return Err(Error::eof(self.location())),
             }
         }
         let result = from_utf8(&*result).map_err(|e| self.error_invalid_utf8_sequence(e))?;
@@ -522,12 +522,12 @@ impl Lexer {
         self.input.is_empty() || self.pos >= self.input.len()
     }
 
-    fn error_invalid_utf8_sequence(&self, err: Utf8Error) -> ShellError {
-        ShellError::invalid_utf8_sequence(err, self.location())
+    fn error_invalid_utf8_sequence(&self, err: Utf8Error) -> Error {
+        Error::invalid_utf8_sequence(err, self.location())
     }
 
-    fn error_eof(&self) -> ShellError {
-        ShellError::eof(self.location())
+    fn error_eof(&self) -> Error {
+        Error::eof(self.location())
     }
 }
 

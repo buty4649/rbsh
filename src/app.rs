@@ -1,8 +1,6 @@
 use crate::{
     context::Context,
-    error::ShellErrorKind,
     exec::Executor,
-    parse_command_line,
     read_line::{
         ReadFromFile, ReadFromStdin, ReadFromString, ReadFromTTY, ReadLine, ReadLineError,
     },
@@ -12,6 +10,7 @@ use crate::{
     Config, APP_NAME, VERSION,
 };
 use clap::Parser;
+use reddish_parser::{parse_command_line, ErrorKind};
 use std::{io, path::Path};
 
 enum InputSource {
@@ -169,7 +168,7 @@ impl App {
                         }
                         Err(e) => {
                             match e.value() {
-                                ShellErrorKind::Eof => cmdline.push('\n'), // next line
+                                ErrorKind::Eof => cmdline.push('\n'), // next line
                                 _ => eprintln!("Error: {:?}", e),
                             }
                         }

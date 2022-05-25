@@ -2,7 +2,7 @@
 mod test {
     use super::*;
     use crate::{
-        cmd, error::ShellError, literal_word, loc, normal_word, number, param, quote_word, var,
+        cmd, error::Error, literal_word, loc, normal_word, number, param, quote_word, var,
     };
 
     macro_rules! assert_lex {
@@ -360,8 +360,8 @@ mod test {
             "`foo$(bar\\`baz\\`)`",
             ok![cmd!("foo$(bar`baz`)"), loc!(19, 1)]
         );
-        assert_lex!(lex_backquote, "`foobar", Err(ShellError::eof(loc!(8, 1))));
-        assert_lex!(lex_backquote, "`", Err(ShellError::eof(loc!(2, 1))));
+        assert_lex!(lex_backquote, "`foobar", Err(Error::eof(loc!(8, 1))));
+        assert_lex!(lex_backquote, "`", Err(Error::eof(loc!(2, 1))));
     }
 
     #[test]
@@ -384,7 +384,7 @@ mod test {
         assert_lex!(
             lex_single_quote,
             "'foobar",
-            Err(ShellError::eof(loc!(8, 1)))
+            Err(Error::eof(loc!(8, 1)))
         );
     }
 
@@ -457,7 +457,7 @@ mod test {
             "${foobar}",
             ok![param!("foobar"), loc![10, 1]]
         );
-        assert_lex!(lex_parameter, "${foobar", Err(ShellError::eof(loc![9, 1])));
+        assert_lex!(lex_parameter, "${foobar", Err(Error::eof(loc![9, 1])));
     }
 
     #[test]
@@ -480,12 +480,12 @@ mod test {
         assert_lex!(
             lex_command_substitute,
             "$(foobar",
-            Err(ShellError::eof(loc!(9, 1)))
+            Err(Error::eof(loc!(9, 1)))
         );
         assert_lex!(
             lex_command_substitute,
             "$(foobar$(bar)",
-            Err(ShellError::eof(loc!(15, 1)))
+            Err(Error::eof(loc!(15, 1)))
         );
     }
 

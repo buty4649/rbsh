@@ -1,14 +1,8 @@
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{
-        location::Location,
-        parser::{
-            redirect::Redirect,
-            word::{Word, WordKind},
-        },
-    };
     use mockall::predicate::eq;
+    use reddish_parser::{Location, Redirect, Word, WordKind};
 
     macro_rules! word {
         ($e: expr) => {

@@ -1,0 +1,56 @@
+name: CI(reddish_parser)
+on: push
+
+jobs:
+  test:
+    env:
+      MRUBY_BUILD_CONFIG: ${{ github.workspace }}/build_config.rb
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+          - stable
+          - nightly
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Install minimal ${{ matrix.rust }} with clippy and rustfmt
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ matrix.rust }}
+        override: true
+        components: rustfmt, clippy
+    - name: rust-cache
+      uses: Swatinem/rust-cache@v1
+      with:
+        target-dir: ./reddish_parser/target
+
+    - name: build
+      uses: actions-rs/cargo@v1
+      working-directory: ./reddish_parser
+      with:
+        command: build
+
+    - name: test
+      uses: actions-rs/cargo@v1
+      working-directory: ./reddish_parser
+      with:
+        command: test
+        args: -- --test-threads=1
+
+    - name: fmt
+      uses: actions-rs/cargo@v1
+      working-directory: ./reddish_parser
+      with:
+        command: fmt
+        args: --all -- --check
+
+    - name: clippy
+      uses: actions-rs/cargo@v1
+      working-directory: ./reddish_parser
+      with:
+        command: clippy
+        args: -- -D warnings
