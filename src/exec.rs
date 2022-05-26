@@ -179,7 +179,7 @@ impl ChildProcess {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 enum SimpleCommandKind {
     Noop,
     SetEnv {
