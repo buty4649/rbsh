@@ -16,14 +16,18 @@ fn main() {
             Err(_) => break,
             Ok(n) if n == 0 => break,
             Ok(_) => {
-                if buffer == "\n" {
+                let buffer = buffer.trim_end();
+                if buffer.is_empty() {
                     match parse_command_line(&input, 0, true) {
                         Ok(_) => (),
                         Err(e) => eprintln!("Error: {:?}", e),
                     }
                     input.clear();
                 } else {
-                    input.push_str(&buffer);
+                    if !input.is_empty() {
+                        input.push('\n');
+                    }
+                    input.push_str(buffer);
                 }
             }
         }

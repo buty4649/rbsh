@@ -2,7 +2,7 @@ use super::{
     token::{Token, TokenKind},
     word::WordKind,
 };
-use crate::{debug, error::Error, location::Location, Result};
+use crate::{error::Error, location::Location, Result};
 use std::str::{from_utf8, Utf8Error};
 type LexResult = Result<Token>;
 
@@ -15,6 +15,13 @@ pub struct Lexer {
     token: Vec<Token>,
     begin_command: bool,
     debug: bool,
+}
+
+macro_rules! debug {
+    ($($args:tt)*) => {
+       eprint!("debug(lexer): ");
+       eprintln!($($args)*);
+    };
 }
 
 macro_rules! lex_simple_token {
@@ -122,7 +129,13 @@ impl Lexer {
         }
 
         let result = self.token.to_vec();
-        debug!(self.debug, "lex result: {:?}", result);
+        if self.debug {
+            debug!("results:");
+            for token in result.iter() {
+                debug!("  {:?}", token);
+            }
+            debug!("");
+        }
 
         Ok(result)
     }

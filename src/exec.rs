@@ -257,11 +257,11 @@ impl Executor {
     ) -> ExitStatus {
         let option = option.unwrap_or_else(|| ExecOptionBuilder::new().build());
 
-        let ret = match cmd.kind() {
+        let ret = match cmd.kind {
             UnitKind::SimpleCommand { command, redirect } => {
                 let ret =
-                    self.execute_simple_command(ctx, command, redirect, cmd.background(), option);
-                if cmd.background() {
+                    self.execute_simple_command(ctx, command, redirect, cmd.background, option);
+                if cmd.background {
                     let job = self.jobs.last().unwrap();
                     if option.verbose() {
                         println!("[{}] {}", job.id, job.pgid);
@@ -270,7 +270,7 @@ impl Executor {
                 ret
             }
             kind => {
-                let background = cmd.background()
+                let background = cmd.background
                     || match kind {
                         UnitKind::Pipe { .. } => false,
                         _ => option.piping(),
@@ -287,7 +287,7 @@ impl Executor {
                             Ok(Some(child)) => {
                                 child.start();
                                 let ret = self.start_job(child.pid(), child.pgid());
-                                if cmd.background() {
+                                if cmd.background {
                                     let job = self.jobs.last().unwrap();
                                     if option.verbose() {
                                         println!("[{}] {}", job.id, job.pgid);

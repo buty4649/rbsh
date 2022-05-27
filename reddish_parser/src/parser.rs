@@ -1,6 +1,8 @@
+mod debug;
 mod redirect;
 mod token;
 mod word;
+
 use command::parse_command;
 
 mod command;
@@ -14,16 +16,6 @@ pub use word::{parse_wordlist, Word, WordKind, WordList};
 use crate::Result;
 use lexer::Lexer;
 use token::TokenReader;
-
-#[macro_export]
-macro_rules! debug {
-    ($f:expr, $($arg:tt)*) => {
-        if $f {
-            eprint!("debug: ");
-            eprintln!($($arg)*);
-        }
-    };
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommandList {
@@ -52,21 +44,13 @@ impl CommandList {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Unit {
-    kind: UnitKind,
-    background: bool,
+    pub kind: UnitKind,
+    pub background: bool,
 }
 
 impl Unit {
     pub fn new(kind: UnitKind, background: bool) -> Self {
         Self { kind, background }
-    }
-
-    pub fn kind(&self) -> UnitKind {
-        self.kind.clone()
-    }
-
-    pub fn background(&self) -> bool {
-        self.background
     }
 }
 
@@ -136,8 +120,11 @@ pub fn parse_command_line<S: AsRef<str>>(
         }
     }
 
+    if debug {
+        debug::print(&result);
+    }
+
     let result = CommandList::new(result, ignore_history);
-    debug!(debug, "parser result: {:?}", result);
 
     Ok(result)
 }
