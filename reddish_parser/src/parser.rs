@@ -19,7 +19,6 @@ use token::TokenReader;
 pub struct CommandList {
     list: Vec<Unit>,
     ignore_history: bool,
-    current: usize,
 }
 
 impl CommandList {
@@ -27,7 +26,6 @@ impl CommandList {
         Self {
             list,
             ignore_history,
-            current: 0,
         }
     }
 
