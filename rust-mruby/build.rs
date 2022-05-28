@@ -2,7 +2,7 @@ use std::env;
 use std::path::PathBuf;
 
 #[cfg(feature = "build")]
-const DEFAULT_MRUBY_VERSION: &str = "3.0.0";
+const DEFAULT_MRUBY_VERSION: &str = "3.1.0";
 
 #[cfg(feature = "build")]
 use cmd_lib::*;
