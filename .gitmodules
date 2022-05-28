@@ -1,3 +1,0 @@
-[submodule "rust-mruby"]
-	path = rust-mruby
-	url = git@github.com:buty4649/rust-mruby.git
