@@ -18,7 +18,7 @@ fn main() {
             Ok(_) => {
                 let buffer = buffer.trim_end();
                 if buffer.is_empty() {
-                    match parse_command_line(&input, 0, true) {
+                    match parse_command_line(&input, 0) {
                         Ok(_) => (),
                         Err(e) => eprintln!("Error: {:?}", e),
                     }

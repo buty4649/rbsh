@@ -1026,7 +1026,7 @@ impl Executor {
 
                 let mut e = Executor::new().unwrap();
                 let option = ExecOptionBuilder::new().quiet(true).pgid(pid).build();
-                let status = match parse_command_line(command, 0, ctx.debug()) {
+                let status = match parse_command_line(command, 0) {
                     Err(_) => ExitStatus::failure(),
                     Ok(cmds) => {
                         for cmd in cmds.to_vec() {

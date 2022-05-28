@@ -92,12 +92,8 @@ pub enum UnitKind {
     },
 }
 
-pub fn parse_command_line<S: AsRef<str>>(
-    s: S,
-    linenumber: usize,
-    debug: bool,
-) -> Result<CommandList> {
-    let tokens = Lexer::new(s.as_ref(), linenumber, debug).lex()?;
+pub fn parse_command_line<S: AsRef<str>>(s: S, linenumber: usize) -> Result<CommandList> {
+    let tokens = Lexer::new(s.as_ref(), linenumber).lex()?;
 
     let mut tokens = TokenReader::new(tokens);
     let mut result = vec![];
@@ -112,10 +108,7 @@ pub fn parse_command_line<S: AsRef<str>>(
         }
     }
 
-    if debug {
-        debug::print(&result);
-    }
-
+    debug::print(&result);
     let result = CommandList::new(result, ignore_history);
 
     Ok(result)

@@ -1,5 +1,8 @@
+mod debug;
+
 use crate::{error::Error, location::Location, Result, Token, TokenKind, WordKind};
 use std::str::{from_utf8, Utf8Error};
+
 type LexResult = Result<Token>;
 
 #[derive(Debug, Clone)]
@@ -10,14 +13,6 @@ pub(crate) struct Lexer {
     column: usize,
     token: Vec<Token>,
     begin_command: bool,
-    debug: bool,
-}
-
-macro_rules! debug {
-    ($($args:tt)*) => {
-       eprint!("debug(lexer): ");
-       eprintln!($($args)*);
-    };
 }
 
 macro_rules! lex_simple_token {
@@ -31,7 +26,7 @@ macro_rules! lex_simple_token {
 }
 
 impl Lexer {
-    pub(crate) fn new(input: &str, line: usize, debug: bool) -> Self {
+    pub(crate) fn new(input: &str, line: usize) -> Self {
         let input = input.as_bytes().to_vec();
         Lexer {
             input,
@@ -40,7 +35,6 @@ impl Lexer {
             column: 1,
             token: vec![],
             begin_command: true,
-            debug,
         }
     }
 
@@ -125,13 +119,7 @@ impl Lexer {
         }
 
         let result = self.token.to_vec();
-        if self.debug {
-            debug!("results:");
-            for token in result.iter() {
-                debug!("  {:?}", token);
-            }
-            debug!("");
-        }
+        debug::print(&result);
 
         Ok(result)
     }

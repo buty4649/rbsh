@@ -7,7 +7,7 @@ mod test {
 
     macro_rules! assert_lex {
         ($f: ident, $s: expr, $expect: expr) => {{
-            let mut lexer = Lexer::new($s, 1, false);
+            let mut lexer = Lexer::new($s, 1);
             let got = lexer.$f().map(|t| (t, lexer.location()));
             assert_eq!($expect, got)
         }};
@@ -381,11 +381,7 @@ mod test {
             r#"'foo"bar"baz'"#,
             ok![literal_word!(r#"foo"bar"baz"#), loc!(14, 1)]
         );
-        assert_lex!(
-            lex_single_quote,
-            "'foobar",
-            Err(Error::eof(loc!(8, 1)))
-        );
+        assert_lex!(lex_single_quote, "'foobar", Err(Error::eof(loc!(8, 1))));
     }
 
     #[test]
