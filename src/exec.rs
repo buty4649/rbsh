@@ -44,11 +44,12 @@ pub trait WordParser {
 
 impl WordParser for Word {
     fn to_string(self, ctx: &Context) -> Result<String, std::io::Error> {
-        let (s, k, _) = self.take();
-        match k {
-            WordKind::Normal | WordKind::Quote | WordKind::Literal => Ok(s),
-            WordKind::Variable | WordKind::Parameter => Ok(ctx.get_var(s).unwrap_or_default()),
-            WordKind::Command => Executor::capture_command_output(ctx, s),
+        match self.kind {
+            WordKind::Normal | WordKind::Quote | WordKind::Literal => Ok(self.string),
+            WordKind::Variable | WordKind::Parameter => {
+                Ok(ctx.get_var(self.string).unwrap_or_default())
+            }
+            WordKind::Command => Executor::capture_command_output(ctx, self.string),
         }
     }
 }
@@ -86,9 +87,10 @@ pub trait IsVarName {
 
 impl IsVarName for WordList {
     fn is_var_name(&self) -> bool {
-        match self.first().take() {
-            (string, WordKind::Normal, _) => {
-                let mut c = string.chars();
+        let word = self.first();
+        match word.kind {
+            WordKind::Normal => {
+                let mut c = word.string.chars();
 
                 // first char is must alphanumeric
                 match c.next() {
@@ -784,17 +786,14 @@ impl Executor {
         redirect: RedirectList,
         option: ExecOption,
     ) -> ExitStatus {
-        let identifier = match identifier.take() {
-            (string, kind, _) if kind == WordKind::Normal => string,
-            (string, kind, _) => {
-                let _ = match kind {
-                    WordKind::Normal => unreachable![],
-                    WordKind::Quote => format!("\"{}\"", string),
-                    WordKind::Literal => format!("'{}'", string),
-                    WordKind::Command => format!("`{}`", string),
-                    WordKind::Variable => format!("${}", string),
-                    WordKind::Parameter => format!("${{{}}}", string),
-                };
+        let identifier = match identifier.kind {
+            WordKind::Normal => identifier.string,
+            //WordKind::Quote => format!("\"{}\"", identifier.string),
+            //WordKind::Literal => format!("'{}'", identifier.string),
+            //WordKind::Command => format!("`{}`", identifier.string),
+            //WordKind::Variable => format!("${}", identifier.string),
+            //WordKind::Parameter => format!("${{{}}}", identifier.string),
+            _ => {
                 eprintln!("error: invalid identifier");
                 return ExitStatus::failure();
             }

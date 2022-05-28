@@ -1,7 +1,7 @@
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Location {
-    column: usize,
-    line: usize,
+    pub column: usize,
+    pub line: usize,
 }
 
 impl Location {
@@ -28,24 +28,12 @@ macro_rules! loc {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Annotate<T: Clone> {
-    value: T,
-    loc: Location,
+    pub value: T,
+    pub location: Location,
 }
 
 impl<T: Clone> Annotate<T> {
-    pub fn new(value: T, loc: Location) -> Self {
-        Self { value, loc }
-    }
-
-    pub fn take(&self) -> (T, Location) {
-        (self.value.clone(), self.loc)
-    }
-
-    pub fn value(&self) -> T {
-        self.value.clone()
-    }
-
-    pub fn location(&self) -> Location {
-        self.loc
+    pub fn new(value: T, location: Location) -> Self {
+        Self { value, location }
     }
 }

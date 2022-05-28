@@ -250,7 +250,7 @@ impl TokenReader {
     }
 
     pub fn peek_token(&mut self) -> Option<TokenKind> {
-        self.peek().map(|t| t.value())
+        self.peek().map(|t| t.value)
     }
 
     pub fn skip_space(&mut self, newline: bool) -> Option<Token> {
@@ -276,10 +276,10 @@ impl TokenReader {
         if self.tokens.is_empty() {
             Location::new(0, 0)
         } else if self.is_eof() {
-            let loc = self.tokens.last().unwrap().location();
+            let loc = self.tokens.last().unwrap().location;
             Location::new_from_offset(&loc, 1, 0)
         } else {
-            self.tokens[self.pos].location()
+            self.tokens[self.pos].location
         }
     }
 

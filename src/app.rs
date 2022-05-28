@@ -149,7 +149,7 @@ impl App {
                     cmdline.push_str(&line);
                     match parse_command_line(&cmdline, linenumber, self.ctx.debug()) {
                         Ok(cmds) => {
-                            if !cmds.ignore_history() && rl.add_history_entry(&cmdline) {
+                            if !cmds.ignore_history && rl.add_history_entry(&cmdline) {
                                 if let Some(e) =
                                     rl.save_history(self.config.history_file_path()).err()
                                 {
@@ -167,7 +167,7 @@ impl App {
                             cmdline.clear()
                         }
                         Err(e) => {
-                            match e.value() {
+                            match e.value {
                                 ErrorKind::Eof => cmdline.push('\n'), // next line
                                 _ => eprintln!("Error: {:?}", e),
                             }

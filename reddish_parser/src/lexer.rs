@@ -139,7 +139,7 @@ impl Lexer {
     fn is_in_keyword(&self) -> bool {
         // "For" "Space" "Word" "Space" "In"
         let len = self.token.len();
-        len >= 4 && self.token[len - 4].value() == TokenKind::For && self.starts_with("in")
+        len >= 4 && self.token[len - 4].value == TokenKind::For && self.starts_with("in")
     }
 
     fn lex_space(&mut self) -> LexResult {
@@ -516,7 +516,7 @@ impl Lexer {
     }
 
     fn before_token(&self) -> Option<TokenKind> {
-        self.token.last().map(|t| t.value())
+        self.token.last().map(|t| t.value.to_owned())
     }
 
     fn push(&mut self, t: Token) {

@@ -17,8 +17,8 @@ use token::TokenReader;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommandList {
-    list: Vec<Unit>,
-    ignore_history: bool,
+    pub list: Vec<Unit>,
+    pub ignore_history: bool,
 }
 
 impl CommandList {
@@ -31,10 +31,6 @@ impl CommandList {
 
     pub fn to_vec(&self) -> Vec<Unit> {
         self.list.clone()
-    }
-
-    pub fn ignore_history(&self) -> bool {
-        self.ignore_history
     }
 }
 

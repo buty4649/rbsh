@@ -20,7 +20,7 @@ impl Error {
     }
 
     pub fn unexpected_token(t: Token) -> Self {
-        Self::new(ErrorKind::UnexpectedToken(t.value()), t.location())
+        Self::new(ErrorKind::UnexpectedToken(t.value), t.location)
     }
 
     pub fn invalid_utf8_sequence(err: Utf8Error, loc: Location) -> Self {
@@ -32,6 +32,6 @@ impl Error {
     }
 
     pub fn unimplemented(t: Token) -> Self {
-        Self::new(ErrorKind::Unimplemented(t.value()), t.location())
+        Self::new(ErrorKind::Unimplemented(t.value), t.location)
     }
 }

@@ -57,7 +57,7 @@ pub fn parse_connecter(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
                                 None => return Err(Error::unexpected_token(token)),
                             };
 
-                            let unit = match token.value() {
+                            let unit = match token.value {
                                 TokenKind::And => UnitKind::Connecter {
                                     left,
                                     right,
@@ -259,7 +259,7 @@ fn parse_else_clause(tokens: &mut TokenReader) -> Result<Option<Vec<Unit>>> {
 }
 
 fn parse_while_or_until_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
-    let token = tokens.next().unwrap().value(); // 'while' or 'until'
+    let token = tokens.next().unwrap().value; // 'while' or 'until'
 
     // need space
     match tokens.skip_space(true) {
