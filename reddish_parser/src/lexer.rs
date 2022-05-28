@@ -1,20 +1,18 @@
-use super::{
-    token::{Token, TokenKind},
-    word::WordKind,
-};
-use crate::{debug, error::ShellError, location::Location, status::Result};
+mod debug;
+
+use crate::{error::Error, location::Location, Result, Token, TokenKind, WordKind};
 use std::str::{from_utf8, Utf8Error};
+
 type LexResult = Result<Token>;
 
 #[derive(Debug, Clone)]
-pub struct Lexer {
+pub(crate) struct Lexer {
     input: Vec<u8>,
     pos: usize,
     line: usize,
     column: usize,
     token: Vec<Token>,
     begin_command: bool,
-    debug: bool,
 }
 
 macro_rules! lex_simple_token {
@@ -28,7 +26,7 @@ macro_rules! lex_simple_token {
 }
 
 impl Lexer {
-    pub fn new(input: &str, line: usize, debug: bool) -> Self {
+    pub(crate) fn new(input: &str, line: usize) -> Self {
         let input = input.as_bytes().to_vec();
         Lexer {
             input,
@@ -37,11 +35,10 @@ impl Lexer {
             column: 1,
             token: vec![],
             begin_command: true,
-            debug,
         }
     }
 
-    pub fn lex(&mut self) -> Result<Vec<Token>> {
+    pub(crate) fn lex(&mut self) -> Result<Vec<Token>> {
         macro_rules! action {
             ($f: ident) => {{
                 let token = self.$f()?;
@@ -122,7 +119,7 @@ impl Lexer {
         }
 
         let result = self.token.to_vec();
-        debug!(self.debug, "lex result: {:?}", result);
+        debug::print(&result);
 
         Ok(result)
     }
@@ -130,7 +127,7 @@ impl Lexer {
     fn is_in_keyword(&self) -> bool {
         // "For" "Space" "Word" "Space" "In"
         let len = self.token.len();
-        len >= 4 && self.token[len - 4].value() == TokenKind::For && self.starts_with("in")
+        len >= 4 && self.token[len - 4].value == TokenKind::For && self.starts_with("in")
     }
 
     fn lex_space(&mut self) -> LexResult {
@@ -344,7 +341,7 @@ impl Lexer {
                     result.push(c);
                 }
                 None if allow_eof => break,
-                None => return Err(ShellError::eof(self.location())),
+                None => return Err(Error::eof(self.location())),
             }
         }
         let result = from_utf8(&*result).map_err(|e| self.error_invalid_utf8_sequence(e))?;
@@ -507,7 +504,7 @@ impl Lexer {
     }
 
     fn before_token(&self) -> Option<TokenKind> {
-        self.token.last().map(|t| t.value())
+        self.token.last().map(|t| t.value.to_owned())
     }
 
     fn push(&mut self, t: Token) {
@@ -522,12 +519,12 @@ impl Lexer {
         self.input.is_empty() || self.pos >= self.input.len()
     }
 
-    fn error_invalid_utf8_sequence(&self, err: Utf8Error) -> ShellError {
-        ShellError::invalid_utf8_sequence(err, self.location())
+    fn error_invalid_utf8_sequence(&self, err: Utf8Error) -> Error {
+        Error::invalid_utf8_sequence(err, self.location())
     }
 
-    fn error_eof(&self) -> ShellError {
-        ShellError::eof(self.location())
+    fn error_eof(&self) -> Error {
+        Error::eof(self.location())
     }
 }
 

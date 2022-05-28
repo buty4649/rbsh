@@ -1,8 +1,6 @@
 use crate::{
     context::Context,
-    error::ShellErrorKind,
     exec::Executor,
-    parse_command_line,
     read_line::{
         ReadFromFile, ReadFromStdin, ReadFromString, ReadFromTTY, ReadLine, ReadLineError,
     },
@@ -12,6 +10,7 @@ use crate::{
     Config, APP_NAME, VERSION,
 };
 use clap::Parser;
+use reddish_parser::{parse_command_line, ErrorKind};
 use std::{io, path::Path};
 
 enum InputSource {
@@ -148,9 +147,9 @@ impl App {
             match rl.readline(&prompt) {
                 Ok(line) => {
                     cmdline.push_str(&line);
-                    match parse_command_line(&cmdline, linenumber, self.ctx.debug()) {
+                    match parse_command_line(&cmdline, linenumber) {
                         Ok(cmds) => {
-                            if !cmds.ignore_history() && rl.add_history_entry(&cmdline) {
+                            if !cmds.ignore_history && rl.add_history_entry(&cmdline) {
                                 if let Some(e) =
                                     rl.save_history(self.config.history_file_path()).err()
                                 {
@@ -168,8 +167,8 @@ impl App {
                             cmdline.clear()
                         }
                         Err(e) => {
-                            match e.value() {
-                                ShellErrorKind::Eof => cmdline.push('\n'), // next line
+                            match e.value {
+                                ErrorKind::Eof => cmdline.push('\n'), // next line
                                 _ => eprintln!("Error: {:?}", e),
                             }
                         }

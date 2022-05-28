@@ -7,13 +7,6 @@ pub use redirect::SHELL_FDBASE;
 use crate::{
     builtin::{builtin_command_exec, is_builtin_command},
     context::Context,
-    location::Location,
-    parse_command_line,
-    parser::{
-        redirect::{Redirect, RedirectList},
-        word::{Word, WordKind, WordList},
-        ConnecterKind, Unit, UnitKind,
-    },
     signal::{
         change_sa_restart_flag, close_signal_handler, reset_signal_handler, restore_tty_signals,
         JobSignalHandler,
@@ -29,6 +22,10 @@ use nix::{
     unistd::{ForkResult, Pid},
 };
 use option::{ExecOption, ExecOptionBuilder};
+use reddish_parser::{
+    parse_command_line, ConnecterKind, Location, Redirect, RedirectList, Unit, UnitKind, Word,
+    WordKind, WordList,
+};
 use redirect::ApplyRedirect;
 use rust_mruby::MRuby;
 use std::{
@@ -47,11 +44,12 @@ pub trait WordParser {
 
 impl WordParser for Word {
     fn to_string(self, ctx: &Context) -> Result<String, std::io::Error> {
-        let (s, k, _) = self.take();
-        match k {
-            WordKind::Normal | WordKind::Quote | WordKind::Literal => Ok(s),
-            WordKind::Variable | WordKind::Parameter => Ok(ctx.get_var(s).unwrap_or_default()),
-            WordKind::Command => Executor::capture_command_output(ctx, s),
+        match self.kind {
+            WordKind::Normal | WordKind::Quote | WordKind::Literal => Ok(self.string),
+            WordKind::Variable | WordKind::Parameter => {
+                Ok(ctx.get_var(self.string).unwrap_or_default())
+            }
+            WordKind::Command => Executor::capture_command_output(ctx, self.string),
         }
     }
 }
@@ -89,9 +87,10 @@ pub trait IsVarName {
 
 impl IsVarName for WordList {
     fn is_var_name(&self) -> bool {
-        match self.first().take() {
-            (string, WordKind::Normal, _) => {
-                let mut c = string.chars();
+        let word = self.first();
+        match word.kind {
+            WordKind::Normal => {
+                let mut c = word.string.chars();
 
                 // first char is must alphanumeric
                 match c.next() {
@@ -182,7 +181,7 @@ impl ChildProcess {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 enum SimpleCommandKind {
     Noop,
     SetEnv {
@@ -260,11 +259,11 @@ impl Executor {
     ) -> ExitStatus {
         let option = option.unwrap_or_else(|| ExecOptionBuilder::new().build());
 
-        let ret = match cmd.kind() {
+        let ret = match cmd.kind {
             UnitKind::SimpleCommand { command, redirect } => {
                 let ret =
-                    self.execute_simple_command(ctx, command, redirect, cmd.background(), option);
-                if cmd.background() {
+                    self.execute_simple_command(ctx, command, redirect, cmd.background, option);
+                if cmd.background {
                     let job = self.jobs.last().unwrap();
                     if option.verbose() {
                         println!("[{}] {}", job.id, job.pgid);
@@ -273,7 +272,7 @@ impl Executor {
                 ret
             }
             kind => {
-                let background = cmd.background()
+                let background = cmd.background
                     || match kind {
                         UnitKind::Pipe { .. } => false,
                         _ => option.piping(),
@@ -290,7 +289,7 @@ impl Executor {
                             Ok(Some(child)) => {
                                 child.start();
                                 let ret = self.start_job(child.pid(), child.pgid());
-                                if cmd.background() {
+                                if cmd.background {
                                     let job = self.jobs.last().unwrap();
                                     if option.verbose() {
                                         println!("[{}] {}", job.id, job.pgid);
@@ -787,17 +786,14 @@ impl Executor {
         redirect: RedirectList,
         option: ExecOption,
     ) -> ExitStatus {
-        let identifier = match identifier.take() {
-            (string, kind, _) if kind == WordKind::Normal => string,
-            (string, kind, _) => {
-                let _ = match kind {
-                    WordKind::Normal => unreachable![],
-                    WordKind::Quote => format!("\"{}\"", string),
-                    WordKind::Literal => format!("'{}'", string),
-                    WordKind::Command => format!("`{}`", string),
-                    WordKind::Variable => format!("${}", string),
-                    WordKind::Parameter => format!("${{{}}}", string),
-                };
+        let identifier = match identifier.kind {
+            WordKind::Normal => identifier.string,
+            //WordKind::Quote => format!("\"{}\"", identifier.string),
+            //WordKind::Literal => format!("'{}'", identifier.string),
+            //WordKind::Command => format!("`{}`", identifier.string),
+            //WordKind::Variable => format!("${}", identifier.string),
+            //WordKind::Parameter => format!("${{{}}}", identifier.string),
+            _ => {
                 eprintln!("error: invalid identifier");
                 return ExitStatus::failure();
             }
@@ -1030,7 +1026,7 @@ impl Executor {
 
                 let mut e = Executor::new().unwrap();
                 let option = ExecOptionBuilder::new().quiet(true).pgid(pid).build();
-                let status = match parse_command_line(command, 0, ctx.debug()) {
+                let status = match parse_command_line(command, 0) {
                     Err(_) => ExitStatus::failure(),
                     Ok(cmds) => {
                         for cmd in cmds.to_vec() {

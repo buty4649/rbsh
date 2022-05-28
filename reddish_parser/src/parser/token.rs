@@ -1,6 +1,6 @@
 use super::word::WordKind;
 use crate::{
-    error::ShellError,
+    error::Error,
     location::{Annotate, Location},
 };
 use std::iter::Iterator;
@@ -250,7 +250,7 @@ impl TokenReader {
     }
 
     pub fn peek_token(&mut self) -> Option<TokenKind> {
-        self.peek().map(|t| t.value())
+        self.peek().map(|t| t.value)
     }
 
     pub fn skip_space(&mut self, newline: bool) -> Option<Token> {
@@ -276,32 +276,32 @@ impl TokenReader {
         if self.tokens.is_empty() {
             Location::new(0, 0)
         } else if self.is_eof() {
-            let loc = self.tokens.last().unwrap().location();
+            let loc = self.tokens.last().unwrap().location;
             Location::new_from_offset(&loc, 1, 0)
         } else {
-            self.tokens[self.pos].location()
+            self.tokens[self.pos].location
         }
     }
 
-    pub fn error_unexpected_token(&self) -> ShellError {
+    pub fn error_unexpected_token(&self) -> Error {
         if self.is_eof() {
             self.error_eof()
         } else {
             let token = self.tokens[self.pos].clone();
-            ShellError::unexpected_token(token)
+            Error::unexpected_token(token)
         }
     }
 
-    pub fn error_invalid_fd(&self, fd: &str) -> ShellError {
+    pub fn error_invalid_fd(&self, fd: &str) -> Error {
         if self.is_eof() {
             self.error_eof()
         } else {
-            ShellError::invalid_fd(fd, self.location())
+            Error::invalid_fd(fd, self.location())
         }
     }
 
-    pub fn error_eof(&self) -> ShellError {
-        ShellError::eof(self.location())
+    pub fn error_eof(&self) -> Error {
+        Error::eof(self.location())
     }
 }
 

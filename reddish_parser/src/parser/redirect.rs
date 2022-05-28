@@ -3,11 +3,7 @@ use super::{
     token::{TokenKind, TokenReader},
     WordList,
 };
-use crate::{
-    error::ShellError,
-    location::{Annotate, Location},
-    status::Result,
-};
+use crate::{Annotate, Error, Location, Result};
 use std::os::unix::io::RawFd;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -87,11 +83,11 @@ pub fn parse_redirect(tokens: &mut TokenReader) -> Result<Option<Redirect>> {
         Some(TokenKind::ReadWrite) => parse_redirect_read_write(tokens, fd.unwrap_or(0)),
         Some(TokenKind::HereDocument) => {
             // <<: Here Document
-            Err(ShellError::unimplemented(tokens.next().unwrap()))
+            Err(Error::unimplemented(tokens.next().unwrap()))
         }
         Some(TokenKind::HereString) => {
             // <<: Here String
-            Err(ShellError::unimplemented(tokens.next().unwrap()))
+            Err(Error::unimplemented(tokens.next().unwrap()))
         }
         _ => return Ok(None),
     }?;

@@ -4,7 +4,7 @@ use super::{
     word::{parse_wordlist, Word},
     {TokenKind, Unit, UnitKind},
 };
-use crate::{error::ShellError, status::Result};
+use crate::{error::Error, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConnecterKind {
@@ -54,10 +54,10 @@ pub fn parse_connecter(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
                             let left = Box::new(Unit::new(left, false));
                             let right = match parse_connecter(tokens)? {
                                 Some(c) => Box::new(Unit::new(c, false)),
-                                None => return Err(ShellError::unexpected_token(token)),
+                                None => return Err(Error::unexpected_token(token)),
                             };
 
-                            let unit = match token.value() {
+                            let unit = match token.value {
                                 TokenKind::And => UnitKind::Connecter {
                                     left,
                                     right,
@@ -259,7 +259,7 @@ fn parse_else_clause(tokens: &mut TokenReader) -> Result<Option<Vec<Unit>>> {
 }
 
 fn parse_while_or_until_statement(tokens: &mut TokenReader) -> Result<Option<UnitKind>> {
-    let token = tokens.next().unwrap().value(); // 'while' or 'until'
+    let token = tokens.next().unwrap().value; // 'while' or 'until'
 
     // need space
     match tokens.skip_space(true) {

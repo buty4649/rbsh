@@ -2,7 +2,7 @@ use super::{
     token::TokenReader,
     {Token, TokenKind},
 };
-use crate::{location::Location, status::Result};
+use crate::{location::Location, Result};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum WordKind {
@@ -16,18 +16,14 @@ pub enum WordKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Word {
-    string: String,
-    kind: WordKind,
-    loc: Location,
+    pub string: String,
+    pub kind: WordKind,
+    pub loc: Location,
 }
 
 impl Word {
     pub fn new(string: String, kind: WordKind, loc: Location) -> Self {
         Word { string, kind, loc }
-    }
-
-    pub fn take(self) -> (String, WordKind, Location) {
-        (self.string, self.kind, self.loc)
     }
 }
 
@@ -51,8 +47,8 @@ impl WordList {
     }
 
     pub fn push_word_token(&mut self, token: Token) {
-        match token.take() {
-            (TokenKind::Word(s, k), loc) => self.push_word(s, k, loc),
+        match token.value {
+            TokenKind::Word(s, k) => self.push_word(s, k, token.location),
             _ => unimplemented![],
         }
     }

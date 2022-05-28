@@ -2,15 +2,11 @@ use crate::{
     context::Context,
     error::ShellError,
     exec::WordParser,
-    location::Location,
-    parser::{
-        redirect::{Redirect, RedirectKind, RedirectList},
-        word::WordList,
-    },
     status::Result,
     syscall::{self, SysCallResult},
 };
 use nix::{fcntl::OFlag, sys::stat::Mode};
+use reddish_parser::{Location, Redirect, RedirectKind, RedirectList, WordList};
 use std::collections::HashSet;
 use std::os::unix::io::RawFd;
 
@@ -43,7 +39,8 @@ impl RedirectApplier {
 
     fn exec(&mut self, ctx: &Context, list: RedirectList) -> Result<RedirectList> {
         for redirect in list {
-            let (kind, loc) = redirect.take();
+            let kind = redirect.value;
+            let loc = redirect.location;
 
             let flag_read = OFlag::O_RDONLY;
             let flag_write = OFlag::O_WRONLY | OFlag::O_CREAT | OFlag::O_TRUNC;

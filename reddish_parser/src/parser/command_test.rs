@@ -2,11 +2,11 @@
 mod test {
     use super::*;
     use crate::{
+        lexer::Lexer,
         literal_word, loc,
         location::Location,
         normal_word,
         parser::{
-            lexer::Lexer,
             redirect::Redirect,
             token::Token,
             word::{WordKind, WordList},
@@ -16,7 +16,7 @@ mod test {
 
     macro_rules! lex {
         ($e: expr) => {
-            Lexer::new($e, 1, false).lex().unwrap()
+            Lexer::new($e, 1).lex().unwrap()
         };
     }
 
@@ -278,31 +278,31 @@ mod test {
         assert_parse!(
             parse_command,
             "& foo",
-            Err(ShellError::unexpected_token(Token::background(loc!(1, 1))))
+            Err(Error::unexpected_token(Token::background(loc!(1, 1))))
         );
 
         assert_parse!(
             parse_command,
             "&&",
-            Err(ShellError::unexpected_token(Token::and(loc!(1, 1))))
+            Err(Error::unexpected_token(Token::and(loc!(1, 1))))
         );
 
         assert_parse!(
             parse_command,
             "foo &&",
-            Err(ShellError::unexpected_token(Token::and(loc!(5, 1))))
+            Err(Error::unexpected_token(Token::and(loc!(5, 1))))
         );
 
         assert_parse!(
             parse_command,
             "foo &&\nbar",
-            Err(ShellError::unexpected_token(Token::newline(loc!(7, 1))))
+            Err(Error::unexpected_token(Token::newline(loc!(7, 1))))
         );
 
         assert_parse!(
             parse_command,
             "foo && &",
-            Err(ShellError::unexpected_token(Token::background(loc!(8, 1))))
+            Err(Error::unexpected_token(Token::background(loc!(8, 1))))
         );
 
         assert_parse!(
@@ -795,7 +795,7 @@ mod test {
         assert_parse!(
             parse_unless_statement,
             "unless foo; then bar; fi",
-            Err(ShellError::unexpected_token(Token::fi_keyword(loc!(23, 1))),)
+            Err(Error::unexpected_token(Token::fi_keyword(loc!(23, 1))),)
         );
     }
 

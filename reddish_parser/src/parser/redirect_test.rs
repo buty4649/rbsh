@@ -1,15 +1,16 @@
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::error::ShellError;
     use crate::{
+        error::Error,
+        lexer::Lexer,
         loc, normal_word,
-        parser::{lexer::Lexer, token::Token, word::WordKind},
+        parser::{token::Token, word::WordKind},
     };
 
     macro_rules! lex {
         ($e: expr) => {
-            Lexer::new($e, 1, false).lex().unwrap()
+            Lexer::new($e, 1).lex().unwrap()
         };
     }
 
@@ -59,7 +60,7 @@ mod test {
 
         assert_redirect!(
             "12345678901234567890< foobar",
-            Err(ShellError::invalid_fd("12345678901234567890", loc!(1, 1)))
+            Err(Error::invalid_fd("12345678901234567890", loc!(1, 1)))
         );
     }
 
@@ -108,12 +109,12 @@ mod test {
 
         assert_redirect!(
             "12345678901234567890<&-",
-            Err(ShellError::invalid_fd("12345678901234567890", loc!(1, 1)))
+            Err(Error::invalid_fd("12345678901234567890", loc!(1, 1)))
         );
 
         assert_redirect!(
             "12345678901234567890>&-",
-            Err(ShellError::invalid_fd("12345678901234567890", loc!(1, 1)))
+            Err(Error::invalid_fd("12345678901234567890", loc!(1, 1)))
         );
     }
 
@@ -139,26 +140,26 @@ mod test {
 
         assert_redirect!(
             ">&&",
-            Err(ShellError::unexpected_token(Token::background(loc!(3, 1))))
+            Err(Error::unexpected_token(Token::background(loc!(3, 1))))
         );
     }
 
     #[test]
     fn test_readcopy() {
         assert_redirect!("<&123", ok![copy, 123, 0, false, loc!(1, 1)]);
-        assert_redirect!("<&", Err(ShellError::eof(loc!(2, 1))));
+        assert_redirect!("<&", Err(Error::eof(loc!(2, 1))));
         assert_redirect!("<&123-", ok!(copy, 123, 0, true, loc!(1, 1)));
         assert_redirect!("123<&456", ok![copy, 456, 123, false, loc!(1, 1)]);
         assert_redirect!("123<&456-", ok![copy, 456, 123, true, loc!(1, 1)]);
 
         assert_redirect!(
             "<& foobar",
-            Err(ShellError::unexpected_token(Token::space(loc!(3, 1))))
+            Err(Error::unexpected_token(Token::space(loc!(3, 1))))
         );
 
         assert_redirect!(
             "<&12345678901234567890",
-            Err(ShellError::invalid_fd("12345678901234567890", loc!(3, 1)))
+            Err(Error::invalid_fd("12345678901234567890", loc!(3, 1)))
         );
     }
 
@@ -171,15 +172,12 @@ mod test {
 
         assert_redirect!(
             "123>&foobar",
-            Err(ShellError::unexpected_token(normal_word!(
-                "foobar",
-                loc!(6, 1)
-            )))
+            Err(Error::unexpected_token(normal_word!("foobar", loc!(6, 1))))
         );
 
         assert_redirect!(
             ">&12345678901234567890",
-            Err(ShellError::invalid_fd("12345678901234567890", loc!(3, 1)))
+            Err(Error::invalid_fd("12345678901234567890", loc!(3, 1)))
         );
     }
 
@@ -207,7 +205,7 @@ mod test {
 
         assert_redirect!(
             "12345678901234567890>> foobar",
-            Err(ShellError::invalid_fd("12345678901234567890", loc!(1, 1)))
+            Err(Error::invalid_fd("12345678901234567890", loc!(1, 1)))
         );
     }
 
@@ -224,7 +222,7 @@ mod test {
 
         assert_redirect!(
             "&>>&",
-            Err(ShellError::unexpected_token(Token::background(loc!(4, 1))))
+            Err(Error::unexpected_token(Token::background(loc!(4, 1))))
         );
     }
 
@@ -252,12 +250,12 @@ mod test {
 
         assert_redirect!(
             "<>&",
-            Err(ShellError::unexpected_token(Token::background(loc!(3, 1))))
+            Err(Error::unexpected_token(Token::background(loc!(3, 1))))
         );
 
         assert_redirect!(
             "12345678901234567890<> foobar",
-            Err(ShellError::invalid_fd("12345678901234567890", loc!(1, 1)))
+            Err(Error::invalid_fd("12345678901234567890", loc!(1, 1)))
         );
     }
 }

@@ -1,2 +1,3 @@
 /target/
+/reddish_parser/target/
 **/*.rs.bk

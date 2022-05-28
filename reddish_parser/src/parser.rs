@@ -1,22 +1,24 @@
-pub mod redirect;
-pub mod token;
-pub mod word;
-pub use command::{parse_command, ConnecterKind};
+mod debug;
+mod redirect;
+mod token;
+mod word;
+
+use command::parse_command;
 
 mod command;
-mod lexer;
 
-use crate::{debug, status::Result};
-use lexer::Lexer;
-use redirect::RedirectList;
-use token::{Token, TokenKind, TokenReader};
-use word::{parse_wordlist, Word, WordList};
+pub use command::ConnecterKind;
+pub use redirect::{Redirect, RedirectKind, RedirectList};
+pub use token::{Token, TokenKind};
+pub use word::{parse_wordlist, Word, WordKind, WordList};
+
+use crate::{lexer::Lexer, Result};
+use token::TokenReader;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommandList {
-    list: Vec<Unit>,
-    ignore_history: bool,
-    current: usize,
+    pub list: Vec<Unit>,
+    pub ignore_history: bool,
 }
 
 impl CommandList {
@@ -24,36 +26,23 @@ impl CommandList {
         Self {
             list,
             ignore_history,
-            current: 0,
         }
     }
 
     pub fn to_vec(&self) -> Vec<Unit> {
         self.list.clone()
     }
-
-    pub fn ignore_history(&self) -> bool {
-        self.ignore_history
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Unit {
-    kind: UnitKind,
-    background: bool,
+    pub kind: UnitKind,
+    pub background: bool,
 }
 
 impl Unit {
     pub fn new(kind: UnitKind, background: bool) -> Self {
         Self { kind, background }
-    }
-
-    pub fn kind(&self) -> UnitKind {
-        self.kind.clone()
-    }
-
-    pub fn background(&self) -> bool {
-        self.background
     }
 }
 
@@ -103,12 +92,8 @@ pub enum UnitKind {
     },
 }
 
-pub fn parse_command_line<S: AsRef<str>>(
-    s: S,
-    linenumber: usize,
-    debug: bool,
-) -> Result<CommandList> {
-    let tokens = Lexer::new(s.as_ref(), linenumber, debug).lex()?;
+pub fn parse_command_line<S: AsRef<str>>(s: S, linenumber: usize) -> Result<CommandList> {
+    let tokens = Lexer::new(s.as_ref(), linenumber).lex()?;
 
     let mut tokens = TokenReader::new(tokens);
     let mut result = vec![];
@@ -123,8 +108,8 @@ pub fn parse_command_line<S: AsRef<str>>(
         }
     }
 
+    debug::print(&result);
     let result = CommandList::new(result, ignore_history);
-    debug!(debug, "parser result: {:?}", result);
 
     Ok(result)
 }
