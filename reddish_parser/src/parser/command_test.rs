@@ -2,11 +2,11 @@
 mod test {
     use super::*;
     use crate::{
+        lexer::Lexer,
         literal_word, loc,
         location::Location,
         normal_word,
         parser::{
-            lexer::Lexer,
             redirect::Redirect,
             token::Token,
             word::{WordKind, WordList},

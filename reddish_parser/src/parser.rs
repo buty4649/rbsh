@@ -6,15 +6,13 @@ mod word;
 use command::parse_command;
 
 mod command;
-mod lexer;
 
 pub use command::ConnecterKind;
 pub use redirect::{Redirect, RedirectKind, RedirectList};
 pub use token::{Token, TokenKind};
 pub use word::{parse_wordlist, Word, WordKind, WordList};
 
-use crate::Result;
-use lexer::Lexer;
+use crate::{lexer::Lexer, Result};
 use token::TokenReader;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

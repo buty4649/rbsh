@@ -1,10 +1,11 @@
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::error::Error;
     use crate::{
+        error::Error,
+        lexer::Lexer,
         loc, normal_word,
-        parser::{lexer::Lexer, token::Token, word::WordKind},
+        parser::{token::Token, word::WordKind},
     };
 
     macro_rules! lex {
@@ -171,10 +172,7 @@ mod test {
 
         assert_redirect!(
             "123>&foobar",
-            Err(Error::unexpected_token(normal_word!(
-                "foobar",
-                loc!(6, 1)
-            )))
+            Err(Error::unexpected_token(normal_word!("foobar", loc!(6, 1))))
         );
 
         assert_redirect!(

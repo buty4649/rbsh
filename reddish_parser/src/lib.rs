@@ -1,6 +1,7 @@
 mod error;
 mod location;
 mod parser;
+mod lexer;
 
 pub use error::{Error, ErrorKind};
 pub use location::{Annotate, Location};

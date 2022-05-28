@@ -1,13 +1,9 @@
-use super::{
-    token::{Token, TokenKind},
-    word::WordKind,
-};
-use crate::{error::Error, location::Location, Result};
+use crate::{error::Error, location::Location, Result, Token, TokenKind, WordKind};
 use std::str::{from_utf8, Utf8Error};
 type LexResult = Result<Token>;
 
 #[derive(Debug, Clone)]
-pub struct Lexer {
+pub(crate) struct Lexer {
     input: Vec<u8>,
     pos: usize,
     line: usize,
@@ -35,7 +31,7 @@ macro_rules! lex_simple_token {
 }
 
 impl Lexer {
-    pub fn new(input: &str, line: usize, debug: bool) -> Self {
+    pub(crate) fn new(input: &str, line: usize, debug: bool) -> Self {
         let input = input.as_bytes().to_vec();
         Lexer {
             input,
@@ -48,7 +44,7 @@ impl Lexer {
         }
     }
 
-    pub fn lex(&mut self) -> Result<Vec<Token>> {
+    pub(crate) fn lex(&mut self) -> Result<Vec<Token>> {
         macro_rules! action {
             ($f: ident) => {{
                 let token = self.$f()?;
