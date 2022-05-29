@@ -145,7 +145,7 @@ fn parse_redirect_copy(tokens: &mut TokenReader, dest: RawFd) -> Result<Redirect
                 .parse::<RawFd>()
                 .map_err(|_| tokens.error_invalid_fd(&src))?;
             tokens.next();
-            let close = matches!(tokens.peek_token(), Some(TokenKind::Hyphen));
+            let close = matches!(tokens.next_if(|k| k == &TokenKind::Hyphen), Some(_));
             let redirect = RedirectKind::Copy(src, dest, close);
             Ok(redirect)
         }

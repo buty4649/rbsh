@@ -6,10 +6,9 @@ use crate::{location::Location, Result};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum WordKind {
-    Normal,    // word
-    Quote,     // "word"
-    Literal,   // 'word'
-    Command,   // `word`
+    Normal,    // word or "word"
+    Quote,     // 'word'
+    Command,   // `word` or $(word)
     Variable,  // $word
     Parameter, // ${word}
 }
@@ -140,16 +139,6 @@ mod utils {
         };
         ($s: expr) => {
             quote_word!($s, loc!(1, 1))
-        };
-    }
-
-    #[macro_export]
-    macro_rules! literal_word {
-        ($s: expr, $l: expr) => {
-            Token::word($s.to_string(), WordKind::Literal, $l)
-        };
-        ($s: expr) => {
-            literal_word!($s, loc!(1, 1))
         };
     }
 

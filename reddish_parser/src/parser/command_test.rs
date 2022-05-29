@@ -3,7 +3,7 @@ mod test {
     use super::*;
     use crate::{
         lexer::Lexer,
-        literal_word, loc,
+        loc,
         location::Location,
         normal_word,
         parser::{
@@ -795,7 +795,7 @@ mod test {
         assert_parse!(
             parse_unless_statement,
             "unless foo; then bar; fi",
-            Err(Error::unexpected_token(Token::fi_keyword(loc!(23, 1))),)
+            Err(Error::unexpected_token(Token::keyword("fi", loc!(23, 1))),)
         );
     }
 
@@ -1051,8 +1051,8 @@ mod test {
                 Word::new("foo".to_string(), WordKind::Normal, loc!(5, 1)),
                 vec![
                     w![normal_word!("a", loc!(12, 1))],
-                    w![quote_word!("b", loc!(14, 1))],
-                    w![literal_word!("c", loc!(18, 1))],
+                    w![normal_word!("b", loc!(15, 1))],
+                    w![quote_word!("c", loc!(18, 1))],
                 ],
                 vec!(unit![
                     simple_command!(vec![w![normal_word!("bar", loc!(23, 1))]]),

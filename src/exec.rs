@@ -45,7 +45,7 @@ pub trait WordParser {
 impl WordParser for Word {
     fn to_string(self, ctx: &Context) -> Result<String, std::io::Error> {
         match self.kind {
-            WordKind::Normal | WordKind::Quote | WordKind::Literal => Ok(self.string),
+            WordKind::Normal | WordKind::Quote => Ok(self.string),
             WordKind::Variable | WordKind::Parameter => {
                 Ok(ctx.get_var(self.string).unwrap_or_default())
             }

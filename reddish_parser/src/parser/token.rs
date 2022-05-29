@@ -21,7 +21,7 @@ pub enum TokenKind {
     ForceWriteTo, // '>|'
     WriteBoth,    // '&>', '>&'
     ReadCopy,     // '<&'
-    WriteCopy,    // '>&'
+    WriteCopy,    // 'm>&n'
     Append,       // '>>'
     AppendBoth,   // '&>>'
     ReadClose,    // '<&-'
@@ -48,7 +48,6 @@ pub enum TokenKind {
     Until,
     For,
     In,
-    Eof,
 }
 pub type Token = Annotate<TokenKind>;
 
@@ -133,10 +132,6 @@ impl Token {
         Self::new(TokenKind::ReadWrite, loc)
     }
 
-    pub fn hyphen(loc: Location) -> Self {
-        Self::new(TokenKind::Hyphen, loc)
-    }
-
     pub fn here_document(loc: Location) -> Self {
         Self::new(TokenKind::HereDocument, loc)
     }
@@ -157,64 +152,33 @@ impl Token {
         Self::new(TokenKind::GroupEnd, loc)
     }
 
+    pub fn hyphen(loc: Location) -> Self {
+        Self::new(TokenKind::Hyphen, loc)
+    }
+
     pub fn newline(loc: Location) -> Self {
         Self::new(TokenKind::NewLine, loc)
     }
 
-    pub fn if_keyword(loc: Location) -> Self {
-        Self::new(TokenKind::If, loc)
-    }
-
-    pub fn then_keyword(loc: Location) -> Self {
-        Self::new(TokenKind::Then, loc)
-    }
-
-    pub fn else_keyword(loc: Location) -> Self {
-        Self::new(TokenKind::Else, loc)
-    }
-
-    pub fn elsif_keyword(loc: Location) -> Self {
-        Self::new(TokenKind::ElsIf, loc)
-    }
-
-    pub fn elif_keyword(loc: Location) -> Self {
-        Self::new(TokenKind::ElIf, loc)
-    }
-
-    pub fn fi_keyword(loc: Location) -> Self {
-        Self::new(TokenKind::Fi, loc)
-    }
-
-    pub fn end_keyword(loc: Location) -> Self {
-        Self::new(TokenKind::End, loc)
-    }
-
-    pub fn unless_keyword(loc: Location) -> Self {
-        Self::new(TokenKind::Unless, loc)
-    }
-
-    pub fn while_keyword(loc: Location) -> Self {
-        Self::new(TokenKind::While, loc)
-    }
-
-    pub fn do_keyword(loc: Location) -> Self {
-        Self::new(TokenKind::Do, loc)
-    }
-
-    pub fn done_keyword(loc: Location) -> Self {
-        Self::new(TokenKind::Done, loc)
-    }
-
-    pub fn until_keyword(loc: Location) -> Self {
-        Self::new(TokenKind::Until, loc)
-    }
-
-    pub fn for_keyword(loc: Location) -> Self {
-        Self::new(TokenKind::For, loc)
-    }
-
-    pub fn in_keyword(loc: Location) -> Self {
-        Self::new(TokenKind::In, loc)
+    pub fn keyword(k: &str, loc: Location) -> Self {
+        let kind = match k {
+            "if" => TokenKind::If,
+            "then" => TokenKind::Then,
+            "else" => TokenKind::Else,
+            "elsif" => TokenKind::ElsIf,
+            "elif" => TokenKind::ElIf,
+            "fi" => TokenKind::Fi,
+            "end" => TokenKind::End,
+            "unless" => TokenKind::Unless,
+            "while" => TokenKind::While,
+            "do" => TokenKind::Do,
+            "done" => TokenKind::Done,
+            "until" => TokenKind::Until,
+            "for" => TokenKind::For,
+            "in" => TokenKind::In,
+            _ => unimplemented![],
+        };
+        Self::new(kind, loc)
     }
 }
 
