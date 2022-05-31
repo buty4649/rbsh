@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MRUBY_VERSION=3.0.0
+MRUBY_VERSION=3.1.0
 
 if [ ! -d mruby ]; then
     wget -O- "https://github.com/mruby/mruby/archive/refs/tags/${MRUBY_VERSION}.tar.gz" | tar zxf -
