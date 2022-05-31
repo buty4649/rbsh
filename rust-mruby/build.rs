@@ -2,9 +2,6 @@ use std::env;
 use std::path::PathBuf;
 
 #[cfg(feature = "build")]
-const DEFAULT_MRUBY_VERSION: &str = "3.1.0";
-
-#[cfg(feature = "build")]
 use cmd_lib::*;
 
 #[cfg(not(feature = "build"))]
@@ -12,18 +9,26 @@ fn build_mruby(_: &str) {}
 
 #[cfg(feature = "build")]
 fn build_mruby(mruby_build_config: &str) {
+    const DEFAULT_MRUBY_VERSION: &str = include_str!("mruby_version");
+
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     let mruby_path = out_path.join("mruby");
     let mruby_version =
-        env::var("MRUBY_VERSION").unwrap_or_else(|_| DEFAULT_MRUBY_VERSION.to_string());
+        env::var("MRUBY_VERSION").unwrap_or_else(|_| DEFAULT_MRUBY_VERSION.trim_end().to_string());
+    let mruby_url = format!(
+        "https://github.com/mruby/mruby/archive/refs/tags/{}.tar.gz",
+        mruby_version
+    );
 
     if !mruby_path.exists() {
         let out_path = out_path.to_str().unwrap();
         run_cmd!(
             cd "$out_path";
-            wget -O- "https://github.com/mruby/mruby/archive/refs/tags/$mruby_version.tar.gz" | tar zxf -;
+            echo "Download: ${mruby_url}" ;
+            wget -O- "${mruby_url}" | tar zxf -;
             mv mruby-$mruby_version mruby;
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     run_cmd!(
@@ -33,6 +38,7 @@ fn build_mruby(mruby_build_config: &str) {
     )
     .unwrap();
 
+    println!("cargo:rerun-if-changed={}", mruby_version);
     println!("cargo:rustc-link-lib=mruby");
     println!(
         "cargo:rustc-link-search={}",
