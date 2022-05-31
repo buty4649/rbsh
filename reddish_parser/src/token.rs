@@ -1,9 +1,5 @@
 use super::word::WordKind;
-use crate::{
-    error::Error,
-    location::{Annotate, Location},
-};
-use std::iter::Iterator;
+use crate::location::{Annotate, Location};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenKind {
@@ -56,8 +52,8 @@ impl Token {
         Self::new(TokenKind::Space, loc)
     }
 
-    pub fn word(s: String, k: WordKind, loc: Location) -> Self {
-        Self::new(TokenKind::Word(s, k), loc)
+    pub fn word<S: AsRef<str>>(s: S, k: WordKind, loc: Location) -> Self {
+        Self::new(TokenKind::Word(String::from(s.as_ref()), k), loc)
     }
 
     pub fn number(n: String, loc: Location) -> Self {
@@ -179,106 +175,5 @@ impl Token {
             _ => unimplemented![],
         };
         Self::new(kind, loc)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TokenReader {
-    tokens: Vec<Token>,
-    pos: usize,
-}
-
-impl TokenReader {
-    pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, pos: 0 }
-    }
-
-    pub fn next_if<F>(&mut self, f: F) -> Option<Token>
-    where
-        F: FnOnce(&TokenKind) -> bool,
-    {
-        let kind = self.peek_token()?;
-        match f(&kind) {
-            false => None,
-            true => self.next(),
-        }
-    }
-
-    pub fn peek(&mut self) -> Option<Token> {
-        if self.is_eof() {
-            None
-        } else {
-            let result = self.tokens[self.pos].clone();
-            Some(result)
-        }
-    }
-
-    pub fn peek_token(&mut self) -> Option<TokenKind> {
-        self.peek().map(|t| t.value)
-    }
-
-    pub fn skip_space(&mut self, newline: bool) -> Option<Token> {
-        let mut last_token: Option<Token> = None;
-        loop {
-            match self.peek_token() {
-                Some(TokenKind::Space | TokenKind::Comment(_)) => {
-                    last_token = self.next();
-                }
-                Some(TokenKind::NewLine) if newline => {
-                    last_token = self.next();
-                }
-                _ => break last_token,
-            }
-        }
-    }
-
-    pub fn is_eof(&self) -> bool {
-        self.pos >= self.tokens.len()
-    }
-
-    pub fn location(&self) -> Location {
-        if self.tokens.is_empty() {
-            Location::new(0, 0)
-        } else if self.is_eof() {
-            let loc = self.tokens.last().unwrap().location;
-            Location::new_from_offset(&loc, 1, 0)
-        } else {
-            self.tokens[self.pos].location
-        }
-    }
-
-    pub fn error_unexpected_token(&self) -> Error {
-        if self.is_eof() {
-            self.error_eof()
-        } else {
-            let token = self.tokens[self.pos].clone();
-            Error::unexpected_token(token)
-        }
-    }
-
-    pub fn error_invalid_fd(&self, fd: &str) -> Error {
-        if self.is_eof() {
-            self.error_eof()
-        } else {
-            Error::invalid_fd(fd, self.location())
-        }
-    }
-
-    pub fn error_eof(&self) -> Error {
-        Error::eof(self.location())
-    }
-}
-
-impl Iterator for TokenReader {
-    type Item = Token;
-
-    fn next(&mut self) -> Option<Token> {
-        match self.peek() {
-            Some(v) => {
-                self.pos += 1;
-                Some(v)
-            }
-            None => None,
-        }
     }
 }

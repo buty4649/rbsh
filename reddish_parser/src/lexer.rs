@@ -1,15 +1,15 @@
-mod debug;
+mod iterator;
 mod reader;
 mod utils;
+
+pub use iterator::LexerIterator;
 
 use crate::{error::Error, location::Location, Result, Token, TokenKind, WordKind};
 use reader::Reader;
 use utils::*;
 
-type Tokens = Vec<Token>;
-
 #[derive(Debug)]
-pub(crate) struct Lexer {
+pub struct Lexer {
     reader: Reader,
     quoted_word_location: Option<Location>,
     before_token: Option<TokenKind>,
@@ -41,7 +41,7 @@ macro_rules! token {
 }
 
 impl Lexer {
-    pub(crate) fn new(input: &str, line: usize) -> Self {
+    pub fn new(input: &str, line: usize) -> Self {
         Lexer {
             reader: Reader::new(input, line),
             quoted_word_location: None,
@@ -51,9 +51,11 @@ impl Lexer {
         }
     }
 
-    pub(crate) fn lex(&mut self) -> Result<Tokens> {
-        let mut results = Vec::new();
+    pub fn location(&self) -> Location {
+        self.reader.location()
+    }
 
+    pub fn lex(&mut self) -> Option<Result<Token>> {
         macro_rules! keyword {
             ($name:expr) => {{
                 let location = self.reader.location();
@@ -62,7 +64,7 @@ impl Lexer {
             }};
         }
 
-        while let Some(c) = self.reader.peek() {
+        self.reader.peek().map(|c| {
             let token = match c {
                 _ if is_space(c) => self.space(),
                 _ if is_newline(c) => self.newline(),
@@ -106,37 +108,38 @@ impl Lexer {
                 '"' => self.quoted_word(),
                 '$' => self.dollar_word(),
                 _ => self.normal_word(),
-            }?;
-
-            self.head = match token.value {
-                TokenKind::Space => self.head,
-                TokenKind::NewLine
-                | TokenKind::Termination
-                | TokenKind::And
-                | TokenKind::Comment { .. }
-                | TokenKind::Pipe
-                | TokenKind::GroupStart
-                | TokenKind::GroupEnd
-                | TokenKind::If
-                | TokenKind::Then
-                | TokenKind::Else
-                | TokenKind::ElsIf
-                | TokenKind::ElIf
-                | TokenKind::Fi
-                | TokenKind::End
-                | TokenKind::Unless
-                | TokenKind::While
-                | TokenKind::Do
-                | TokenKind::Done => true,
-                _ => false,
             };
 
-            self.before_token = Some(token.value.clone());
-            results.push(token);
-        }
+            if token.is_ok() {
+                let kind = token.clone().unwrap().value;
+                self.head = match kind {
+                    TokenKind::Space => self.head,
+                    TokenKind::NewLine
+                    | TokenKind::Termination
+                    | TokenKind::And
+                    | TokenKind::Comment { .. }
+                    | TokenKind::Pipe
+                    | TokenKind::GroupStart
+                    | TokenKind::GroupEnd
+                    | TokenKind::If
+                    | TokenKind::Then
+                    | TokenKind::Else
+                    | TokenKind::ElsIf
+                    | TokenKind::ElIf
+                    | TokenKind::Fi
+                    | TokenKind::End
+                    | TokenKind::Unless
+                    | TokenKind::While
+                    | TokenKind::Until
+                    | TokenKind::Do
+                    | TokenKind::Done => true,
+                    _ => false,
+                };
 
-        debug::print(&results);
-        Ok(results)
+                self.before_token = Some(kind);
+            }
+            token
+        })
     }
 
     token!(space, is_space);

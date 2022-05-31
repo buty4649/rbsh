@@ -23,8 +23,7 @@ use nix::{
 };
 use option::{ExecOption, ExecOptionBuilder};
 use reddish_parser::{
-    parse_command_line, ConnecterKind, Location, Redirect, RedirectList, Unit, UnitKind, Word,
-    WordKind, WordList,
+    parse_command_line, ConnecterKind, Location, Redirect, Unit, UnitKind, Word, WordKind,
 };
 use redirect::ApplyRedirect;
 use rust_mruby::MRuby;
@@ -54,10 +53,10 @@ impl WordParser for Word {
     }
 }
 
-impl WordParser for WordList {
+impl WordParser for Vec<Word> {
     fn to_string(self, ctx: &Context) -> Result<String, IoError> {
         let mut result = String::new();
-        for word in self.to_vec() {
+        for word in self {
             let s = word.to_string(ctx)?;
             result.push_str(&*s);
         }
@@ -85,9 +84,12 @@ pub trait IsVarName {
     fn is_var_name(&self) -> bool;
 }
 
-impl IsVarName for WordList {
+impl IsVarName for Vec<Word> {
     fn is_var_name(&self) -> bool {
-        let word = self.first();
+        let word = match self.first() {
+            Some(word) => word,
+            None => return false,
+        };
         match word.kind {
             WordKind::Normal => {
                 let mut c = word.string.chars();
@@ -378,8 +380,8 @@ impl Executor {
     fn execute_simple_command(
         &mut self,
         ctx: &mut Context,
-        command: Vec<WordList>,
-        mut redirect: RedirectList,
+        command: Vec<Vec<Word>>,
+        mut redirect: Option<Vec<Redirect>>,
         background: bool,
         option: ExecOption,
     ) -> ExitStatus {
@@ -448,6 +450,7 @@ impl Executor {
             }
         }
 
+        let mut redirect = redirect.get_or_insert(Vec::new()).clone();
         if let Some(pipe) = option.input() {
             redirect.insert(0, Redirect::copy(pipe, 0, true, Location::new(0, 0)));
         }
@@ -690,7 +693,7 @@ impl Executor {
         condition: Unit,
         true_case: Vec<Unit>,
         false_case: Option<Vec<Unit>>,
-        redirect: RedirectList,
+        redirect: Option<Vec<Redirect>>,
         inverse: bool,
         option: ExecOption,
     ) -> ExitStatus {
@@ -722,7 +725,7 @@ impl Executor {
         ctx: &mut Context,
         condition: Unit,
         command: Vec<Unit>,
-        redirect: RedirectList,
+        redirect: Option<Vec<Redirect>>,
         inverse: bool,
         option: ExecOption,
     ) -> ExitStatus {
@@ -780,19 +783,15 @@ impl Executor {
     fn execute_for_command(
         &mut self,
         ctx: &mut Context,
-        identifier: Word,
-        list: Option<Vec<WordList>>,
+        identifier: Vec<Word>,
+        list: Option<Vec<Vec<Word>>>,
         command: Vec<Unit>,
-        redirect: RedirectList,
+        redirect: Option<Vec<Redirect>>,
         option: ExecOption,
     ) -> ExitStatus {
-        let identifier = match identifier.kind {
-            WordKind::Normal => identifier.string,
-            //WordKind::Quote => format!("\"{}\"", identifier.string),
-            //WordKind::Literal => format!("'{}'", identifier.string),
-            //WordKind::Command => format!("`{}`", identifier.string),
-            //WordKind::Variable => format!("${}", identifier.string),
-            //WordKind::Parameter => format!("${{{}}}", identifier.string),
+        // ToDo: References all items.
+        let identifier = match identifier.first() {
+            Some(word) if word.kind == WordKind::Normal => word.string.clone(),
             _ => {
                 eprintln!("error: invalid identifier");
                 return ExitStatus::failure();
@@ -934,21 +933,26 @@ impl Executor {
         &self,
         ctx: &Context,
         option: ExecOption,
-        mut redirect: RedirectList,
-    ) -> (RedirectList, ExecOption) {
-        if let Some(pipe) = option.input() {
+        mut redirect: Option<Vec<Redirect>>,
+    ) -> (Vec<Redirect>, ExecOption) {
+        let mut redirect = redirect.get_or_insert(Vec::new()).clone();
+        let mut redirect = if let Some(pipe) = option.input() {
             let mut r = vec![Redirect::copy(pipe, 0, true, Location::new(0, 0))];
             r.append(&mut redirect);
-            redirect = r;
-        }
-        if let Some((pipe, both)) = option.output() {
+            r
+        } else {
+            redirect
+        };
+        let redirect = if let Some((pipe, both)) = option.output() {
             let mut r = vec![Redirect::copy(pipe, 1, true, Location::new(0, 0))];
             if both {
                 r.push(Redirect::copy(1, 2, false, Location::new(0, 0)));
             }
             r.append(&mut redirect);
-            redirect = r;
-        }
+            r
+        } else {
+            redirect
+        };
 
         (
             redirect.apply(ctx, !option.piping()).unwrap_or_default(),
@@ -1028,8 +1032,8 @@ impl Executor {
                 let option = ExecOptionBuilder::new().quiet(true).pgid(pid).build();
                 let status = match parse_command_line(command, 0) {
                     Err(_) => ExitStatus::failure(),
-                    Ok(cmds) => {
-                        for cmd in cmds.to_vec() {
+                    Ok((cmds, _)) => {
+                        for cmd in cmds {
                             e.execute_command(&mut ctx.clone(), cmd, Some(option));
                         }
                         if let Some(pgrp) = old_pgrp {
@@ -1050,7 +1054,7 @@ impl Executor {
     }
 }
 
-fn expand_command_line(ctx: &Context, list: Vec<WordList>) -> Result<SimpleCommandKind, IoError> {
+fn expand_command_line(ctx: &Context, list: Vec<Vec<Word>>) -> Result<SimpleCommandKind, IoError> {
     if list.is_empty() {
         return Ok(SimpleCommandKind::Noop);
     }

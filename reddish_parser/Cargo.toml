@@ -7,6 +7,9 @@ edition = "2021"
 
 [dependencies]
 
+[dev-dependencies]
+indoc = "1"
+
 [features]
 debug = []
 

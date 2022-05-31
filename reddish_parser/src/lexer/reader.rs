@@ -4,16 +4,14 @@ use std::collections::{vec_deque::Iter, VecDeque};
 #[derive(Debug)]
 pub(crate) struct Reader {
     input: VecDeque<char>,
-    column: usize,
-    line: usize,
+    location: Location,
 }
 
 impl Reader {
     pub(crate) fn new(input: &str, offset: usize) -> Self {
         Reader {
             input: VecDeque::from_iter(input.chars()),
-            column: 1,
-            line: offset,
+            location: Location::new_from_offset(&Location::default(), 0, offset),
         }
     }
 
@@ -35,11 +33,11 @@ impl Reader {
             Some(result) => {
                 match result {
                     '\n' => {
-                        self.column = 1;
-                        self.line += 1;
+                        self.location.column = 1;
+                        self.location.line += 1;
                     }
                     _ => {
-                        self.column += 1;
+                        self.location.column += 1;
                     }
                 }
                 Some(result)
@@ -62,7 +60,7 @@ impl Reader {
     }
 
     pub(crate) fn skip(&mut self, index: usize) {
-        self.column += index;
+        self.location.column += index;
         self.input = self.input.drain(index..).collect::<_>();
     }
 
@@ -75,6 +73,6 @@ impl Reader {
     }
 
     pub(crate) fn location(&self) -> Location {
-        Location::new(self.column, self.line)
+        self.location
     }
 }

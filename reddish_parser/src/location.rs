@@ -18,11 +18,22 @@ impl Location {
     }
 }
 
-#[cfg(test)]
+impl Default for Location {
+    fn default() -> Self {
+        Self::new(1, 1)
+    }
+}
+
 #[macro_export]
-macro_rules! loc {
-    ($c: expr, $l: expr) => {
+macro_rules! location {
+    ($c:expr, $l:expr) => {
         Location::new($c, $l)
+    };
+    ($c:expr) => {
+        location!($c, 1)
+    };
+    () => {
+        location!(1)
     };
 }
 

@@ -1,39 +1,25 @@
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{
-        error::Error,
-        lexer::Lexer,
-        loc, normal_word,
-        parser::{token::Token, word::WordKind},
-    };
+    use crate::{error::Error, lexer::Lexer, location, Token, WordKind};
 
     macro_rules! lex {
         ($e: expr) => {
-            Lexer::new($e, 1).lex().unwrap()
+            Lexer::new($e, 0).iter()
         };
     }
 
     macro_rules! assert_redirect {
         ($e: expr, $expect: expr) => {
-            let mut t = TokenReader::new(lex!($e));
-            let got = parse_redirect(&mut t);
-            assert_eq!($expect, got)
+            let got = parse_redirect(&mut lex!($e));
+            assert_eq!(got, $expect)
         };
     }
 
     macro_rules! ok {
         ($i: ident, $($a: expr$(,)?)+) => {
-            Ok(Some(Redirect::$i($($a,)*)))
+            Ok(Some(vec![Redirect::$i($($a,)*)]))
         };
-    }
-
-    macro_rules! wl {
-        ($($w: expr$(,)?)+) => {{
-            let mut list = WordList::new();
-            $(list.push_word_token($w);)+
-            list
-        }};
     }
 
     #[test]
@@ -43,8 +29,8 @@ mod test {
             ok![
                 read_from,
                 0,
-                wl![normal_word!("foobar", loc!(3, 1))],
-                loc!(1, 1)
+                vec![Word::normal("foobar", location!(3, 1))],
+                location!(1, 1)
             ]
         );
 
@@ -53,14 +39,14 @@ mod test {
             ok![
                 read_from,
                 123,
-                wl![normal_word!("foobar", loc!(6, 1))],
-                loc!(1, 1)
+                vec![Word::normal("foobar", location!(6, 1))],
+                location!(1, 1)
             ]
         );
 
         assert_redirect!(
             "12345678901234567890< foobar",
-            Err(Error::invalid_fd("12345678901234567890", loc!(1, 1)))
+            Err(Error::invalid_fd("12345678901234567890", location!(1, 1)))
         );
     }
 
@@ -71,9 +57,9 @@ mod test {
             ok![
                 write_to,
                 1,
-                wl![normal_word!("foobar", loc!(3, 1))],
+                vec![Word::normal("foobar", location!(3, 1))],
                 false,
-                loc!(1, 1)
+                location!(1, 1)
             ]
         );
 
@@ -82,9 +68,9 @@ mod test {
             ok![
                 write_to,
                 123,
-                wl![normal_word!("foobar", loc!(6, 1))],
+                vec![Word::normal("foobar", location!(6, 1))],
                 false,
-                loc!(1, 1)
+                location!(1, 1)
             ]
         );
 
@@ -93,28 +79,28 @@ mod test {
             ok![
                 write_to,
                 123,
-                wl![normal_word!("foobar", loc!(7, 1))],
+                vec![Word::normal("foobar", location!(7, 1))],
                 true,
-                loc!(1, 1)
+                location!(1, 1)
             ]
         );
     }
 
     #[test]
     fn test_close() {
-        assert_redirect!("<&-", ok![close, 0, loc!(1, 1)]);
-        assert_redirect!(">&-", ok![close, 1, loc!(1, 1)]);
-        assert_redirect!("123<&-", ok![close, 123, loc!(1, 1)]);
-        assert_redirect!("123>&-", ok![close, 123, loc!(1, 1)]);
+        assert_redirect!("<&-", ok![close, 0, location!(1, 1)]);
+        assert_redirect!(">&-", ok![close, 1, location!(1, 1)]);
+        assert_redirect!("123<&-", ok![close, 123, location!(1, 1)]);
+        assert_redirect!("123>&-", ok![close, 123, location!(1, 1)]);
 
         assert_redirect!(
             "12345678901234567890<&-",
-            Err(Error::invalid_fd("12345678901234567890", loc!(1, 1)))
+            Err(Error::invalid_fd("12345678901234567890", location!(1, 1)))
         );
 
         assert_redirect!(
             "12345678901234567890>&-",
-            Err(Error::invalid_fd("12345678901234567890", loc!(1, 1)))
+            Err(Error::invalid_fd("12345678901234567890", location!(1, 1)))
         );
     }
 
@@ -124,8 +110,8 @@ mod test {
             "&> foobar",
             ok![
                 write_both,
-                wl![normal_word!("foobar", loc!(4, 1))],
-                loc!(1, 1)
+                vec![Word::normal("foobar", location!(4, 1))],
+                location!(1, 1)
             ]
         );
 
@@ -133,51 +119,55 @@ mod test {
             ">& foobar",
             ok![
                 write_both,
-                wl![normal_word!("foobar", loc!(4, 1))],
-                loc!(1, 1)
+                vec![Word::normal("foobar", location!(4, 1))],
+                location!(1, 1)
             ]
         );
 
         assert_redirect!(
             ">&&",
-            Err(Error::unexpected_token(Token::background(loc!(3, 1))))
+            Err(Error::unexpected_token(&Token::background(location!(3, 1))))
         );
     }
 
     #[test]
     fn test_readcopy() {
-        assert_redirect!("<&123", ok![copy, 123, 0, false, loc!(1, 1)]);
-        assert_redirect!("<&", Err(Error::eof(loc!(2, 1))));
-        assert_redirect!("<&123-", ok!(copy, 123, 0, true, loc!(1, 1)));
-        assert_redirect!("123<&456", ok![copy, 456, 123, false, loc!(1, 1)]);
-        assert_redirect!("123<&456-", ok![copy, 456, 123, true, loc!(1, 1)]);
+        assert_redirect!("<&123", ok![copy, 123, 0, false, location!(1, 1)]);
+        assert_redirect!("<&", Err(Error::eof(location!(3, 1))));
+        assert_redirect!("<&123-", ok!(copy, 123, 0, true, location!(1, 1)));
+        assert_redirect!("123<&456", ok![copy, 456, 123, false, location!(1, 1)]);
+        assert_redirect!("123<&456-", ok![copy, 456, 123, true, location!(1, 1)]);
 
         assert_redirect!(
             "<& foobar",
-            Err(Error::unexpected_token(Token::space(loc!(3, 1))))
+            Err(Error::unexpected_token(&Token::space(location!(3, 1))))
         );
 
         assert_redirect!(
             "<&12345678901234567890",
-            Err(Error::invalid_fd("12345678901234567890", loc!(3, 1)))
+            Err(Error::invalid_fd("12345678901234567890", location!(3, 1)))
         );
     }
 
     #[test]
     fn test_writecopy() {
-        assert_redirect!(">&123", ok![copy, 123, 1, false, loc!(1, 1)]);
-        assert_redirect!(">&123-", ok![copy, 123, 1, true, loc!(1, 1)]);
-        assert_redirect!("123>&456", ok![copy, 456, 123, false, loc!(1, 1)]);
-        assert_redirect!("123>&456-", ok![copy, 456, 123, true, loc!(1, 1)]);
+        assert_redirect!(">&123", ok![copy, 123, 1, false, location!(1, 1)]);
+        assert_redirect!(">&123-", ok![copy, 123, 1, true, location!(1, 1)]);
+        assert_redirect!("123>&456", ok![copy, 456, 123, false, location!(1, 1)]);
+        assert_redirect!("123>&456-", ok![copy, 456, 123, true, location!(1, 1)]);
 
         assert_redirect!(
             "123>&foobar",
-            Err(Error::unexpected_token(normal_word!("foobar", loc!(6, 1))))
+            Err(Error::unexpected_token(&Token::word(
+                "foobar",
+                WordKind::Normal,
+                location!(6, 1)
+            )))
         );
 
         assert_redirect!(
             ">&12345678901234567890",
-            Err(Error::invalid_fd("12345678901234567890", loc!(3, 1)))
+            Err(Error::invalid_fd("12345678901234567890", location!(3, 1)))
         );
     }
 
@@ -188,8 +178,8 @@ mod test {
             ok![
                 append,
                 1,
-                wl![normal_word!("foobar", loc!(4, 1))],
-                loc!(1, 1)
+                vec![Word::normal("foobar", location!(4, 1))],
+                location!(1, 1)
             ]
         );
 
@@ -198,14 +188,14 @@ mod test {
             ok![
                 append,
                 123,
-                wl![normal_word!("foobar", loc!(7, 1))],
-                loc!(1, 1)
+                vec![Word::normal("foobar", location!(7, 1))],
+                location!(1, 1)
             ]
         );
 
         assert_redirect!(
             "12345678901234567890>> foobar",
-            Err(Error::invalid_fd("12345678901234567890", loc!(1, 1)))
+            Err(Error::invalid_fd("12345678901234567890", location!(1, 1)))
         );
     }
 
@@ -215,14 +205,14 @@ mod test {
             "&>> foobar",
             ok![
                 append_both,
-                wl![normal_word!("foobar", loc!(5, 1))],
-                loc!(1, 1)
+                vec![Word::normal("foobar", location!(5, 1))],
+                location!(1, 1)
             ]
         );
 
         assert_redirect!(
             "&>>&",
-            Err(Error::unexpected_token(Token::background(loc!(4, 1))))
+            Err(Error::unexpected_token(&Token::background(location!(4, 1))))
         );
     }
 
@@ -233,8 +223,8 @@ mod test {
             ok![
                 read_write,
                 0,
-                wl![normal_word!("foobar", loc!(4, 1))],
-                loc!(1, 1)
+                vec![Word::normal("foobar", location!(4, 1))],
+                location!(1, 1)
             ]
         );
 
@@ -243,19 +233,19 @@ mod test {
             ok![
                 read_write,
                 123,
-                wl![normal_word!("foobar", loc!(7, 1))],
-                loc!(1, 1)
+                vec![Word::normal("foobar", location!(7, 1))],
+                location!(1, 1)
             ]
         );
 
         assert_redirect!(
             "<>&",
-            Err(Error::unexpected_token(Token::background(loc!(3, 1))))
+            Err(Error::unexpected_token(&Token::background(location!(3, 1))))
         );
 
         assert_redirect!(
             "12345678901234567890<> foobar",
-            Err(Error::invalid_fd("12345678901234567890", loc!(1, 1)))
+            Err(Error::invalid_fd("12345678901234567890", location!(1, 1)))
         );
     }
 }
