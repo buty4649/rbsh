@@ -19,12 +19,12 @@ impl Reader {
         self.input.is_empty()
     }
 
-    pub(crate) fn peek(&self) -> Option<char> {
+    pub(crate) fn peek(&self) -> Option<&char> {
         self.peek_nth(0)
     }
 
-    pub(crate) fn peek_nth(&self, n: usize) -> Option<char> {
-        self.input.get(n).copied()
+    pub(crate) fn peek_nth(&self, n: usize) -> Option<&char> {
+        self.input.get(n)
     }
 
     pub(crate) fn next(&mut self) -> Option<char> {
@@ -45,16 +45,9 @@ impl Reader {
         }
     }
 
-    pub(crate) fn next_if(&mut self, f: impl Fn(char) -> bool) -> Option<char> {
+    pub(crate) fn next_if(&mut self, f: impl Fn(&char) -> bool) -> Option<char> {
         match self.peek() {
             Some(c) if f(c) => self.next(),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn next_not_if(&mut self, f: impl Fn(char) -> bool) -> Option<char> {
-        match self.peek() {
-            Some(c) if !f(c) => self.next(),
             _ => None,
         }
     }

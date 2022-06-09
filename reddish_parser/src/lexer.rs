@@ -64,12 +64,12 @@ impl Lexer {
             }};
         }
 
-        self.reader.peek().map(|c| {
+        self.reader.peek().cloned().map(|c| {
             let token = match c {
-                _ if is_space(c) => self.space(),
-                _ if is_newline(c) => self.newline(),
-                _ if is_number(c) => self.number(),
-                _ if is_single_quote(c) => {
+                _ if is_space(&c) => self.space(),
+                _ if is_newline(&c) => self.newline(),
+                _ if is_number(&c) => self.number(),
+                _ if is_single_quote(&c) => {
                     self.word(WordKind::Quote, is_single_quote, true, true, false)
                 }
 
@@ -153,7 +153,7 @@ impl Lexer {
         let mut iter = self.reader.iter();
         if loop {
                 match iter.next() {
-                    Some(c) if is_number(*c) => continue,
+                    Some(c) if is_number(c) => continue,
                     Some('<') | Some('>') => break true,
                     _ => break false,
                 }
@@ -179,8 +179,8 @@ impl Lexer {
         let location = self.reader.location();
         self.reader.next(); // remove '&'
 
-        match self.reader.next_if(|c| c == '&' || c == '>') {
-            Some('>') => match self.reader.next_if(|c| c == '>') {
+        match self.reader.next_if(|c| c == &'&' || c == &'>') {
+            Some('>') => match self.reader.next_if(|c| c == &'>') {
                 Some(_) => Ok(Token::append_both(location)), // &>>
                 _ => Ok(Token::write_both(location)),        // &>
             },
@@ -194,7 +194,7 @@ impl Lexer {
         self.reader.next(); // remove '#'
         let mut result = String::new();
 
-        while let Some(c) = self.reader.next_not_if(is_newline) {
+        while let Some(c) = self.reader.next_if(|c| !is_newline(c)) {
             result.push(c)
         }
 
@@ -205,7 +205,7 @@ impl Lexer {
         let location = self.reader.location();
         self.reader.next(); // remove '|'
 
-        match self.reader.next_if(|c| c == '|' || c == '&') {
+        match self.reader.next_if(|c| c == &'|' || c == &'&') {
             Some('|') => Ok(Token::or(location)),
             Some('&') => Ok(Token::pipe_both(location)),
             _ => Ok(Token::pipe(location)),
@@ -216,12 +216,12 @@ impl Lexer {
         let location = self.reader.location();
         self.reader.next(); // remove '|'
 
-        match self.reader.next_if(|c| c == '<' || c == '&' || c == '>') {
-            Some('<') => match self.reader.next_if(|c| c == '<') {
+        match self.reader.next_if(|c| c == &'<' || c == &'&' || c == &'>') {
+            Some('<') => match self.reader.next_if(|c| c == &'<') {
                 Some('<') => Ok(Token::here_string(location)), // <<<
                 _ => Ok(Token::here_document(location)),       // <<
             },
-            Some('&') => match self.reader.next_if(|c| c == '-') {
+            Some('&') => match self.reader.next_if(|c| c == &'-') {
                 Some('-') => Ok(Token::read_close(location)), // <&-
                 _ => Ok(Token::read_copy(location)),          // <&
             },
@@ -234,8 +234,8 @@ impl Lexer {
         let location = self.reader.location();
         self.reader.next(); // remove '|'
 
-        match self.reader.next_if(|c| c == '&' || c == '|' || c == '>') {
-            Some('&') => match self.reader.next_if(|c| c == '-') {
+        match self.reader.next_if(|c| c == &'&' || c == &'|' || c == &'>') {
+            Some('&') => match self.reader.next_if(|c| c == &'-') {
                 Some('-') => Ok(Token::write_close(location)), // >&-
                 _ => {
                     if matches!(self.reader.peek(), Some(c) if is_number(c))
@@ -263,14 +263,15 @@ impl Lexer {
         }
         macro_rules! retrive_word {
             () => {{
-                let f = |c| is_double_quote(c) || c == '$';
-                self.word(WordKind::Normal, f, false, true, false)
+                self.word(WordKind::Normal,
+                    |c| is_double_quote(c) || c == &'$',
+                    false, true, false)
             }};
         }
         let token = match self.reader.peek() {
             Some('$') => self.dollar_word(),
             Some(c) => {
-                if c == '"' {
+                if c == &'"' {
                     let location = self.reader.location();
                     self.quoted_word_location = Some(location);
                     self.reader.next(); // remove '"'
@@ -294,16 +295,21 @@ impl Lexer {
         match self.reader.peek_nth(1) {
             Some('{') => {
                 self.reader.next(); // remove '$'
-                self.word(WordKind::Parameter, |c| c == '}', true, true, false)
+                self.word(WordKind::Parameter, |c| c == &'}', true, true, false)
             }
             Some('(') => {
                 self.reader.next(); // remove '$'
-                self.word(WordKind::Parameter, |c| c == ')', true, true, false)
+                self.word(WordKind::Parameter, |c| c == &')', true, true, false)
             }
             Some(c) if !c.is_ascii_punctuation() => {
                 self.reader.next(); // remove '$'
-                let f = |c| is_normal_word_delimiter(c) || c == '\\';
-                self.word(WordKind::Variable, f, false, false, false)
+                self.word(
+                    WordKind::Variable,
+                    |c| is_normal_word_delimiter(c) || c == &'\\',
+                    false,
+                    false,
+                    false,
+                )
             }
             _ => self.normal_word(),
         }
@@ -322,7 +328,7 @@ impl Lexer {
     fn word(
         &mut self,
         kind: WordKind,
-        f: impl Fn(char) -> bool,
+        f: impl Fn(&char) -> bool,
         surround: bool,
         escape: bool,
         remove_backslash: bool,
@@ -335,7 +341,7 @@ impl Lexer {
             self.reader.next();
         }
 
-        while let Some(c) = self.reader.next_not_if(&f) {
+        while let Some(c) = self.reader.next_if(|c| !f(c)) {
             match c {
                 '\\' if escape && matches!(self.reader.peek(), Some(c) if f(c)) => {
                     result.push(self.reader.next().unwrap())
