@@ -133,7 +133,7 @@ impl Token {
     }
 
     pub fn here_string(loc: Location) -> Self {
-        Self::new(TokenKind::HereDocument, loc)
+        Self::new(TokenKind::HereString, loc)
     }
 
     pub fn termination(loc: Location) -> Self {
@@ -175,5 +175,85 @@ impl Token {
             _ => unimplemented![],
         };
         Self::new(kind, loc)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::location;
+
+    macro_rules! assert_token {
+        ($left:ident, $right:path) => {{
+            let token = Token::$left(location!());
+            assert_eq!(token.value, $right);
+            assert_eq!(token.location, location!());
+        }};
+
+        ($left:ident, $a:expr, $right:path) => {{
+            let token = Token::$left($a, location!());
+            assert_eq!(token.value, $right($a));
+            assert_eq!(token.location, location!());
+        }};
+
+        ($left:ident, $a1:expr, $a2:expr, $right:path) => {{
+            let token = Token::$left($a1, $a2, location!());
+            assert_eq!(token.value, $right($a1.to_string(), $a2));
+            assert_eq!(token.location, location!());
+        }};
+    }
+
+    macro_rules! assert_keyword {
+        ($left:expr, $right:path) => {{
+            let token = Token::keyword($left, location!());
+            assert_eq!(token.value, $right);
+            assert_eq!(token.location, location!());
+        }};
+    }
+
+    #[test]
+    fn token() {
+        assert_token!(space, TokenKind::Space);
+        assert_token!(word, "abc", WordKind::Normal, TokenKind::Word);
+        assert_token!(number, "1".to_string(), TokenKind::Number);
+        assert_token!(comment, "test".to_string(), TokenKind::Comment);
+        assert_token!(background, TokenKind::Background);
+        assert_token!(pipe, TokenKind::Pipe);
+        assert_token!(pipe_both, TokenKind::PipeBoth);
+        assert_token!(and, TokenKind::And);
+        assert_token!(or, TokenKind::Or);
+        assert_token!(read_from, TokenKind::ReadFrom);
+        assert_token!(write_to, TokenKind::WriteTo);
+        assert_token!(force_write_to, TokenKind::ForceWriteTo);
+        assert_token!(write_both, TokenKind::WriteBoth);
+        assert_token!(read_copy, TokenKind::ReadCopy);
+        assert_token!(write_copy, TokenKind::WriteCopy);
+        assert_token!(append, TokenKind::Append);
+        assert_token!(append_both, TokenKind::AppendBoth);
+        assert_token!(read_close, TokenKind::ReadClose);
+        assert_token!(write_close, TokenKind::WriteClose);
+        assert_token!(read_write, TokenKind::ReadWrite);
+        assert_token!(here_document, TokenKind::HereDocument);
+        assert_token!(here_string, TokenKind::HereString);
+        assert_token!(termination, TokenKind::Termination);
+        assert_token!(group_start, TokenKind::GroupStart);
+        assert_token!(group_end, TokenKind::GroupEnd);
+        assert_token!(hyphen, TokenKind::Hyphen);
+        assert_token!(newline, TokenKind::NewLine);
+
+        assert_keyword!("if", TokenKind::If);
+        assert_keyword!("then", TokenKind::Then);
+        assert_keyword!("else", TokenKind::Else);
+        assert_keyword!("elsif", TokenKind::ElsIf);
+        assert_keyword!("elif", TokenKind::ElIf);
+        assert_keyword!("fi", TokenKind::Fi);
+        assert_keyword!("end", TokenKind::End);
+        assert_keyword!("unless", TokenKind::Unless);
+        assert_keyword!("while", TokenKind::While);
+        assert_keyword!("do", TokenKind::Do);
+        assert_keyword!("done", TokenKind::Done);
+        assert_keyword!("until", TokenKind::Until);
+        assert_keyword!("for", TokenKind::For);
+        assert_keyword!("in", TokenKind::In);
     }
 }
