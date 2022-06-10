@@ -11,7 +11,7 @@ impl Reader {
     pub(crate) fn new(input: &str, offset: usize) -> Self {
         Reader {
             input: VecDeque::from_iter(input.chars()),
-            location: Location::new_from_offset(&Location::default(), 0, offset),
+            location: Location::from_offset(&Location::default(), 0, offset),
         }
     }
 
@@ -32,13 +32,8 @@ impl Reader {
             None => None,
             Some(result) => {
                 match result {
-                    '\n' => {
-                        self.location.column = 1;
-                        self.location.line += 1;
-                    }
-                    _ => {
-                        self.location.column += 1;
-                    }
+                    '\n' => self.location.newline(),
+                    _ => self.location.next(),
                 }
                 Some(result)
             }

@@ -221,7 +221,7 @@ mod test {
 
     macro_rules! redirect_inner {
         (write_to, $s:expr, $loc:expr) => {{
-            let l = Location::new_from_offset(&$loc, 2, 0);
+            let l = Location::from_offset(&$loc, 2, 0);
             Redirect::write_to(1, vec![Word::normal($s, l)], false, $loc)
         }};
         (copy, $loc:expr) => {
