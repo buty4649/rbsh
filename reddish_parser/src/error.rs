@@ -42,3 +42,46 @@ impl From<&Error> for Error {
         item.clone()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::location;
+
+    #[test]
+    fn error_eof() {
+        let err = Error::eof(location!());
+        assert_eq!(err.value, ErrorKind::Eof);
+        assert_eq!(err.location, location!());
+    }
+
+    #[test]
+    fn error_unterminated_string() {
+        let err = Error::unterminated_string(location!());
+        assert_eq!(err.value, ErrorKind::UnterminatedString);
+        assert_eq!(err.location, location!());
+    }
+
+    #[test]
+    fn error_unexpected_token() {
+        let token = Token::space(location!());
+        let err = Error::unexpected_token(&token);
+        assert_eq!(err.value, ErrorKind::UnexpectedToken(TokenKind::Space));
+        assert_eq!(err.location, location!());
+    }
+
+    #[test]
+    fn error_invalid_fd() {
+        let err = Error::invalid_fd("abc", location!());
+        assert_eq!(err.value, ErrorKind::InvalidFd("abc".to_string()));
+        assert_eq!(err.location, location!());
+    }
+
+    #[test]
+    fn error_unimplemented() {
+        let token = Token::space(location!());
+        let err = Error::unimplemented(token);
+        assert_eq!(err.value, ErrorKind::Unimplemented(TokenKind::Space));
+        assert_eq!(err.location, location!());
+    }
+}
