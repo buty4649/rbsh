@@ -69,3 +69,77 @@ impl Reader {
         self.location
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::location;
+
+    #[test]
+    fn is_eof() {
+        assert!(Reader::new("", 0).is_eof());
+        assert!(!Reader::new("a", 0).is_eof());
+    }
+
+    #[test]
+    fn peek() {
+        assert_eq!(Reader::new("abc", 0).peek(), Some(&'a'));
+        assert_eq!(Reader::new("", 0).peek(), None);
+    }
+
+    #[test]
+    fn peek_nth() {
+        let reader = Reader::new("abc", 0);
+        assert_eq!(reader.peek_nth(1), Some(&'b'));
+        assert_eq!(reader.peek_nth(2), Some(&'c'));
+        assert_eq!(reader.peek_nth(3), None);
+        assert_eq!(Reader::new("", 0).peek_nth(4), None);
+    }
+
+    #[test]
+    fn next() {
+        let mut reader = Reader::new("abc", 0);
+        assert_eq!(reader.next(), Some('a'));
+        assert_eq!(reader.location, location!(2, 1));
+        assert_eq!(reader.next(), Some('b'));
+        assert_eq!(reader.location, location!(3, 1));
+        assert_eq!(reader.next(), Some('c'));
+        assert_eq!(reader.location, location!(4, 1));
+        assert_eq!(reader.next(), None);
+        assert_eq!(reader.location, location!(4, 1));
+    }
+
+    #[test]
+    fn next_if() {
+        let mut reader = Reader::new("abc", 0);
+        assert_eq!(reader.next_if(|c| c == &'a'), Some('a'));
+        assert_eq!(reader.location, location!(2, 1));
+        assert_eq!(reader.next_if(|c| c == &'c'), None);
+        assert_eq!(reader.location, location!(2, 1));
+    }
+
+    #[test]
+    fn skip() {
+        let mut reader = Reader::new("abc", 0);
+        reader.skip(2);
+        assert_eq!(reader.peek(), Some(&'c'));
+        assert_eq!(reader.location, location!(3, 1));
+    }
+
+    #[test]
+    fn iter() {
+        assert!(Reader::new("abc", 0).iter().eq([&'a', &'b', &'c']));
+    }
+
+    #[test]
+    fn starts_with() {
+        let reader = Reader::new("abc", 0);
+        assert!(reader.starts_with("ab"));
+        assert!(!reader.starts_with("bc"));
+    }
+
+    #[test]
+    fn location() {
+        assert_eq!(Reader::new("abc", 0).location, Location::default());
+    }
+}
