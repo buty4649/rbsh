@@ -72,3 +72,122 @@ impl LexerIterator {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::{location, Error, WordKind};
+    use std::any::type_name;
+
+    #[test]
+    fn lexer_iter() {
+        fn name<T>(_: T) -> &'static str {
+            type_name::<T>()
+        }
+
+        let iter = Lexer::new("abc", 0).iter();
+        assert_eq!(name(iter), "reddish_parser::lexer::iterator::LexerIterator");
+    }
+
+    #[test]
+    fn next() {
+        let mut iter = Lexer::new("abc", 0).iter();
+        assert_eq!(
+            iter.next(),
+            Some(Ok(Token::word("abc", WordKind::Normal, location!())))
+        );
+        assert_eq!(iter.next(), None);
+
+        let mut iter = Lexer::new("'abc", 0).iter();
+        assert_eq!(
+            iter.next(),
+            Some(Err(Error::unterminated_string(location!())))
+        );
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn peek() {
+        let mut iter = Lexer::new("abc", 0).iter();
+        assert_eq!(
+            iter.peek(),
+            Some(&Ok(Token::word("abc", WordKind::Normal, location!())))
+        );
+        assert_eq!(
+            iter.peek(),
+            Some(&Ok(Token::word("abc", WordKind::Normal, location!())))
+        );
+        iter.next();
+        assert_eq!(iter.peek(), None);
+
+        let mut iter = Lexer::new("'abc", 0).iter();
+        assert_eq!(
+            iter.peek(),
+            Some(&Err(Error::unterminated_string(location!())))
+        );
+    }
+
+    #[test]
+    fn skipe_if_space() {
+        let mut iter = Lexer::new(" abc", 0).iter();
+        assert_eq!(iter.skip_if_space(), Ok(true));
+        assert_eq!(iter.skip_if_space(), Ok(false));
+        assert_eq!(
+            iter.next(),
+            Some(Ok(Token::word("abc", WordKind::Normal, location!(2))))
+        );
+        assert_eq!(iter.skip_if_space(), Ok(false));
+
+        let mut iter = Lexer::new("'abc", 0).iter();
+        assert_eq!(
+            iter.skip_if_space(),
+            Err(Error::unterminated_string(location!()))
+        );
+    }
+
+    #[test]
+    fn skip_if_space_or_newline() {
+        let mut iter = Lexer::new(" abc", 0).iter();
+        assert_eq!(iter.skip_if_space_or_newline(), Ok(true));
+        assert_eq!(iter.skip_if_space_or_newline(), Ok(false));
+        assert_eq!(
+            iter.next(),
+            Some(Ok(Token::word("abc", WordKind::Normal, location!(2))))
+        );
+        assert_eq!(iter.skip_if_space_or_newline(), Ok(false));
+
+        let mut iter = Lexer::new("\nabc", 0).iter();
+        assert_eq!(iter.skip_if_space_or_newline(), Ok(true));
+        assert_eq!(iter.skip_if_space_or_newline(), Ok(false));
+        assert_eq!(
+            iter.next(),
+            Some(Ok(Token::word("abc", WordKind::Normal, location!(1, 2))))
+        );
+        assert_eq!(iter.skip_if_space_or_newline(), Ok(false));
+
+        let mut iter = Lexer::new("'abc", 0).iter();
+        assert_eq!(
+            iter.skip_if_space_or_newline(),
+            Err(Error::unterminated_string(location!()))
+        );
+    }
+
+    #[test]
+    fn location() {
+        let mut iter = Lexer::new("abc", 0).iter();
+        assert_eq!(iter.location(), location!());
+
+        assert_eq!(iter.skip_if_space(), Ok(false));
+        assert_eq!(iter.location(), location!());
+
+        iter.next();
+        assert_eq!(iter.location(), location!(4));
+
+        let mut iter = Lexer::new("'abc", 0).iter();
+        assert_eq!(
+            iter.peek(),
+            Some(&Err(Error::unterminated_string(location!())))
+        );
+        assert_eq!(iter.location(), location!());
+    }
+}
