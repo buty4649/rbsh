@@ -404,4 +404,4 @@ fn error_unexpected_token(lexer: &mut LexerIterator) -> Error {
     }
 }
 
-include!("parser_test.rs");
+include!("tests.rs");
