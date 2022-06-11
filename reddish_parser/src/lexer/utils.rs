@@ -22,6 +22,10 @@ pub(crate) fn is_double_quote(c: &char) -> bool {
     c == &'"'
 }
 
+pub(crate) fn is_back_quote(c: &char) -> bool {
+    c == &'`'
+}
+
 pub(crate) fn is_normal_word_delimiter(c: &char) -> bool {
     ['&', '|', '<', '>', '{', '}', '$'].contains(c)
         || is_space(c)
@@ -72,6 +76,12 @@ mod test {
     fn test_is_double_quote() {
         assert!(is_double_quote(&'"'));
         assert!(!is_double_quote(&'a'));
+    }
+
+    #[test]
+    fn test_is_back_quote() {
+        assert!(is_back_quote(&'`'));
+        assert!(!is_back_quote(&'a'));
     }
 
     #[test]

@@ -1,3 +1,5 @@
+use std::{any, fmt};
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Location {
     pub column: usize,
@@ -46,15 +48,30 @@ macro_rules! location {
     };
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Annotate<T: Clone> {
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct Annotate<T: fmt::Debug + Clone> {
     pub value: T,
     pub location: Location,
 }
 
-impl<T: Clone> Annotate<T> {
+impl<T: fmt::Debug + Clone> Annotate<T> {
     pub fn new(value: T, location: Location) -> Self {
         Self { value, location }
+    }
+}
+
+impl<T: fmt::Debug + Clone> fmt::Debug for Annotate<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let type_name = any::type_name::<T>();
+        let (struct_name, field_name) = match type_name.strip_prefix("reddish_parser::") {
+            Some("token::TokenKind") => ("Token", "kind"),
+            _ => ("Annotate", "value"),
+        };
+
+        f.debug_struct(struct_name)
+            .field(field_name, &self.value)
+            .field("location", &(self.location.column, self.location.line))
+            .finish()
     }
 }
 

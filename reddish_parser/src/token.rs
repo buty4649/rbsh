@@ -56,8 +56,8 @@ impl Token {
         Self::new(TokenKind::Word(String::from(s.as_ref()), k), loc)
     }
 
-    pub fn number(n: String, loc: Location) -> Self {
-        Self::new(TokenKind::Number(n), loc)
+    pub fn number<S: AsRef<str>>(n: S, loc: Location) -> Self {
+        Self::new(TokenKind::Number(String::from(n.as_ref())), loc)
     }
 
     pub fn comment(c: String, loc: Location) -> Self {

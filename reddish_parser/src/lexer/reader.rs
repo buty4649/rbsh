@@ -15,10 +15,6 @@ impl Reader {
         }
     }
 
-    pub(crate) fn is_eof(&self) -> bool {
-        self.input.is_empty()
-    }
-
     pub(crate) fn peek(&self) -> Option<&char> {
         self.peek_nth(0)
     }
@@ -69,12 +65,6 @@ impl Reader {
 mod test {
     use super::*;
     use crate::location;
-
-    #[test]
-    fn is_eof() {
-        assert!(Reader::new("", 0).is_eof());
-        assert!(!Reader::new("a", 0).is_eof());
-    }
 
     #[test]
     fn peek() {

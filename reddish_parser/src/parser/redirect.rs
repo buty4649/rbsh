@@ -13,6 +13,7 @@ pub enum RedirectKind {
     Close(RawFd),                    // fd / n<&-, n>&-
     ReadWrite(RawFd, Vec<Word>),     // fd filename / n<>word
 }
+
 pub type Redirect = Annotate<RedirectKind>;
 
 impl Redirect {

@@ -72,6 +72,9 @@ impl Lexer {
                 _ if is_single_quote(&c) => {
                     self.word(WordKind::Quote, is_single_quote, true, true, false)
                 }
+                _ if is_back_quote(&c) => {
+                    self.word(WordKind::Command, is_back_quote, true, true, false)
+                }
 
                 _ if self.head && self.starts_with("if") => keyword!("if"),
                 _ if self.head && self.starts_with("then") => keyword!("then"),
@@ -206,15 +209,15 @@ impl Lexer {
         self.reader.next(); // remove '|'
 
         match self.reader.next_if(|c| c == &'|' || c == &'&') {
-            Some('|') => Ok(Token::or(location)),
-            Some('&') => Ok(Token::pipe_both(location)),
-            _ => Ok(Token::pipe(location)),
+            Some('|') => Ok(Token::or(location)),        // ||
+            Some('&') => Ok(Token::pipe_both(location)), // |&
+            _ => Ok(Token::pipe(location)),              // |
         }
     }
 
     fn less_than(&mut self) -> Result<Token> {
         let location = self.reader.location();
-        self.reader.next(); // remove '|'
+        self.reader.next(); // remove '<'
 
         match self.reader.next_if(|c| c == &'<' || c == &'&' || c == &'>') {
             Some('<') => match self.reader.next_if(|c| c == &'<') {
@@ -232,7 +235,7 @@ impl Lexer {
 
     fn greater_than(&mut self) -> Result<Token> {
         let location = self.reader.location();
-        self.reader.next(); // remove '|'
+        self.reader.next(); // remove '>'
 
         match self.reader.next_if(|c| c == &'&' || c == &'|' || c == &'>') {
             Some('&') => match self.reader.next_if(|c| c == &'-') {
@@ -254,64 +257,64 @@ impl Lexer {
     }
 
     fn quoted_word(&mut self) -> Result<Token> {
-        macro_rules! unterminated_string {
+        macro_rules! error_unterminated_string {
             () => {{
-                let location = self.quoted_word_location.unwrap();
-                self.quoted_word_location = None;
-                Err(Error::unterminated_string(location))
-            }};
-        }
-        macro_rules! retrive_word {
-            () => {{
-                self.word(WordKind::Normal,
-                    |c| is_double_quote(c) || c == &'$',
-                    false, true, false)
-            }};
-        }
-        let token = match self.reader.peek() {
-            Some('$') => self.dollar_word(),
-            Some(c) => {
-                if c == &'"' {
-                    let location = self.reader.location();
-                    self.quoted_word_location = Some(location);
-                    self.reader.next(); // remove '"'
+                if let Some(location) = self.quoted_word_location {
+                    self.quoted_word_location = None;
+                    Err(Error::unterminated_string(location))
+                } else {
+                    Err(Error::eof(self.location()))
                 }
-                retrive_word![]
-            }
-            None => unterminated_string![],
-        }?;
+            }};
+        }
 
-        if self.reader.is_eof() {
-            unterminated_string![]
-        } else {
-            if self.reader.next_if(is_double_quote).is_some() {
-                self.quoted_word_location = None;
+        match self.reader.next_if(is_double_quote) {
+            Some(_) => {
+                let location = self.reader.location();
+                self.quoted_word_location = Some(location);
+                self.quoted_word()
             }
-            Ok(token)
+            None => match self.reader.peek() {
+                Some(&'$') => self.dollar_word(),
+                Some(_) => self.word(
+                    WordKind::Normal,
+                    |c| is_double_quote(c) || c == &'$',
+                    false,
+                    true,
+                    false,
+                ),
+                None => error_unterminated_string![],
+            }
+            .and_then(|result| match self.reader.peek() {
+                Some(_) => {
+                    if self.reader.next_if(is_double_quote).is_some() {
+                        self.quoted_word_location = None;
+                    }
+                    Ok(result)
+                }
+                None => error_unterminated_string![],
+            }),
         }
     }
 
     fn dollar_word(&mut self) -> Result<Token> {
-        match self.reader.peek_nth(1) {
-            Some('{') => {
-                self.reader.next(); // remove '$'
-                self.word(WordKind::Parameter, |c| c == &'}', true, true, false)
+        let location = self.reader.location();
+        self.reader.next(); // remove '$'
+        match self.reader.peek() {
+            Some(&'{') => self.word(WordKind::Parameter, |c| c == &'}', true, true, false),
+            Some('(') => self.word(WordKind::Command, |c| c == &')', true, true, false),
+            Some('$') => {
+                self.reader.next();
+                Ok(Token::word("$", WordKind::Variable, location))
             }
-            Some('(') => {
-                self.reader.next(); // remove '$'
-                self.word(WordKind::Parameter, |c| c == &')', true, true, false)
-            }
-            Some(c) if !c.is_ascii_punctuation() => {
-                self.reader.next(); // remove '$'
-                self.word(
-                    WordKind::Variable,
-                    |c| is_normal_word_delimiter(c) || c == &'\\',
-                    false,
-                    false,
-                    false,
-                )
-            }
-            _ => self.normal_word(),
+            Some(c) if !c.is_ascii_punctuation() => self.word(
+                WordKind::Variable,
+                |c| c.is_ascii_punctuation(),
+                false,
+                false,
+                false,
+            ),
+            _ => Ok(Token::word("$", WordKind::Normal, location)),
         }
     }
 
@@ -362,5 +365,342 @@ impl Lexer {
         self.reader.starts_with(s)
             && (matches!(self.reader.peek_nth(s.len()), Some(c) if is_space(c) || is_newline(c) || is_termination(c))
                 || self.reader.peek_nth(s.len()).is_none())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::location;
+
+    #[test]
+    fn space() {
+        assert_eq!(
+            Lexer::new("     ", 0).space(),
+            Ok(Token::space(location!()))
+        );
+    }
+
+    #[test]
+    fn newline() {
+        assert_eq!(
+            Lexer::new("\n\n\n", 0).newline(),
+            Ok(Token::newline(location!()))
+        );
+    }
+
+    #[test]
+    fn termination() {
+        assert_eq!(
+            Lexer::new(";;;;", 0).termination(),
+            Ok(Token::termination(location!()))
+        );
+    }
+
+    #[test]
+    fn group_start() {
+        assert_eq!(
+            Lexer::new("{", 0).group_start(),
+            Ok(Token::group_start(location!()))
+        )
+    }
+
+    #[test]
+    fn group_end() {
+        assert_eq!(
+            Lexer::new("}", 0).group_end(),
+            Ok(Token::group_end(location!()))
+        )
+    }
+
+    #[test]
+    fn hyphen() {
+        assert_eq!(Lexer::new("-", 0).hyphen(), Ok(Token::hyphen(location!())))
+    }
+
+    #[test]
+    fn number() {
+        assert_eq!(
+            Lexer::new("123", 0).number(),
+            Ok(Token::word("123", WordKind::Normal, location!()))
+        );
+        assert_eq!(
+            Lexer::new("123abc", 0).number(),
+            Ok(Token::word("123abc", WordKind::Normal, location!()))
+        );
+        assert_eq!(
+            Lexer::new("123<", 0).number(),
+            Ok(Token::number("123".to_string(), location!()))
+        );
+        assert_eq!(
+            Lexer::new("123>", 0).number(),
+            Ok(Token::number("123".to_string(), location!()))
+        );
+
+        let mut lexer = Lexer::new("<&123", 0);
+        lexer.lex();
+        assert_eq!(
+            lexer.number(),
+            Ok(Token::number("123".to_string(), location!(3)))
+        );
+        let mut lexer = Lexer::new(">&123", 0);
+        lexer.lex();
+        assert_eq!(
+            lexer.number(),
+            Ok(Token::number("123".to_string(), location!(3)))
+        );
+    }
+
+    #[test]
+    fn ampersand() {
+        assert_eq!(
+            Lexer::new("&>>", 0).ampersand(),
+            Ok(Token::append_both(location!()))
+        );
+        assert_eq!(
+            Lexer::new("&>", 0).ampersand(),
+            Ok(Token::write_both(location!()))
+        );
+        assert_eq!(Lexer::new("&&", 0).ampersand(), Ok(Token::and(location!())));
+        assert_eq!(
+            Lexer::new("&", 0).ampersand(),
+            Ok(Token::background(location!()))
+        );
+    }
+
+    #[test]
+    fn commenct() {
+        assert_eq!(
+            Lexer::new("# foo#bar\nbaz", 0).comment(),
+            Ok(Token::comment(" foo#bar".to_string(), location!()))
+        );
+    }
+
+    #[test]
+    fn vertical_line() {
+        assert_eq!(
+            Lexer::new("||", 0).vertical_line(),
+            Ok(Token::or(location!()))
+        );
+        assert_eq!(
+            Lexer::new("|&", 0).vertical_line(),
+            Ok(Token::pipe_both(location!()))
+        );
+        assert_eq!(
+            Lexer::new("|", 0).vertical_line(),
+            Ok(Token::pipe(location!()))
+        );
+    }
+
+    #[test]
+    fn less_than() {
+        assert_eq!(
+            Lexer::new("<<<", 0).less_than(),
+            Ok(Token::here_string(location!()))
+        );
+        assert_eq!(
+            Lexer::new("<<", 0).less_than(),
+            Ok(Token::here_document(location!()))
+        );
+        assert_eq!(
+            Lexer::new("<&-", 0).less_than(),
+            Ok(Token::read_close(location!()))
+        );
+        assert_eq!(
+            Lexer::new("<&", 0).less_than(),
+            Ok(Token::read_copy(location!()))
+        );
+        assert_eq!(
+            Lexer::new("<>", 0).less_than(),
+            Ok(Token::read_write(location!()))
+        );
+        assert_eq!(
+            Lexer::new("<", 0).less_than(),
+            Ok(Token::read_from(location!()))
+        );
+    }
+
+    #[test]
+    fn greater_than() {
+        assert_eq!(
+            Lexer::new(">&-", 0).greater_than(),
+            Ok(Token::write_close(location!()))
+        );
+
+        assert_eq!(
+            Lexer::new(">&123", 0).greater_than(),
+            Ok(Token::write_copy(location!()))
+        );
+        let mut lexer = Lexer::new("123>&", 0);
+        lexer.lex();
+        assert_eq!(lexer.greater_than(), Ok(Token::write_copy(location!(4))));
+        assert_eq!(
+            Lexer::new(">&", 0).greater_than(),
+            Ok(Token::write_both(location!()))
+        );
+        assert_eq!(
+            Lexer::new(">|", 0).greater_than(),
+            Ok(Token::force_write_to(location!()))
+        );
+        assert_eq!(
+            Lexer::new(">>", 0).greater_than(),
+            Ok(Token::append(location!()))
+        );
+        assert_eq!(
+            Lexer::new(">", 0).greater_than(),
+            Ok(Token::write_to(location!()))
+        );
+    }
+
+    #[test]
+    fn quoted_word() {
+        let mut lexer = Lexer::new("\"abc\"", 0);
+        assert_eq!(
+            lexer.quoted_word(),
+            Ok(Token::word("abc", WordKind::Normal, location!(2)))
+        );
+        assert_eq!(lexer.lex(), None);
+
+        let mut lexer = Lexer::new("\"abc${def}ghi\"", 0);
+        assert_eq!(
+            lexer.quoted_word(),
+            Ok(Token::word("abc", WordKind::Normal, location!(2)))
+        );
+        assert_eq!(
+            lexer.quoted_word(),
+            Ok(Token::word("def", WordKind::Parameter, location!(6)))
+        );
+        assert_eq!(
+            lexer.quoted_word(),
+            Ok(Token::word("ghi", WordKind::Normal, location!(11)))
+        );
+        assert_eq!(lexer.lex(), None);
+
+        let mut lexer = Lexer::new("\"${abc}\"", 0);
+        assert_eq!(
+            lexer.quoted_word(),
+            Ok(Token::word("abc", WordKind::Parameter, location!(3)))
+        );
+        assert_eq!(lexer.lex(), None);
+    }
+
+    #[test]
+    fn dollar_word() {
+        let mut lexer = Lexer::new("${abc}", 0);
+        assert_eq!(
+            lexer.dollar_word(),
+            Ok(Token::word("abc", WordKind::Parameter, location!(2)))
+        );
+        assert_eq!(lexer.lex(), None);
+        let mut lexer = Lexer::new("${abc\\}def}", 0);
+        assert_eq!(
+            lexer.dollar_word(),
+            Ok(Token::word("abc}def", WordKind::Parameter, location!(2)))
+        );
+        assert_eq!(lexer.lex(), None);
+
+        let mut lexer = Lexer::new("$(abc)", 0);
+        assert_eq!(
+            lexer.dollar_word(),
+            Ok(Token::word("abc", WordKind::Command, location!(2)))
+        );
+        assert_eq!(lexer.lex(), None);
+        let mut lexer = Lexer::new("$(abc\\)def)", 0);
+        assert_eq!(
+            lexer.dollar_word(),
+            Ok(Token::word("abc)def", WordKind::Command, location!(2)))
+        );
+        assert_eq!(lexer.lex(), None);
+
+        let mut lexer = Lexer::new("$$", 0);
+        assert_eq!(
+            lexer.dollar_word(),
+            Ok(Token::word("$", WordKind::Variable, location!(1)))
+        );
+        assert_eq!(lexer.lex(), None);
+
+        let mut lexer = Lexer::new("$abc$def", 0);
+        assert_eq!(
+            lexer.dollar_word(),
+            Ok(Token::word("abc", WordKind::Variable, location!(2)))
+        );
+        assert_eq!(
+            lexer.dollar_word(),
+            Ok(Token::word("def", WordKind::Variable, location!(6)))
+        );
+        assert_eq!(lexer.lex(), None);
+
+        let mut lexer = Lexer::new("$🍣", 0);
+        assert_eq!(
+            lexer.dollar_word(),
+            Ok(Token::word("🍣", WordKind::Variable, location!(2)))
+        );
+        assert_eq!(lexer.lex(), None);
+
+        let mut lexer = Lexer::new("$,$", 0);
+        assert_eq!(
+            lexer.dollar_word(),
+            Ok(Token::word("$", WordKind::Normal, location!(1)))
+        );
+        assert_eq!(
+            lexer.lex(),
+            Some(Ok(Token::word(",", WordKind::Normal, location!(2))))
+        );
+        assert_eq!(
+            lexer.dollar_word(),
+            Ok(Token::word("$", WordKind::Normal, location!(3)))
+        );
+    }
+
+    #[test]
+    fn normal_word() {
+        assert_eq!(
+            Lexer::new("abc", 0).normal_word(),
+            Ok(Token::word("abc", WordKind::Normal, location!()))
+        );
+
+        let mut lexer = Lexer::new("abc def", 0);
+        assert_eq!(
+            lexer.normal_word(),
+            Ok(Token::word("abc", WordKind::Normal, location!()))
+        );
+        assert_eq!(lexer.lex(), Some(Ok(Token::space(location!(4)))));
+        assert_eq!(
+            lexer.normal_word(),
+            Ok(Token::word("def", WordKind::Normal, location!(5)))
+        );
+
+        let mut lexer = Lexer::new("abc\\ def", 0);
+        assert_eq!(
+            lexer.normal_word(),
+            Ok(Token::word("abc def", WordKind::Normal, location!()))
+        );
+    }
+
+    #[test]
+    fn word() {
+        assert_eq!(
+            Lexer::new("'abc\\ def'", 0).word(WordKind::Normal, is_space, false, false, false),
+            Ok(Token::word("'abc\\", WordKind::Normal, location!()))
+        );
+
+        assert_eq!(
+            Lexer::new("'abc def'", 0).word(WordKind::Normal, is_single_quote, true, false, false),
+            Ok(Token::word("abc def", WordKind::Normal, location!()))
+        );
+        assert_eq!(
+            Lexer::new("'abc def", 0).word(WordKind::Normal, is_single_quote, true, false, false),
+            Err(Error::unterminated_string(location!()))
+        );
+
+        assert_eq!(
+            Lexer::new("abc\\ def", 0).word(WordKind::Normal, is_space, false, true, false),
+            Ok(Token::word("abc def", WordKind::Normal, location!()))
+        );
+
+        assert_eq!(
+            Lexer::new("abc\\def", 0).word(WordKind::Normal, is_space, false, false, true),
+            Ok(Token::word("abcdef", WordKind::Normal, location!()))
+        );
     }
 }
