@@ -1,5 +1,5 @@
 use indoc::indoc;
-use reddish_parser::{location, Lexer, Location, Token, WordKind};
+use reddish_parser::{location, Error, Lexer, Location, Token, WordKind};
 
 macro_rules! assert_lex {
     ($s:expr, $($token:expr),+) => {{
@@ -192,6 +192,13 @@ fn it_simple_command() {
         Ok(Token::word("echo", WordKind::Normal, location!(26, 1))),
         Ok(Token::space(location!(30, 1))),
         Ok(Token::word("baz", WordKind::Normal, location!(31, 1)))
+    );
+
+    assert_lex!(
+        "echo \"foo",
+        Ok(Token::word("echo", WordKind::Normal, location!(1, 1))),
+        Ok(Token::space(location!(5, 1))),
+        Err(Error::unterminated_string(location!(7)))
     );
 }
 

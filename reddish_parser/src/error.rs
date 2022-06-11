@@ -16,23 +16,23 @@ pub enum ErrorKind {
 pub type Error = Annotate<ErrorKind>;
 
 impl Error {
-    pub(crate) fn eof(loc: Location) -> Self {
+    pub fn eof(loc: Location) -> Self {
         Self::new(ErrorKind::Eof, loc)
     }
 
-    pub(crate) fn unterminated_string(loc: Location) -> Self {
+    pub fn unterminated_string(loc: Location) -> Self {
         Self::new(ErrorKind::UnterminatedString, loc)
     }
 
-    pub(crate) fn unexpected_token(t: &Token) -> Self {
+    pub fn unexpected_token(t: &Token) -> Self {
         Self::new(ErrorKind::UnexpectedToken(t.value.clone()), t.location)
     }
 
-    pub(crate) fn invalid_fd(s: &str, loc: Location) -> Self {
+    pub fn invalid_fd(s: &str, loc: Location) -> Self {
         Self::new(ErrorKind::InvalidFd(s.to_string()), loc)
     }
 
-    pub(crate) fn unimplemented(t: Token) -> Self {
+    pub fn unimplemented(t: Token) -> Self {
         Self::new(ErrorKind::Unimplemented(t.value), t.location)
     }
 }
