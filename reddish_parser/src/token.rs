@@ -215,7 +215,11 @@ mod test {
     fn token() {
         assert_token!(space, TokenKind::Space);
         assert_token!(word, "abc", WordKind::Normal, TokenKind::Word);
-        assert_token!(number, "1".to_string(), TokenKind::Number);
+
+        let number = Token::number("1", location!());
+        assert_eq!(number.value, TokenKind::Number("1".to_string()));
+        assert_eq!(number.location, location!());
+
         assert_token!(comment, "test".to_string(), TokenKind::Comment);
         assert_token!(background, TokenKind::Background);
         assert_token!(pipe, TokenKind::Pipe);
