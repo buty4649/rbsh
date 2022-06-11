@@ -38,7 +38,13 @@ fn build_mruby(mruby_build_config: &str) {
     )
     .unwrap();
 
-    println!("cargo:rerun-if-changed={}", mruby_version);
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let mruby_version_file = manifest_dir.join("mruby_version");
+
+    println!(
+        "cargo:rerun-if-changed={}",
+        mruby_version_file.to_str().unwrap()
+    );
     println!("cargo:rustc-link-lib=mruby");
     println!(
         "cargo:rustc-link-search={}",
