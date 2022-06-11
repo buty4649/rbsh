@@ -148,15 +148,15 @@ impl App {
                 Ok(line) => {
                     cmdline.push_str(&line);
                     match parse_command_line(&cmdline, linenumber) {
-                        Ok(cmds) => {
-                            if !cmds.ignore_history && rl.add_history_entry(&cmdline) {
+                        Ok((cmds, ignore_history)) => {
+                            if !ignore_history && rl.add_history_entry(&cmdline) {
                                 if let Some(e) =
                                     rl.save_history(self.config.history_file_path()).err()
                                 {
                                     eprintln!("reddish: save history error: {:?}", e)
                                 }
                             }
-                            for cmd in cmds.to_vec() {
+                            for cmd in cmds {
                                 executor.execute_command(&mut self.ctx, cmd, None);
                             }
 

@@ -10,7 +10,7 @@ pub(crate) fn print(units: &[Unit]) {
 
 #[cfg(feature = "debug")]
 mod pp {
-    use crate::{ConnecterKind, RedirectList, Unit, UnitKind, Word, WordList};
+    use crate::{ConnecterKind, Redirect, Unit, UnitKind, Word};
 
     macro_rules! debug {
         ($indent:expr, $($args:tt)* ) => {{
@@ -76,8 +76,8 @@ mod pp {
 
     fn print_simple_command(
         indent: usize,
-        command: &[WordList],
-        redirect: &RedirectList,
+        command: &[Vec<Word>],
+        redirect: &Option<Vec<Redirect>>,
         backgroud: bool,
     ) {
         debug!(indent, "SimpleCommand:");
@@ -125,7 +125,7 @@ mod pp {
         condition: &Unit,
         true_case: &[Unit],
         false_case: &Option<Vec<Unit>>,
-        redirect: &RedirectList,
+        redirect: &Option<Vec<Redirect>>,
         reverse: bool,
         background: bool,
     ) {
@@ -156,7 +156,7 @@ mod pp {
         indent: usize,
         condition: &Unit,
         command: &[Unit],
-        redirect: &RedirectList,
+        redirect: &Option<Vec<Redirect>>,
         reverse: bool,
         background: bool,
     ) {
@@ -178,10 +178,10 @@ mod pp {
 
     fn print_for(
         indent: usize,
-        identifier: &Word,
-        list: &Option<Vec<WordList>>,
+        identifier: &Vec<Word>,
+        list: &Option<Vec<Vec<Word>>>,
         command: &[Unit],
-        redirect: &RedirectList,
+        redirect: &Option<Vec<Redirect>>,
         background: bool,
     ) {
         debug!(indent, "For:");

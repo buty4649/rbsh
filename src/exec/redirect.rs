@@ -6,16 +6,16 @@ use crate::{
     syscall::{self, SysCallResult},
 };
 use nix::{fcntl::OFlag, sys::stat::Mode};
-use reddish_parser::{Location, Redirect, RedirectKind, RedirectList, WordList};
+use reddish_parser::{Location, Redirect, RedirectKind, Word};
 use std::collections::HashSet;
 use std::os::unix::io::RawFd;
 
 pub trait ApplyRedirect {
-    fn apply(self, ctx: &Context, save: bool) -> Result<RedirectList>;
+    fn apply(self, ctx: &Context, save: bool) -> Result<Vec<Redirect>>;
 }
 
-impl ApplyRedirect for RedirectList {
-    fn apply(self, ctx: &Context, save: bool) -> Result<RedirectList> {
+impl ApplyRedirect for Vec<Redirect> {
+    fn apply(self, ctx: &Context, save: bool) -> Result<Vec<Redirect>> {
         RedirectApplier::new(save).exec(ctx, self)
     }
 }
@@ -37,7 +37,7 @@ impl RedirectApplier {
         }
     }
 
-    fn exec(&mut self, ctx: &Context, list: RedirectList) -> Result<RedirectList> {
+    fn exec(&mut self, ctx: &Context, list: Vec<Redirect>) -> Result<Vec<Redirect>> {
         for redirect in list {
             let kind = redirect.value;
             let loc = redirect.location;
@@ -82,7 +82,7 @@ impl RedirectApplier {
         &mut self,
         ctx: &Context,
         fd: RawFd,
-        wordlist: WordList,
+        wordlist: Vec<Word>,
         flag: OFlag,
     ) -> SysCallResult<()> {
         let file = wordlist.to_string(ctx).unwrap();
@@ -128,7 +128,7 @@ impl RedirectApplier {
         Ok(())
     }
 
-    fn restore_list(&self) -> RedirectList {
+    fn restore_list(&self) -> Vec<Redirect> {
         vec![
             self.savefd
                 .iter()

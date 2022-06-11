@@ -11,11 +11,9 @@ mod test {
     }
 
     macro_rules! wordlist {
-        ($($e: expr$(,)?)+) => {{
-            let mut wl = WordList::new();
-            $(wl.push($e);)+
-            wl
-        }};
+        ($($e: expr$(,)?)+) => {
+            vec![$($e,)+]
+        };
     }
 
     macro_rules! r {
