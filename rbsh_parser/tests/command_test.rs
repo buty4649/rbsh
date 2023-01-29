@@ -5,9 +5,9 @@ mod common;
 
 mod test_command {
     use indoc::indoc;
+    use pretty_assertions::assert_eq;
     use rbsh_parser::ast::*;
     use rbsh_parser::parse;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn comment() {
@@ -37,8 +37,8 @@ mod test_command {
         ];
 
         for keyword in keywords {
-            let input = format!("foo\\{}bar", keyword);
-            let expect = format!("foo{}bar", keyword);
+            let input = format!("foo\\{keyword}bar");
+            let expect = format!("foo{keyword}bar");
             assert_parse!(&input => Ok(vec![command!(
                 name: vec![bare!(@ &expect)]
             )]));
@@ -250,7 +250,7 @@ mod test_command {
         let marks = ["*", "@", "#", "?", "-", "$", "!", "_", "0", "10"];
 
         for mark in marks {
-            let input = format!("${}", mark);
+            let input = format!("${mark}");
             assert_parse!(&input => Ok(vec![command!(name: vec![param_sub!(@ mark)])]));
         }
 
@@ -325,5 +325,4 @@ mod test_command {
             ]
         )]));
     }
-
 }

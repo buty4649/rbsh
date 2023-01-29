@@ -6,11 +6,9 @@ trait ParseDigit {
 
 impl ParseDigit for &str {
     fn parse_digit(&self, radix: u32) -> Option<char> {
-        let mut code = 0;
-        for c in self.chars() {
-            code = code * radix + c.to_digit(radix)?;
-        }
-        char::from_u32(code)
+        self.chars()
+            .try_fold(0, |sum, c| c.to_digit(radix).map(|c| sum * radix + c))
+            .and_then(char::from_u32)
     }
 }
 
