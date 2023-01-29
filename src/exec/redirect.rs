@@ -6,7 +6,7 @@ use crate::{
     syscall::{self, SysCallResult},
 };
 use nix::{fcntl::OFlag, sys::stat::Mode};
-use reddish_parser::{Location, Redirect, RedirectKind, Word};
+use rbsh_parser::{Location, Redirect, RedirectKind, Word};
 use std::collections::HashSet;
 use std::os::unix::io::RawFd;
 
@@ -87,7 +87,7 @@ impl RedirectApplier {
     ) -> SysCallResult<()> {
         let file = wordlist.to_string(ctx).unwrap();
         let mode = Mode::from_bits(0o666).unwrap();
-        let new_fd = syscall::open(&*file, flag, mode)?;
+        let new_fd = syscall::open(&file, flag, mode)?;
 
         if fd == new_fd {
             self.openfd.insert(fd);

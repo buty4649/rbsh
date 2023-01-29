@@ -123,7 +123,7 @@ impl<'a> Iterator for Forever<'a> {
         match self.0.poll_signal(&mut SignalHandler::has_signals) {
             PollResult::Signal(result) => Some(result),
             PollResult::Closed | PollResult::Pending => None,
-            PollResult::Err(e) => panic!("Unexpected error: {}", e),
+            PollResult::Err(e) => panic!("Unexpected error: {e}"),
         }
     }
 }

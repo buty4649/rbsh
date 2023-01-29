@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test {
     use super::*;
-    use reddish_parser::Location;
+    use rbsh_parser::Location;
 
     macro_rules! word {
         ($e: expr) => {

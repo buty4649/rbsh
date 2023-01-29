@@ -20,7 +20,7 @@ use mockall_double::double;
 #[double]
 use mockable_syscall::inner as syscall;
 
-static APP_NAME: &str = "reddish";
+static APP_NAME: &str = "rbsh";
 static VERSION: &str = crate_version!();
 
 #[macro_export]

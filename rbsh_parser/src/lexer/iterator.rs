@@ -86,7 +86,7 @@ mod test {
         }
 
         let iter = Lexer::new("abc", 0).iter();
-        assert_eq!(name(iter), "reddish_parser::lexer::iterator::LexerIterator");
+        assert_eq!(name(iter), "rbsh_parser::lexer::iterator::LexerIterator");
     }
 
     #[test]

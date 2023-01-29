@@ -430,25 +430,19 @@ mod test {
         );
         assert_eq!(
             Lexer::new("123<", 0).number(),
-            Ok(Token::number("123".to_string(), location!()))
+            Ok(Token::number("123", location!()))
         );
         assert_eq!(
             Lexer::new("123>", 0).number(),
-            Ok(Token::number("123".to_string(), location!()))
+            Ok(Token::number("123", location!()))
         );
 
         let mut lexer = Lexer::new("<&123", 0);
         lexer.lex();
-        assert_eq!(
-            lexer.number(),
-            Ok(Token::number("123".to_string(), location!(3)))
-        );
+        assert_eq!(lexer.number(), Ok(Token::number("123", location!(3))));
         let mut lexer = Lexer::new(">&123", 0);
         lexer.lex();
-        assert_eq!(
-            lexer.number(),
-            Ok(Token::number("123".to_string(), location!(3)))
-        );
+        assert_eq!(lexer.number(), Ok(Token::number("123", location!(3))));
     }
 
     #[test]

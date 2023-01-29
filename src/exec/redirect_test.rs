@@ -2,7 +2,7 @@
 mod test {
     use super::*;
     use mockall::predicate::eq;
-    use reddish_parser::{Location, Redirect, Word, WordKind};
+    use rbsh_parser::{Location, Redirect, Word, WordKind};
 
     macro_rules! word {
         ($e: expr) => {

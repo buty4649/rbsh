@@ -71,7 +71,7 @@ impl Escape for String {
                 's' => c[0] = ' ',
                 _ => (),
             }
-            result.push_str(&*c.into_iter().collect::<String>())
+            result.push_str(&c.into_iter().collect::<String>())
         }
 
         result

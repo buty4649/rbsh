@@ -1,16 +1,16 @@
-[![CI](https://github.com/buty4649/reddish-shell/actions/workflows/ci.yaml/badge.svg)](https://github.com/buty4649/reddish-shell/actions/workflows/ci.yaml)
+[![CI](https://github.com/buty4649/rbsh/actions/workflows/ci.yaml/badge.svg)](https://github.com/buty4649/rbsh/actions/workflows/ci.yaml)
 
-reddish-shell: Ruby powered shell
-=================================
+rbsh: Rubyish and Bash like syntax shell
+========================================
 
 **⚠現在、開発中のためバグや機能不足が存在します⚠**
 
-reddish-shellはRubyが使えるシェル実装です。[mruby](https://github.com/mruby/mruby)を使っているためワンバイナリーで利用できます。bashとの互換が一部あり、bashスクリプトを動かすこともできます。
+rbshはRubyが使えるシェル実装です。[mruby](https://github.com/mruby/mruby)を使っているためワンバイナリーで利用できます。bashとの互換が一部あり、bashスクリプトを動かすこともできます。
 
 コンセプト
 ----------
 
-reddish-shellにおけるコンセプトは以下の通りです。
+rbshにおけるコンセプトは以下の通りです。
 
 * Rubyのような構文
 * bashスクリプトが80%くらい動く
@@ -39,16 +39,16 @@ reddish-shellにおけるコンセプトは以下の通りです。
 環境を用意したら以下の手順を実行することでバイナリを作成することができます。
 
 ```
-$ git clone https://github.com/buty4649/reddish-shell
-$ cd reddish-shell
+$ git clone https://github.com/buty4649/rbsh
+$ cd rbsh
 $ cargo build --release
-$ ./target/release/reddish
+$ ./target/release/rbsh
 ```
 
 オプション
 -----------
 
-reddish-shellを起動時に以下のオプションを設定することができます。
+rbshを起動時に以下のオプションを設定することができます。
 
 <dl>
   <dt>-c string<dt>
@@ -237,11 +237,11 @@ argを空白区切りで出力し最後に改行コードを出力します。�
 
 ### exit [n]
 
-終了ステータスnで直ちにreddish-shellの実行終了します。nが指定されていない場合は0になります。
+終了ステータスnで直ちにrbshの実行終了します。nが指定されていない場合は0になります。
 
 ### iruby
 
-reddish-shell内蔵のRubyエンジンでRubyスクリプトを実行します。
+rbsh内蔵のRubyエンジンでRubyスクリプトを実行します。
 
 ⚠現在、irubyコマンドを強制的に終了させる方法はありません。⚠
 

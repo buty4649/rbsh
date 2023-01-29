@@ -1,5 +1,5 @@
 [package]
-name = "reddish_parser"
+name = "rbsh_parser"
 version = "0.1.0"
 edition = "2021"
 
@@ -14,5 +14,5 @@ indoc = "1"
 debug = []
 
 [[bin]]
-name = "reddish_parser"
+name = "rbsh_parser"
 required-features = ["debug"]

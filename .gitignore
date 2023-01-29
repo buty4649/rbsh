@@ -1,4 +1,4 @@
 /target/
-/reddish_parser/target/
+/rbsh/target/
 **/*.rs.bk
 /rust-mruby/mruby

@@ -1,4 +1,4 @@
-use reddish_parser::parse_command_line;
+use rbsh_parser::parse_command_line;
 use std::io::{self, Write};
 
 fn main() {
@@ -20,7 +20,7 @@ fn main() {
                 if buffer.is_empty() {
                     match parse_command_line(&input, 0) {
                         Ok(_) => (),
-                        Err(e) => eprintln!("Error: {:?}", e),
+                        Err(e) => eprintln!("Error: {e:?}"),
                     }
                     input.clear();
                 } else {

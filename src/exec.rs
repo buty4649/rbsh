@@ -22,7 +22,7 @@ use nix::{
     unistd::{ForkResult, Pid},
 };
 use option::{ExecOption, ExecOptionBuilder};
-use reddish_parser::{
+use rbsh_parser::{
     parse_command_line, ConnecterKind, Location, Redirect, Unit, UnitKind, Word, WordKind,
 };
 use redirect::ApplyRedirect;
@@ -58,7 +58,7 @@ impl WordParser for Vec<Word> {
         let mut result = String::new();
         for word in self {
             let s = word.to_string(ctx)?;
-            result.push_str(&*s);
+            result.push_str(&s);
         }
         Ok(result)
     }
@@ -391,7 +391,7 @@ impl Executor {
                 return match e.kind() {
                     std::io::ErrorKind::Interrupted => ExitStatus::signaled(Signal::SIGINT),
                     e => {
-                        eprintln!("{:?}", e);
+                        eprintln!("{e}");
                         ExitStatus::failure()
                     }
                 }
@@ -468,7 +468,7 @@ impl Executor {
         let restore = match redirect.apply(ctx, !(background || need_fork)) {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("{:?}", e);
+                eprintln!("{e:?}");
                 return match need_fork {
                     false => ExitStatus::failure(),
                     true => syscall::exit(1),
@@ -505,7 +505,7 @@ impl Executor {
                         syscall::exit(mruby_exec(&self.mrb, &args).code())
                     }
                     Err(e) => {
-                        eprintln!("mruby: {}", e);
+                        eprintln!("mruby: {e}");
                         ExitStatus::failure()
                     }
                 }
@@ -551,10 +551,7 @@ impl Executor {
         };
 
         if self.loop_level == 0 {
-            eprintln!(
-                "reddish: {}: only meaningful in a `for', `while', or `until' loop",
-                command
-            );
+            eprintln!("rbsh: {command}: only meaningful in a `for', `while', or `until' loop");
             return ExitStatus::failure();
         }
 
@@ -562,13 +559,13 @@ impl Executor {
             0 => Some(self.loop_level),
             1 => args[0].parse::<usize>().map_or_else(
                 |e| {
-                    eprintln!("reddish: {}: {}", command, e);
+                    eprintln!("rbsh: {command}: {e}");
                     None
                 },
                 Some,
             ),
             _ => {
-                eprintln!("reddish: {}: too many arguments", command);
+                eprintln!("rbsh: {command}: too many arguments");
                 None
             }
         };
@@ -809,7 +806,7 @@ impl Executor {
         let (restore, option) = self.update_option_and_apply_redirect(ctx, option, redirect);
         self.loop_level += 1;
         'exec: for word in list.iter() {
-            ctx.set_var(&*identifier, &*word);
+            ctx.set_var(&identifier, word);
             for c in command.iter().cloned() {
                 if self.handler.is_interrupt() {
                     break 'exec;
@@ -1129,7 +1126,7 @@ fn execute_external_command(
     command: String,
     args: Vec<String>,
 ) -> ExitStatus {
-    let cmdpath = assume_command(&*command).to_str().unwrap().to_cstring();
+    let cmdpath = assume_command(&command).to_str().unwrap().to_cstring();
     let mut cmds = vec![command.to_cstring()];
     cmds.append(&mut args.to_cstring());
 
@@ -1139,7 +1136,7 @@ fn execute_external_command(
         t
     }
     .into_iter()
-    .map(|(k, v)| format!("{}={}", k, v).to_cstring())
+    .map(|(k, v)| format!("{k}={v}").to_cstring())
     .collect::<Vec<_>>();
 
     restore_tty_signals().unwrap();
@@ -1147,7 +1144,7 @@ fn execute_external_command(
     match syscall::execve(cmdpath, &cmds, &env) {
         Ok(_) => unreachable![],
         Err(e) if e.errno() == Errno::ENOENT => {
-            eprintln!("{}: command not found", command);
+            eprintln!("{command}: command not found");
             syscall::exit(127)
         }
         Err(e) => {

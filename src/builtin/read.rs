@@ -26,7 +26,7 @@ pub fn read(ctx: &mut Context, args: &[String]) -> ExitStatus {
     let opts = match ReadOptions::try_parse_from(args) {
         Ok(m) => m,
         Err(e) => {
-            eprintln!("{}", e);
+            eprintln!("{e}");
             return ExitStatus::failure();
         }
     };
@@ -36,7 +36,7 @@ pub fn read(ctx: &mut Context, args: &[String]) -> ExitStatus {
     let status = match readline(fd, &mut input) {
         Err(e) => {
             if e.kind() != io::ErrorKind::Interrupted {
-                eprintln!("{}", e);
+                eprintln!("{e}");
             }
             ExitStatus::failure()
         }

@@ -1,21 +1,22 @@
 [package]
-name = "reddish"
+name = "rbsh"
 version = "0.11.0"
 edition = "2021"
+rust-version = "1.67"
 
 [workspace]
-members = [ "reddish_parser", "rust-mruby" ]
+members = [ "rbsh_parser", "rust-mruby" ]
 
 [dependencies]
-reddish_parser = { "package" = "reddish_parser", path = "reddish_parser" }
+rbsh_parser = { "package" = "rbsh_parser", path = "rbsh_parser" }
 rust_mruby =  { package = "rust-mruby", path = "rust-mruby", features = ["build"] }
-rustyline = "9.0.0"
-nix = "0.24.1"
+rustyline = "10.1.1"
+nix = "0.26.2"
 is_executable = "1.0.1"
 cfg-if = "1.0.0"
 clap = { version = "3.1.18", features = ["derive", "cargo"] }
-signal-hook = { version = "0.3.10", features = ["channel", "iterator", "extended-siginfo"] }
-once_cell = "1.8.0"
+signal-hook = { version = "0.3.14", features = ["channel", "iterator", "extended-siginfo"] }
+once_cell = "1.17.0"
 dirs = "4.0"
-mockall = "0.11.0"
-mockall_double = "0.2.1"
+mockall = "0.11.3"
+mockall_double = "0.3.0"

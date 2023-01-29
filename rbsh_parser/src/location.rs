@@ -63,7 +63,7 @@ impl<T: fmt::Debug + Clone> Annotate<T> {
 impl<T: fmt::Debug + Clone> fmt::Debug for Annotate<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let type_name = any::type_name::<T>();
-        let (struct_name, field_name) = match type_name.strip_prefix("reddish_parser::") {
+        let (struct_name, field_name) = match type_name.strip_prefix("rbsh_parser::") {
             Some("token::TokenKind") => ("Token", "kind"),
             _ => ("Annotate", "value"),
         };

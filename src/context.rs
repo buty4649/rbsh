@@ -62,7 +62,7 @@ impl Context {
             Some('?') => Some(self.status.code().to_string()),
             Some('$') => {
                 let pid = syscall::getpid();
-                Some(format!("{}", pid))
+                Some(format!("{pid}"))
             }
             _ => None,
         }

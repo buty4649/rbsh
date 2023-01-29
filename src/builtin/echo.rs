@@ -25,7 +25,7 @@ pub fn echo(_: &mut Context, args: &[String]) -> ExitStatus {
 
     match opts {
         Err(e) => {
-            eprint!("{}", e);
+            eprint!("{e}");
         }
         Ok(opts) => {
             let str = opts.strings.join(" ");
