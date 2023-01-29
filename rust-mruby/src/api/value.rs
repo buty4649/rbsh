@@ -5,8 +5,7 @@ const BOXWORD_FIXNUM_BIT_POS: usize = 1;
 const BOXWORD_SYMBOL_BIT_POS: usize = 2;
 
 const BOXWORD_FIXNUM_SHIFT: usize = BOXWORD_FIXNUM_BIT_POS;
-#[allow(dead_code)]
-const BOXWORD_SYMBOL_SHIFT: usize = 0;
+const BOXWORD_SYMBOL_SHIFT: usize = BOXWORD_SYMBOL_BIT_POS;
 
 const BOXWORD_FIXNUM_FLAG: usize = 1 << (BOXWORD_FIXNUM_BIT_POS - 1);
 const BOXWORD_SYMBOL_FLAG: usize = 1 << (BOXWORD_SYMBOL_BIT_POS - 1);
@@ -49,19 +48,16 @@ pub fn mrb_nil_p(o: mrb_value) -> bool {
     o.w == MRB_Qnil
 }
 
-#[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub fn mrb_float_value(mrb: *mut mrb_state, f: mrb_float) -> mrb_value {
+pub unsafe fn mrb_float_value(mrb: *mut mrb_state, f: mrb_float) -> mrb_value {
     unsafe { mrb_word_boxing_float_value(mrb, f) }
 }
 
-#[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub fn mrb_cptr_value(mrb: *mut mrb_state, p: *mut c_void) -> mrb_value {
+pub unsafe fn mrb_cptr_value(mrb: *mut mrb_state, p: *mut c_void) -> mrb_value {
     unsafe { mrb_word_boxing_cptr_value(mrb, p) }
 }
 
-#[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub fn mrb_int_value(mrb: *mut mrb_state, i: mrb_int) -> mrb_value {
-    unsafe { mrb_word_boxing_int_value(mrb, i) }
+pub unsafe fn mrb_int_value(mrb: *mut mrb_state, i: mrb_int) -> mrb_value {
+    unsafe { mrb_boxing_int_value(mrb, i) }
 }
 
 pub fn mrb_fixnum_value(i: mrb_int) -> mrb_value {
@@ -72,8 +68,20 @@ pub fn mrb_fixnum_value(i: mrb_int) -> mrb_value {
 
 pub fn mrb_symbol_value(i: mrb_sym) -> mrb_value {
     let mut value: mrb_value_ = unsafe { mem::zeroed() };
-    value.__anon_1.sym = i;
-    value.__anon_1.sym_flag = BOXWORD_SYMBOL_FLAG as u32;
+
+    // #define WORDBOX_SET_SHIFT_VALUE(o,n,v) \
+    //   ((o).w = (((uintptr_t)(v)) << WORDBOX_##n##_SHIFT) | WORDBOX_##n##_FLAG)
+    //
+    // #define SET_SYM_VALUE(r,n) WORDBOX_SET_SHIFT_VALUE(r, SYMBOL, n)
+    //
+    // MRB_INLINE mrb_value mrb_symbol_value(mrb_sym i)
+    // {
+    //   mrb_value v;
+    //   SET_SYM_VALUE(v, i);
+    //   return v;
+    // }
+
+    value.w = (i as usize) << BOXWORD_SYMBOL_SHIFT | BOXWORD_SYMBOL_FLAG;
     unsafe { value.value }
 }
 

@@ -32,10 +32,6 @@ impl MRubyContext {
     }
 
     pub fn set_capture_errors(&self, f: bool) {
-        let f = match f {
-            true => 1,
-            false => 0,
-        };
         let c = unsafe { NonNull::new(self.ctx).unwrap().as_mut() };
         c.set_capture_errors(f)
     }
