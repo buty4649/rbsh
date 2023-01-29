@@ -20,7 +20,7 @@ impl fmt::Display for Exception {
                     bt.remove(0);
                     bt.reverse();
                     for (index, b) in bt {
-                        writeln!(f, "\t[{}] {}", index, b)?;
+                        writeln!(f, "\t[{index}] {b}")?;
                     }
                 }
                 writeln!(f, "{}: {}", backtrace[0], self.message)

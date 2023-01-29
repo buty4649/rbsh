@@ -32,12 +32,12 @@ fn mrb_val_union(v: mrb_value) -> mrb_value_ {
 }
 
 fn mrb_immediate_p(o: mrb_value) -> bool {
-    (o.w as usize & BOXWORD_IMMEDIATE_MASK) > 0 || o.w as usize == MRB_Qnil
+    (o.w & BOXWORD_IMMEDIATE_MASK) > 0 || o.w == MRB_Qnil
 }
 
 pub fn mrb_integer(o: mrb_value) -> mrb_int {
     if mrb_immediate_p(o) {
-        (o.w as usize >> BOXWORD_FIXNUM_SHIFT) as mrb_int
+        (o.w >> BOXWORD_FIXNUM_SHIFT) as mrb_int
     } else {
         let v = mrb_val_union(o);
         let i = unsafe { ptr::NonNull::new(v.ip as *mut RInteger).unwrap().as_ref() };
@@ -85,19 +85,19 @@ pub fn mrb_obj_value<T: ?Sized>(p: *mut T) -> mrb_value {
 
 pub fn mrb_nil_value() -> mrb_value {
     let mut value = mrb_value_new!();
-    value.w = MRB_Qnil as usize;
+    value.w = MRB_Qnil;
     value
 }
 
 pub fn mrb_false_value() -> mrb_value {
     let mut value = mrb_value_new!();
-    value.w = MRB_Qfalse as usize;
+    value.w = MRB_Qfalse;
     value
 }
 
 pub fn mrb_true_value() -> mrb_value {
     let mut value = mrb_value_new!();
-    value.w = MRB_Qtrue as usize;
+    value.w = MRB_Qtrue;
     value
 }
 
@@ -110,6 +110,6 @@ pub fn mrb_bool_value(b: bool) -> mrb_value {
 
 pub fn mrb_undef_value() -> mrb_value {
     let mut value = mrb_value_new!();
-    value.w = MRB_Qundef as usize;
+    value.w = MRB_Qundef;
     value
 }

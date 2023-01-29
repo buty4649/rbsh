@@ -35,9 +35,9 @@ pub fn is_builtin_command<T: AsRef<str>>(name: T) -> bool {
 }
 
 pub fn builtin_command_exec(ctx: &mut Context, command: String, args: &[String]) -> ExitStatus {
-    match find_builtin_command(&*command) {
+    match find_builtin_command(&command) {
         None => {
-            eprintln!("builtin: {} is not a shell builtin", command);
+            eprintln!("builtin: {command} is not a shell builtin");
             ExitStatus::failure()
         }
         Some(b) => (b.func)(ctx, args),

@@ -87,7 +87,7 @@ impl RedirectApplier {
     ) -> SysCallResult<()> {
         let file = wordlist.to_string(ctx).unwrap();
         let mode = Mode::from_bits(0o666).unwrap();
-        let new_fd = syscall::open(&*file, flag, mode)?;
+        let new_fd = syscall::open(&file, flag, mode)?;
 
         if fd == new_fd {
             self.openfd.insert(fd);

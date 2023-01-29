@@ -19,7 +19,7 @@ impl Config {
 
     pub fn history_file_path(&self) -> &Path {
         create_dir_all(self.history_file_path.parent().unwrap()).unwrap();
-        &*self.history_file_path
+        &self.history_file_path
     }
 }
 

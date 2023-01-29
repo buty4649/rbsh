@@ -7,7 +7,7 @@ pub fn mruby_exec(mrb: &MRuby, args: &[String]) -> ExitStatus {
     let args = match parse_args(args) {
         Ok(a) => a,
         Err(e) => {
-            eprintln!("{}", e);
+            eprintln!("{e}");
             return ExitStatus::failure();
         }
     };
@@ -25,7 +25,7 @@ pub fn mruby_exec(mrb: &MRuby, args: &[String]) -> ExitStatus {
                     Ok(s) => s,
                     Err(e) => {
                         if e.kind() != io::ErrorKind::Interrupted {
-                            eprintln!("mruby: {}", e);
+                            eprintln!("mruby: {e}");
                         }
                         return ExitStatus::failure();
                     }
@@ -37,13 +37,13 @@ pub fn mruby_exec(mrb: &MRuby, args: &[String]) -> ExitStatus {
                 let mut file = match File::open(&*filename) {
                     Ok(f) => f,
                     Err(e) => {
-                        eprintln!("mruby: {}", e);
+                        eprintln!("mruby: {e}");
                         return ExitStatus::failure();
                     }
                 };
                 let mut command = String::new();
                 if let Some(e) = file.read_to_string(&mut command).err() {
-                    eprintln!("mruby: {}", e);
+                    eprintln!("mruby: {e}");
                     return ExitStatus::failure();
                 }
 
@@ -55,7 +55,7 @@ pub fn mruby_exec(mrb: &MRuby, args: &[String]) -> ExitStatus {
     match status {
         Ok(_) => ExitStatus::success(),
         Err(e) => {
-            eprintln!("{}", e);
+            eprintln!("{e}");
             ExitStatus::failure()
         }
     }

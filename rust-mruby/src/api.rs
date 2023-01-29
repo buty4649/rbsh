@@ -4,6 +4,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(clippy::missing_safety_doc)]
+#![allow(clippy::useless_transmute)]
 mod macros;
 mod value;
 pub use macros::*;

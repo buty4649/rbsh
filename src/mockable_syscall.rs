@@ -12,7 +12,7 @@ impl SysCallError {
     }
 
     pub fn name(&self) -> &str {
-        &*self.0
+        &self.0
     }
 
     pub fn errno(&self) -> nix::errno::Errno {

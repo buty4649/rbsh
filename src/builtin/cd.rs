@@ -18,7 +18,7 @@ pub fn cd(_: &mut Context, args: &[String]) -> ExitStatus {
     match syscall::set_current_dir(path) {
         Ok(_) => ExitStatus::success(),
         Err(e) => {
-            eprintln!("rbsh: cd: {}", e);
+            eprintln!("rbsh: cd: {e}");
             ExitStatus::failure()
         }
     }

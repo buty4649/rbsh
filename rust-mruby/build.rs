@@ -15,10 +15,8 @@ fn build_mruby(mruby_build_config: &str) {
     let mruby_path = out_path.join("mruby");
     let mruby_version =
         env::var("MRUBY_VERSION").unwrap_or_else(|_| DEFAULT_MRUBY_VERSION.trim_end().to_string());
-    let mruby_url = format!(
-        "https://github.com/mruby/mruby/archive/refs/tags/{}.tar.gz",
-        mruby_version
-    );
+    let mruby_url =
+        format!("https://github.com/mruby/mruby/archive/refs/tags/{mruby_version}.tar.gz");
 
     if !mruby_path.exists() {
         let out_path = out_path.to_str().unwrap();
@@ -67,10 +65,10 @@ fn main() {
 
     let build_enabled = env::var_os("CARGO_FEATURE_BUILD").is_some();
     if build_enabled {
-        build_mruby(&*build_config);
+        build_mruby(&build_config);
     }
 
-    println!("cargo:rerun-if-changed={}", build_config);
+    println!("cargo:rerun-if-changed={build_config}");
     println!("cargo:rerun-if-env-changed=MRUBY_VERSION");
     println!("cargo:rerun-if-env-changed=CARGO_FEATURE_BUILD");
 }

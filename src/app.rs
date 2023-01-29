@@ -48,7 +48,7 @@ impl App {
         match Self::new() {
             Ok(mut app) => app.exec(args),
             Err(e) => {
-                eprintln!("error: {}", e);
+                eprintln!("error: {e}");
                 1
             }
         }
@@ -94,7 +94,7 @@ impl App {
         let params = match self.parse_args(args) {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("rbsh: {}", e);
+                eprintln!("rbsh: {e}");
                 return ExitStatus::failure().code();
             }
         };
@@ -104,11 +104,11 @@ impl App {
             InputSource::Tty => Box::new(ReadFromTTY::new()),
             InputSource::Stdin => Box::new(ReadFromStdin::new()),
             InputSource::File(path) => {
-                let path = Path::new(&*path);
+                let path = Path::new(&path);
                 let file = match ReadFromFile::new(path) {
                     Ok(f) => f,
                     Err(e) => {
-                        eprintln!("rbsh: {}", e);
+                        eprintln!("rbsh: {e}");
                         return ExitStatus::failure().code();
                     }
                 };
@@ -118,7 +118,7 @@ impl App {
         };
 
         if let Some(e) = rl.load_history(self.config.history_file_path()).err() {
-            eprintln!("rbsh: load history error: {:?}", e);
+            eprintln!("rbsh: load history error: {e:?}");
         }
 
         // Ignore SIGPIPE by default
@@ -132,7 +132,7 @@ impl App {
         let mut executor = match Executor::new() {
             Ok(e) => e,
             Err(e) => {
-                eprintln!("Error: {}", e);
+                eprintln!("Error: {e}");
                 return ExitStatus::failure().code();
             }
         };
@@ -153,7 +153,7 @@ impl App {
                                 if let Some(e) =
                                     rl.save_history(self.config.history_file_path()).err()
                                 {
-                                    eprintln!("rbsh: save history error: {:?}", e)
+                                    eprintln!("rbsh: save history error: {e:?}")
                                 }
                             }
                             for cmd in cmds {
@@ -169,7 +169,7 @@ impl App {
                         Err(e) => {
                             match e.value {
                                 ErrorKind::Eof => cmdline.push('\n'), // next line
-                                _ => eprintln!("Error: {:?}", e),
+                                _ => eprintln!("Error: {e:?}"),
                             }
                         }
                     }
@@ -183,7 +183,7 @@ impl App {
                     }
                 }
                 Err(err) => {
-                    println!("Error: {:?}", err);
+                    println!("Error: {err:?}");
                     break;
                 }
             }
