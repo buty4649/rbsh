@@ -1,5 +1,5 @@
 use crate::syscall;
-use rustyline::{config::Configurer, error::ReadlineError, Editor};
+use rustyline::{config::Config, error::ReadlineError, Editor};
 use std::{
     fs::File,
     io::{stdin, BufRead, BufReader, Error as IoError, Read, Stdin},
@@ -29,7 +29,6 @@ pub enum ReadLineError {
     Io(IoError),
     Eof,
     Interrupted,
-    Utf8Error,
 }
 
 pub struct ReadFromStdin {
@@ -116,9 +115,9 @@ pub struct ReadFromTTY {
 
 impl ReadFromTTY {
     pub fn new() -> Self {
-        let mut editor = Editor::new();
+        let config = Config::builder().check_cursor_position(true).build();
+        let editor = Editor::with_config(config).unwrap();
 
-        editor.set_check_cursor_position(true);
         Self { editor }
     }
 }
@@ -156,7 +155,6 @@ impl From<ReadlineError> for ReadLineError {
             ReadlineError::Io(e) => Self::Io(e),
             ReadlineError::Eof => Self::Eof,
             ReadlineError::Interrupted => Self::Interrupted,
-            ReadlineError::Utf8Error => Self::Utf8Error,
             ReadlineError::Errno(e) => Self::Io(IoError::from_raw_os_error(e as i32)),
             _ => unreachable![], // for windows error
         }
