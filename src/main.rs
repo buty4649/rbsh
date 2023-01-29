@@ -1,4 +1,4 @@
-use reddish::App;
+use rbsh::App;
 use std::env;
 use std::process::exit;
 

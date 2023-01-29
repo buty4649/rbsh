@@ -7,7 +7,7 @@ pub fn cd(_: &mut Context, args: &[String]) -> ExitStatus {
         home_dir().unwrap_or_default()
     } else {
         if args.len() >= 2 {
-            eprintln!("reddish: cd: too many arguments");
+            eprintln!("rbsh: cd: too many arguments");
             return ExitStatus::failure();
         }
         let mut path = PathBuf::new();
@@ -18,7 +18,7 @@ pub fn cd(_: &mut Context, args: &[String]) -> ExitStatus {
     match syscall::set_current_dir(path) {
         Ok(_) => ExitStatus::success(),
         Err(e) => {
-            eprintln!("reddish: cd: {}", e);
+            eprintln!("rbsh: cd: {}", e);
             ExitStatus::failure()
         }
     }

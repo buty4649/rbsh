@@ -561,7 +561,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "reddish"
+name = "rbsh"
 version = "0.11.0"
 dependencies = [
  "cfg-if",
@@ -572,14 +572,14 @@ dependencies = [
  "mockall_double",
  "nix 0.24.1",
  "once_cell",
- "reddish_parser",
+ "rbsh_parser",
  "rust-mruby",
  "rustyline",
  "signal-hook",
 ]
 
 [[package]]
-name = "reddish_parser"
+name = "rbsh_parser"
 version = "0.1.0"
 dependencies = [
  "indoc",

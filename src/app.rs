@@ -10,7 +10,7 @@ use crate::{
     Config, APP_NAME, VERSION,
 };
 use clap::Parser;
-use reddish_parser::{parse_command_line, ErrorKind};
+use rbsh_parser::{parse_command_line, ErrorKind};
 use std::{io, path::Path};
 
 enum InputSource {
@@ -94,7 +94,7 @@ impl App {
         let params = match self.parse_args(args) {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("reddish: {}", e);
+                eprintln!("rbsh: {}", e);
                 return ExitStatus::failure().code();
             }
         };
@@ -108,7 +108,7 @@ impl App {
                 let file = match ReadFromFile::new(path) {
                     Ok(f) => f,
                     Err(e) => {
-                        eprintln!("reddish: {}", e);
+                        eprintln!("rbsh: {}", e);
                         return ExitStatus::failure().code();
                     }
                 };
@@ -118,7 +118,7 @@ impl App {
         };
 
         if let Some(e) = rl.load_history(self.config.history_file_path()).err() {
-            eprintln!("reddish: load history error: {:?}", e);
+            eprintln!("rbsh: load history error: {:?}", e);
         }
 
         // Ignore SIGPIPE by default
@@ -153,7 +153,7 @@ impl App {
                                 if let Some(e) =
                                     rl.save_history(self.config.history_file_path()).err()
                                 {
-                                    eprintln!("reddish: save history error: {:?}", e)
+                                    eprintln!("rbsh: save history error: {:?}", e)
                                 }
                             }
                             for cmd in cmds {
@@ -203,7 +203,7 @@ impl App {
         }
 
         vars![
-            {PS1, "reddish> "},
+            {PS1, "rbsh> "},
             {PS2, "> "},
             {IFS, " \t\n"},
         ];

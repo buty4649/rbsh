@@ -6,7 +6,7 @@ use crate::{
     syscall::{self, SysCallResult},
 };
 use nix::{fcntl::OFlag, sys::stat::Mode};
-use reddish_parser::{Location, Redirect, RedirectKind, Word};
+use rbsh_parser::{Location, Redirect, RedirectKind, Word};
 use std::collections::HashSet;
 use std::os::unix::io::RawFd;
 

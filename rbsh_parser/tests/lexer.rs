@@ -1,5 +1,5 @@
 use indoc::indoc;
-use reddish_parser::{location, Error, Lexer, Location, Token, WordKind};
+use rbsh_parser::{location, Error, Lexer, Location, Token, WordKind};
 
 macro_rules! assert_lex {
     ($s:expr, $($token:expr),+) => {{

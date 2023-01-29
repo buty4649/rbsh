@@ -1,4 +1,4 @@
-use reddish_parser::parse_command_line;
+use rbsh_parser::parse_command_line;
 use std::io::{self, Write};
 
 fn main() {

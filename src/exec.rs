@@ -22,7 +22,7 @@ use nix::{
     unistd::{ForkResult, Pid},
 };
 use option::{ExecOption, ExecOptionBuilder};
-use reddish_parser::{
+use rbsh_parser::{
     parse_command_line, ConnecterKind, Location, Redirect, Unit, UnitKind, Word, WordKind,
 };
 use redirect::ApplyRedirect;
@@ -552,7 +552,7 @@ impl Executor {
 
         if self.loop_level == 0 {
             eprintln!(
-                "reddish: {}: only meaningful in a `for', `while', or `until' loop",
+                "rbsh: {}: only meaningful in a `for', `while', or `until' loop",
                 command
             );
             return ExitStatus::failure();
@@ -562,13 +562,13 @@ impl Executor {
             0 => Some(self.loop_level),
             1 => args[0].parse::<usize>().map_or_else(
                 |e| {
-                    eprintln!("reddish: {}: {}", command, e);
+                    eprintln!("rbsh: {}: {}", command, e);
                     None
                 },
                 Some,
             ),
             _ => {
-                eprintln!("reddish: {}: too many arguments", command);
+                eprintln!("rbsh: {}: too many arguments", command);
                 None
             }
         };

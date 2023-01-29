@@ -1,13 +1,13 @@
 [package]
-name = "reddish"
+name = "rbsh"
 version = "0.11.0"
 edition = "2021"
 
 [workspace]
-members = [ "reddish_parser", "rust-mruby" ]
+members = [ "rbsh_parser", "rust-mruby" ]
 
 [dependencies]
-reddish_parser = { "package" = "reddish_parser", path = "reddish_parser" }
+rbsh_parser = { "package" = "rbsh_parser", path = "rbsh_parser" }
 rust_mruby =  { package = "rust-mruby", path = "rust-mruby", features = ["build"] }
 rustyline = "9.0.0"
 nix = "0.24.1"

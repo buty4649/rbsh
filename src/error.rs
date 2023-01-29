@@ -1,5 +1,5 @@
 use super::syscall::SysCallError;
-use reddish_parser::Location;
+use rbsh_parser::Location;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShellErrorKind {
