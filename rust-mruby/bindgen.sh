@@ -20,6 +20,8 @@ bindgen --generate-inline-functions \
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(clippy::missing_safety_doc)]
+#![allow(clippy::useless_transmute)]
+#![allow(clippy::transmute_int_to_bool)]
 mod macros;
 mod value;
 pub use macros::*;
