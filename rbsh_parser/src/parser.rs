@@ -1,0 +1,651 @@
+extern crate peg;
+
+use crate::ast::*;
+use crate::string::ExpandAsciiCode;
+use std::os::unix::io::RawFd;
+
+#[derive(Debug, Clone)]
+pub(crate) enum Token {
+    Word(Vec<WordKind>),
+    Redirect(RedirectKind),
+    Parameter(Parameter),
+}
+
+mod rubyish {
+    #[inline]
+    pub(crate) fn to(b: bool) -> usize {
+        match b {
+            true => 1,
+            false => 0,
+        }
+    }
+}
+
+peg::parser! {
+    pub(crate) grammar reddish_parser(rubyish: bool) for str {
+        use super::rubyish::to;
+
+        rule traced<T>(e: rule<T>) -> T =
+            &(input:$(ANY()*) {
+                #[cfg(feature = "trace")]
+                println!("[PEG_INPUT_START]\n{}\n[PEG_TRACE_START]", input);
+            })
+            e:e()? {?
+                #[cfg(feature = "trace")]
+                println!("[PEG_TRACE_STOP]");
+                e.ok_or("")
+            }
+        pub(crate) rule trace() -> Vec<Node> = traced(<statement()>)
+
+        pub(crate) rule statement() -> Vec<Node>
+            = __* list:pipeline()*
+              { list }
+
+        rule pipeline() -> Node
+            = "!" _ [';' | '\n'] { Node::InvertReturn{ body:None } } /
+              invert:("!" _)? command:pipeline_command() terminator:pipeline_terminator()? __*
+              {
+                let pipeline_command = if invert.is_some() {
+                  Node::InvertReturn { body: Some(Box::new(command)) }
+                } else {
+                  command
+                };
+
+                match terminator {
+                  Some('&') => Node::Background { left: Box::new(pipeline_command), right: None },
+                  _ => pipeline_command,
+                }
+              }
+
+        rule pipeline_command() -> Node
+          =  command:simple_command() _*
+              next:(
+                connector:$("&&" / "||" / "|&" / "|" / "&" ) __* command:pipeline_command()
+                { (connector, command) }
+              )?
+              {
+                if let Some((connector, next)) = next {
+                  let left = Box::new(command);
+                  let right = Box::new(next);
+                  match connector {
+                    "&&" => Node::And { left, right },
+                    "||" => Node::Or { left, right },
+                    "|&" => Node::Pipe { left, right, both: true },
+                    "|" => Node::Pipe { left, right, both: false },
+                    "&" => Node::Background { left, right: Some(right) },
+                    _ => unreachable!(),
+                  }
+                } else {
+                  command
+                }
+              }
+
+        rule pipeline_terminator() -> char
+            = !(";;&" / ";;" / ";&") c: [';' | '&' | '\n'] { c }
+
+        rule simple_command() -> Node
+            = compound_command()
+              / function_block()
+              / variable_assignment_block()
+              / command()
+
+        rule compound_command() -> Node
+            = if_block()
+              / rubyish_unless_block()
+              / while_block()
+              / until_block()
+              / for_block()
+              / select_block()
+              / case_block()
+              / group_block()
+              / subshell_block()
+
+        rule group_block() -> Node
+            = "{" __* body:pipeline_command()+ __* "}" _* redirect:(redirect()+)?
+              { Node::Group{ body, redirect }}
+
+        rule subshell_block() -> Node
+            = "(" __* body:pipeline_command()+ __* ")" _* redirect:(redirect()+)?
+              { Node::Subshell{ body, redirect }}
+
+        // ----------------------------------------------------------
+        // if
+        // ----------------------------------------------------------
+        rule if_block() -> Node
+            = rubyish_if_block() /
+              "if" __ test:pipeline_command()
+              "then" __ body:statement()
+              elif_body:(elif_block()+)?
+              else_body:("else" __ body:statement() { body })?
+              "fi" _* redirect:(redirect()+)?
+              {
+                  let body = Condition { test:Box::new(test), body};
+                  Node::If { body, elif_body, else_body, redirect}
+              }
+
+        rule elif_block() -> Condition
+            = "elif" __ test:pipeline_command()
+              "then" __ body:statement()
+              { Condition { test: Box::new(test), body } }
+
+        rule rubyish_if_block() -> Node
+            = block:(
+                rubyish_if_short_block() /
+                "if" __ test:pipeline_command()
+                "then" __ body:statement()
+                elif_body:(rubyish_elsif_block()+)?
+                else_body:("else" __ body:statement() { body })?
+                "end" _* redirect:(redirect()+)?
+                {
+                    let body = Condition { test:Box::new(test), body};
+                    Node::If { body, elif_body, else_body, redirect}
+                }
+              )*<{to(rubyish)}>
+              {?
+                let mut block = block;
+                match block.pop() {
+                    None => Err("rubysh is disabled"),
+                    Some(b) => Ok(b),
+                }
+              }
+
+        rule rubyish_if_short_block() -> Node
+            = "if" __ test_and_body:statement()
+               elif_body:(rubyish_elsif_block()+)?
+               else_body:("else" __ body:statement() { body })?
+              "end" _* redirect:(redirect()+)?
+              {
+                let (test, body) = test_and_body.split_first().unwrap();
+                let body = Condition { test: Box::new(test.clone()), body: body.to_vec() };
+                Node::If{ body, elif_body, else_body, redirect }
+              }
+
+        rule rubyish_elsif_block() -> Condition
+            = rubyish_elsif_short_block() /
+              "elsif" __ test:pipeline_command()
+              "then" __ body:statement()
+              { Condition { test: Box::new(test), body } }
+
+        rule rubyish_elsif_short_block() -> Condition
+            = "elsif" __ test_and_body:statement()
+              {
+                let (test, body) = test_and_body.split_first().unwrap();
+                Condition { test: Box::new(test.clone()), body: body.to_vec() }
+              }
+
+        // ----------------------------------------------------------
+        // unless
+        // ----------------------------------------------------------
+        rule rubyish_unless_block() -> Node
+            = block:(
+                rubyish_unless_short_block() /
+                "unless" __ test:pipeline_command()
+                "then" __ body:statement()
+                else_body:("else" __ body:statement() { body })?
+                "end" _* redirect:(redirect()+)?
+                {
+                    let body = Condition { test:Box::new(test), body};
+                    Node::Unless { body, else_body, redirect }
+                }
+              )*<{to(rubyish)}>
+              {?
+                let mut block = block;
+                match block.pop() {
+                    None => Err("rubysh is disabled"),
+                    Some(b) => Ok(b),
+                }
+              }
+
+        rule rubyish_unless_short_block() -> Node
+            = "unless" __ test_and_body:statement()
+              else_body:("else" __ body:statement() { body })?
+              "end" _* redirect:(redirect()+)?
+              {
+                let (test, body) = test_and_body.split_first().unwrap();
+                let body = Condition { test: Box::new(test.clone()), body: body.to_vec() };
+                Node::Unless { body, else_body, redirect }
+              }
+
+        // ----------------------------------------------------------
+        // while
+        // ----------------------------------------------------------
+        rule while_block() -> Node
+            = rubyish_while_block() /
+              "while" __ test:pipeline_command()
+              "do" __ body:statement()
+              "done" _* redirect:(redirect()+)?
+              {
+                let body = Condition { test:Box::new(test), body};
+                Node::While { body, redirect }
+              }
+
+        rule rubyish_while_block() -> Node
+            = block:(rubyish_while_short_block() /
+                "while" __ test:pipeline_command()
+                "do" __ body:statement()
+                "end" _* redirect:(redirect()+)?
+                {
+                    let body = Condition { test:Box::new(test), body};
+                    Node::While { body, redirect }
+                }
+              )*<{to(rubyish)}>
+              {?
+                let mut block = block;
+                match block.pop() {
+                    None => Err("rubysh is disabled"),
+                    Some(b) => Ok(b),
+                }
+              }
+
+        rule rubyish_while_short_block() -> Node
+            = "while" __ test_and_body:statement()
+              "end" _* redirect:(redirect()+)?
+              {
+                let (test, body) = test_and_body.split_first().unwrap();
+                let body = Condition { test: Box::new(test.clone()), body: body.to_vec() };
+                Node::While { body, redirect }
+              }
+
+        // ----------------------------------------------------------
+        // until
+        // ----------------------------------------------------------
+        rule until_block() -> Node
+            = rubyish_until_block() /
+              "until" __ test:pipeline_command()
+              "do" __ body:statement()
+              "done" _* redirect:(redirect()+)?
+              {
+                let body = Condition { test:Box::new(test), body};
+                Node::Until { body, redirect }
+              }
+
+        rule rubyish_until_block() -> Node
+            = block:(rubyish_until_short_block() /
+                "until" __ test:pipeline_command()
+                "do" __ body:statement()
+                "end" _* redirect:(redirect()+)?
+                {
+                    let body = Condition { test:Box::new(test), body};
+                    Node::Until { body, redirect }
+                }
+              )*<{to(rubyish)}>
+              {?
+                let mut block = block;
+                match block.pop() {
+                    None => Err("rubysh is disabled"),
+                    Some(b) => Ok(b),
+                }
+              }
+
+        rule rubyish_until_short_block() -> Node
+            = "until" __ test_and_body:statement()
+              "end" _* redirect:(redirect()+)?
+              {
+                let (test, body) = test_and_body.split_first().unwrap();
+                let body = Condition { test: Box::new(test.clone()), body: body.to_vec() };
+                Node::Until { body, redirect }
+              }
+
+        // ----------------------------------------------------------
+        // for
+        // ----------------------------------------------------------
+        rule for_block() -> Node
+            = rubyish_for_block() /
+              "for" _ ident:identifier() __
+              subject:("in" subject:(_ word:word() { word })* ("\n" / ";") __* { subject })?
+              "do" __ body:statement()
+              "done" _* redirect:(redirect()+)?
+              {
+                Node::For{ ident, subject, body, redirect }
+              }
+
+        rule rubyish_for_block() -> Node
+            = block:(
+                "for" _ ident:identifier() __
+                subject:("in" subject:(_ word:word() { word })* ("\n" / ";") __* { subject })?
+                ("do" __)? body:statement()
+                "end" _* redirect:(redirect()+)?
+                {
+                    Node::For{ ident, subject, body, redirect }
+                }
+              )*<{to(rubyish)}>
+              {?
+                let mut block = block;
+                match block.pop() {
+                    None => Err("rubysh is disabled"),
+                    Some(b) => Ok(b),
+                }
+              }
+
+        // ----------------------------------------------------------
+        // select
+        // ----------------------------------------------------------
+        rule select_block() -> Node
+            = rubyish_select_block() /
+              "select" _ ident:identifier() __
+              subject:("in" subject:(_ word:word() { word })* ("\n" / ";") __* { subject })?
+              "do" __ body:statement()
+              "done" _* redirect:(redirect()+)?
+              {
+                Node::Select{ ident, subject, body, redirect }
+              }
+
+        rule rubyish_select_block() -> Node
+            = block:(
+                "select" _ ident:identifier() __
+                subject:("in" subject:(_ word:word() { word })* ("\n" / ";") __* { subject })?
+                ("do" __)? body:statement()
+                "end" _* redirect:(redirect()+)?
+                {
+                    Node::Select{ ident, subject, body, redirect }
+                }
+              )*<{to(rubyish)}>
+              {?
+                let mut block = block;
+                match block.pop() {
+                    None => Err("rubysh is disabled"),
+                    Some(b) => Ok(b),
+                }
+              }
+
+        // ----------------------------------------------------------
+        // case
+        // ----------------------------------------------------------
+        rule case_block() -> Node
+            =  rubyish_case_block() /
+              "case" _ word:word() __ "in" __
+              pattern:(case_pattern_block()+)?
+              "esac" _* redirect:(redirect()+)?
+              { Node::Case { word, pattern, redirect } }
+
+        rule case_pattern_block() -> CasePattern
+            = "("? _* pattern:(word()**(_* "|" _*)) _* ")" __*
+                body:statement() __* next_action:$(";;&" / ";;" / ";&"/ &"esac") __*
+              {
+                let next_action = match next_action {
+                  ";;&" => CasePatternNextAction::TestNext,
+                  ";&" => CasePatternNextAction::FallThrough,
+                  ";;" => CasePatternNextAction::End,
+                  "" => CasePatternNextAction::End,  // esac
+                  _ => unreachable!(),
+                };
+                CasePattern { pattern, body, next_action }
+              }
+
+        rule rubyish_case_block() -> Node
+            = block:(
+                "case" _ word:word() __
+                pattern:(rubyish_case_pattern_block()+)?
+                "end" _* redirect:(redirect()+)?
+                { Node::Case { word, pattern, redirect } }
+              )*<{to(rubyish)}>
+              {?
+                let mut block = block;
+                match block.pop() {
+                    None => Err("rubysh is disabled"),
+                    Some(b) => Ok(b),
+                }
+              }
+
+        rule rubyish_case_pattern_block() -> CasePattern
+            = "when" _ pattern:(word()**(_* "|" _*)) (__ "then" / "\n") __* body:statement() __*
+              { CasePattern {pattern, body, next_action: CasePatternNextAction::End }}
+
+        // ----------------------------------------------------------
+        // function
+        // ----------------------------------------------------------
+        rule function_block() -> Node
+            = ident:function_identifier() "()" __* body:compound_command() _* redirect:(redirect()+)?
+              { Node::Function { ident, body: Box::new(body), redirect }}
+              / "function" _ ident:function_identifier() ("()" / "\n")? __* body:compound_command() _* redirect:(redirect()+)?
+                { Node::Function { ident, body: Box::new(body), redirect}}
+
+        rule function_identifier() -> String
+            = !keyword() i:$((!(spaceNL() / "(" / ")" ) ANY())+)
+              { i.to_string() }
+
+        // ----------------------------------------------------------
+        // variable assignment
+        // ----------------------------------------------------------
+        rule variable_assignment_block() -> Node
+            = body:parameter()++(space()) &(_* (['\n' | '|' | '&' | ';'] / EOF()))
+              { Node::VariableAssignment{ body } }
+
+        rule parameter() -> Parameter
+            = name:identifier() "=" value:(word())?
+              { Parameter{ name, value } }
+
+        // ----------------------------------------------------------
+        // command
+        // ----------------------------------------------------------
+        rule command() -> Node
+            = !['{' | '}' | '!']
+              pre:(
+                token:(parameter_token() / redirect_token()) _
+                { token }
+              )*
+              !keyword() name:word()
+              post:(
+                _ token:(redirect_token() / word_token())
+                { token }
+              )*
+              {
+                let tokens = [pre, post].concat();
+
+                macro_rules! extract {
+                  ($p:path, $ty:ty) => {{
+                    let r = tokens.iter()
+                                  .filter(|t| matches!(t, $p(..)))
+                                  .map(|t| match t { $p(inner) => inner, _ => unreachable!()})
+                                  .cloned()
+                                  .collect::<$ty>();
+                    if r.is_empty() { None } else { Some(r) }
+                  }}
+                }
+
+                let args = extract!(Token::Word, Vec<Vec<WordKind>>);
+                let redirect = extract!(Token::Redirect, Vec<RedirectKind>);
+                let parameter = extract!(Token::Parameter, Vec<Parameter>);
+
+                Node::Command{name, args, redirect, parameter}
+              }
+
+        rule parameter_token() -> Token = parameter:parameter() { Token::Parameter(parameter) }
+        rule redirect_token() -> Token = redirect:redirect() { Token::Redirect(redirect) }
+        rule word_token() -> Token = word:word() { Token::Word(word) }
+
+        // ----------------------------------------------------------
+        // word
+        // ----------------------------------------------------------
+        rule word() -> Vec<WordKind>
+            = word:(
+                bareword()
+                / single_quote()
+                / double_quote()
+                / backquote()
+                / command_substitute()
+                / ansi_expand()
+                / locale_expand()
+                / parameter_expand()
+            )+
+
+        rule bareword() -> WordKind
+            = chars:(
+                escapeNL() /
+                escape(<$(ANY())>) /
+                !(
+                    spaceNL() / ['\'' | '"' | '`' | '<' | '>' | '#' | '(' | ')' ]
+                    / "$(" / "${" / "$"
+                    / ";;" / ";&" / ";;&" / ";"
+                    / "||" / "|&" / "|"
+                    / "&&" / "&"
+                )
+                c:$(ANY()) { c }
+              )+ { WordKind::bare(String::from_iter(chars)) }
+
+        rule single_quote() -> WordKind
+            = rubyish_single_quote() /
+              "'" inner:$(([^'\''])*) "'"
+              { WordKind::Quote(vec![ WordKind::bare(inner) ]) }
+
+        rule rubyish_single_quote() -> WordKind
+            = word:(
+                "'" inner:(escape(<['\'']>) / [^'\''])* "'"
+                { WordKind::Quote(vec![ WordKind::bare(String::from_iter(inner)) ]) }
+              )*<{to(rubyish)}>
+              {?
+                let mut word = word;
+                match word.pop() {
+                    None => Err("rubysh is disabled"),
+                    Some(b) => Ok(b),
+                }
+              }
+
+        rule double_quote() -> WordKind
+            = "\""
+                inner:(
+                  backquote() /
+                  command_substitute() /
+                  parameter_expand() /
+                  c:(
+                    escapeNL() /
+                    escape(<$(['"' | '\\' | '`' | '$'])>) /
+                    $([^'"' | '$' | '`'])
+                  )+ { WordKind::bare(String::from_iter(c)) }
+                )*
+              "\""
+              { WordKind::Quote(inner) }
+
+        rule backquote() -> WordKind
+          = "`" inner:(escape(<$(['`'])>) / $([^'`']))* "`"
+            {?
+              if let Ok(statement) = reddish_parser::statement(&String::from_iter(inner), rubyish) {
+                  Ok(WordKind::CommandSubstitute(statement))
+              } else {
+                  Err("unexpected EOF")
+              }
+            }
+
+        rule command_substitute() -> WordKind
+          = "$(" inner:statement() ")" { WordKind::CommandSubstitute(inner) }
+
+        rule ansi_expand() -> WordKind
+            = "$'" inner:$([^'\'']*) "'" { WordKind::Quote(vec![ WordKind::bare(inner.expand_ascii_code()) ]) }
+
+        rule locale_expand() -> WordKind
+            = "$\"" inner:$((escape(<['"']>) / [^'"'])*) "\"" {? Err("not implemented ")}
+
+        rule parameter_expand() -> WordKind
+          = "${" name:(escape(<['}']>) / ['a'..='z' | 'A'..='Z' | '_'])+ "}"
+            { WordKind::Parameter(String::from_iter(name))}
+          / "$" escapeNL()* name:(
+              n:$(['*' | '@' | '#' | '?' | '-' | '$' | '!' | '_']) { n.to_string() } /
+              (
+                $(['0']) { String::from("0") } /
+                head:$(['1'..='9']) tail:(escapeNL()* t:$(['0'..='9']) { t })*
+                { format!("{}{}", head, String::from_iter(tail)) }
+              ) /
+              n:(escapeNL()* n:$(['a'..='z' | 'A'..='Z' | '_']) { n })+
+              { String::from_iter(n) }
+            )
+            { WordKind::parameter(name) }
+          / "$" &([' ' | '`' | ';' | '\n' | '&' | '|'] / EOF()) { WordKind::bare("$") }
+
+        // ----------------------------------------------------------
+        // redirect
+        // ----------------------------------------------------------
+        rule redirect() -> RedirectKind
+            = redirect:(
+                here_string()
+                / fd:fd(Some(0)) "<<" _* word()+ {? Err("Here Document is not implemented.") }
+                / redirect_read_copy()
+                / redirect_read_close()
+                / redirect_write_copy()
+                / redirect_write_close()
+                / redirect_append_both()
+                / redirect_write_both()
+                / redirect_read_write()
+                / redirect_read_from()
+                / redirect_append_to()
+                / redirect_write_to()
+            )
+
+        rule fd(default: Option<RawFd>) -> RawFd
+            = fd:$(['0'..='9']+)?
+              {?
+                match fd {
+                  Some(fd) => Ok(fd.parse::<RawFd>().unwrap()),
+                  None => if let Some(default) = default {
+                    Ok(fd.map_or(default, |f| f.parse::<RawFd>().unwrap() ))
+                  } else {
+                    Err("Number")
+                  }
+                }
+              }
+
+        rule redirect_read_from() -> RedirectKind
+            = fd:fd(Some(0)) "<" _* word:word()
+              { RedirectKind::ReadFrom(fd, word) }
+
+        rule redirect_write_to() -> RedirectKind
+            = fd:fd(Some(1)) ">" force:"|"? _* word:word()
+              { RedirectKind::WriteTo(fd, word, force.is_some()) }
+
+        rule redirect_write_both() -> RedirectKind
+            = /* Error in bash */ ">&" _ "-" {? Err("Bad file descriptor")} /
+              ("&>" / ">&") _* !['-'] word:word()
+              { RedirectKind::WriteBoth(word) }
+
+        rule redirect_read_copy() -> RedirectKind
+            = fd1:fd(Some(0)) "<&" _* fd2:fd(None) close:"-"?
+              { RedirectKind::ReadCopy(fd1, fd2, close.is_some()) }
+
+        rule redirect_write_copy() -> RedirectKind
+            = fd1:fd(Some(1)) ">&" _* fd2:fd(None) close:"-"?
+              { RedirectKind::WriteCopy(fd1, fd2, close.is_some()) }
+
+        rule redirect_read_close() -> RedirectKind
+            = fd:fd(Some(0))"<&-" { RedirectKind::ReadClose(fd) }
+
+        rule redirect_write_close() -> RedirectKind
+            = fd:fd(Some(1)) ">&-" { RedirectKind::WriteClose(fd) }
+
+        rule redirect_append_to() -> RedirectKind
+            = fd:fd(Some(1)) ">>" _* word:word() { RedirectKind::AppendTo(fd, word) }
+
+        rule redirect_append_both() -> RedirectKind
+            = "&>>" _* word:word() { RedirectKind::AppendBoth(word) }
+
+        rule redirect_read_write() -> RedirectKind
+            = fd:fd(Some(0)) "<>" _* word:word()
+              { RedirectKind::ReadWrite(fd, word) }
+
+        rule here_string() -> RedirectKind
+            = fd:fd(Some(0)) "<<<" _* word:word()
+              { RedirectKind::HereString(fd, word) }
+
+        // ----------------------------------------------------------
+        // misc
+        // ----------------------------------------------------------
+        rule space() =  [' ' | '\t'] / escapeNL()
+        rule comment() = "#" [^'\n']* ("\n" / EOF())
+        rule spaceNL() = space() / "\n" /comment()
+        rule _ = space()+
+        rule __ = spaceNL()+
+
+        rule escape<T>(c: rule<T>) -> T = "\\" c:c() { c }
+        rule escapeNL() -> &'input str = escape(<['\n']>) { "" }
+
+        rule keyword() = "if" / "elif" / "else" / "fi" / "then"
+                         / "while" / "do" / "done" / "until"
+                         / "for" / "case" / "esac"
+                         / ("unless" / "elsif" / "end")*<{to(rubyish)}>
+
+        rule identifier() -> String
+            = s:$(['a'..='z' | 'A'..='Z' | '_'] ['a'..='z' | 'A'..='Z' | '0'..='9' | '_']*)
+              { s.to_string() }
+
+        rule ANY() -> char = [_]
+        rule EOF() = ![_]
+    }
+}

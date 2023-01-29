@@ -1,15 +1,12 @@
-mod error;
-mod lexer;
-mod location;
+pub mod ast;
 mod parser;
-mod token;
-mod word;
+pub mod string;
 
-pub use error::{Error, ErrorKind};
-pub use lexer::Lexer;
-pub use location::{Annotate, Location};
-pub use parser::{parse_command_line, ConnecterKind, Redirect, RedirectKind, Unit, UnitKind};
-pub use token::{Token, TokenKind};
-pub use word::{Word, WordKind};
+use ast::*;
 
-pub type Result<T> = std::result::Result<T, Error>;
+use self::parser::reddish_parser::statement;
+use peg::str::LineCol;
+
+pub fn parse(input: &str, rubyish: bool) -> Result<Vec<Node>, peg::error::ParseError<LineCol>> {
+    statement(input, rubyish)
+}
