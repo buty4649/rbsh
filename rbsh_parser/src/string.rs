@@ -1,16 +1,21 @@
 use peg;
 
-fn parse_hex(v: &[char]) -> char {
-    let code = v
-        .iter()
-        .fold(0, |result, c| result * 16 + c.to_digit(16).unwrap());
-    unsafe { char::from_u32_unchecked(code) }
+trait ParseDigit {
+    fn parse_digit(&self, radix: u32) -> Option<char>;
+}
+
+impl ParseDigit for &str {
+    fn parse_digit(&self, radix: u32) -> Option<char> {
+        let mut code = 0;
+        for c in self.chars() {
+            code = code * radix + c.to_digit(radix)?;
+        }
+        char::from_u32(code)
+    }
 }
 
 peg::parser! {
     grammar escape_character() for str {
-        use super::parse_hex;
-
         rule traced<T>(e: rule<T>) -> T =
             &(input:$(any()*) {
                 #[cfg(feature = "trace")]
@@ -30,7 +35,7 @@ peg::parser! {
 
         pub(crate) rule expand() -> String
         = traced(<
-            chars:(ascii_code() / backslash() / unicode_chars() / any())*
+            chars:(ascii_code() / unicode_chars() / backslash() / any())*
             { String::from_iter(chars) }
           >)
 
@@ -44,19 +49,14 @@ peg::parser! {
             "v" { '\x0b' } / ['\\' | '\'' | '"'] /
 
             // \nnn
-            n:['0'..='7']*<3> {
-                let code = n.into_iter().fold(0, |result, c| {
-                    result * 8 + c as u32
-                });
-                unsafe { char::from_u32_unchecked(code) }
-            } /
+            n:$(['0'..='7']*<1, 3>) { n.parse_digit(8).unwrap() } /
 
             // \xHH / \uHHHH / \UHHHHHHHH
             h:(
-                ("x" h:hex()*<1,2> { h }) /
-                ("u" h:hex()*<1,4> { h }) /
-                ("U" h:hex()*<1,8> { h })
-            ) { parse_hex(&h) } /
+                ("x" h:$(hex()*<1,2>) { h }) /
+                ("u" h:$(hex()*<1,4>) { h }) /
+                ("U" h:$(hex()*<1,8>) { h })
+            ) { h.parse_digit(16).unwrap() } /
 
             // \cX
             ("c" c:control_character() { c })
@@ -72,24 +72,28 @@ peg::parser! {
           c:['`'..='~'] { unsafe { char::from_u32_unchecked(c as u32 - 0x60) } }
 
         rule backslash() -> String
-        = ['\\'] code:(
-            "s" { '\x20' } /
+        = ['\\'] s:(
+            ['\n'] { "".to_string() } /
+            code:(
+                "s" { '\x20' } /
 
-            // \C-x
-            ("C-" c:control_character() { c }) /
+                // \C-x
+                ("C-" c:control_character() { c }) /
 
-            // \M-x / \M-\C-x
-            ("M-" c:(
-                    c:['\x00'..='\x7f'] { unsafe { char::from_u32_unchecked((c as u32) | 0x80) } } /
-                    "\\C-" c:control_character() { unsafe{ char::from_u32_unchecked((c as u32) | 0x80) } }
-                ) { c }
-            )
-        ) { code.to_string() }
+                // \M-x / \M-\C-x
+                ("M-" c:(
+                        "\\C-" c:control_character() { unsafe{ char::from_u32_unchecked((c as u32) | 0x80) } } /
+                        c:['\x00'..='\x7f'] { unsafe { char::from_u32_unchecked((c as u32) | 0x80) } }
+                    ) { c }
+                )
+            ) { code.to_string() } /
+            s:$([_]) { s.to_string() }
+          ) { s }
 
           // \u{nnnn}
           rule unicode_chars() -> String
-          = "\\u{" u:((hex()*<1,6>)**" ") "}" {
-            String::from_iter(u.iter().map(|v| { parse_hex(v)}))
+          = "\\u{" u:($(hex()*<1,6>)**" ") "}" {
+            String::from_iter(u.iter().map(|v| v.parse_digit(16).unwrap() ))
           }
     }
 }
