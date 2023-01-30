@@ -80,8 +80,8 @@ peg::parser! {
         rule compound_command() -> Node
             = if_command()
               / rubyish_unless_command()
-              / while_block()
-              / until_block()
+              / while_command()
+              / until_command()
               / for_block()
               / select_block()
               / case_block()
@@ -197,9 +197,9 @@ peg::parser! {
         // ----------------------------------------------------------
         // while
         // ----------------------------------------------------------
-        rule while_block() -> Node
-            = rubyish_while_block() /
-              "while" __ test:pipeline_command()
+        rule while_command() -> Node
+            = rubyish_while_command() /
+              "while" __ test:pipeline()
               "do" __ body:statement()
               "done" _* redirect:(redirect()+)?
               {
@@ -207,9 +207,9 @@ peg::parser! {
                 Node::While { body, redirect }
               }
 
-        rule rubyish_while_block() -> Node
+        rule rubyish_while_command() -> Node
             = block:(rubyish_while_short_block() /
-                "while" __ test:pipeline_command()
+                "while" __ test:pipeline()
                 "do" __ body:statement()
                 "end" _* redirect:(redirect()+)?
                 {
@@ -237,9 +237,9 @@ peg::parser! {
         // ----------------------------------------------------------
         // until
         // ----------------------------------------------------------
-        rule until_block() -> Node
-            = rubyish_until_block() /
-              "until" __ test:pipeline_command()
+        rule until_command() -> Node
+            = rubyish_until_command() /
+              "until" __ test:pipeline()
               "do" __ body:statement()
               "done" _* redirect:(redirect()+)?
               {
@@ -247,9 +247,9 @@ peg::parser! {
                 Node::Until { body, redirect }
               }
 
-        rule rubyish_until_block() -> Node
+        rule rubyish_until_command() -> Node
             = block:(rubyish_until_short_block() /
-                "until" __ test:pipeline_command()
+                "until" __ test:pipeline()
                 "do" __ body:statement()
                 "end" _* redirect:(redirect()+)?
                 {

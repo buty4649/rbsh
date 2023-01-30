@@ -136,6 +136,38 @@ macro_rules! unless_command {
     };
 }
 
+macro_rules! while_command {
+    (body:$body:expr) => {
+        Node::While {
+            body: $body,
+            redirect: None,
+        }
+    };
+
+    (body:$body:expr, redirect:$redirect:expr) => {
+        Node::While {
+            body: $body,
+            redirect: Some($redirect),
+        }
+    };
+}
+
+macro_rules! until_command {
+    (body:$body:expr) => {
+        Node::Until {
+            body: $body,
+            redirect: None,
+        }
+    };
+
+    (body:$body:expr, redirect:$redirect:expr) => {
+        Node::Until {
+            body: $body,
+            redirect: Some($redirect),
+        }
+    };
+}
+
 macro_rules! cond {
     (test:$test:expr, body:$body:expr) => {
         Condition {
