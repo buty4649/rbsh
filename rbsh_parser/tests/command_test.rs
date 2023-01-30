@@ -254,13 +254,6 @@ mod test_command {
             assert_parse!(&input => Ok(vec![command!(name: vec![param_sub!(@ mark)])]));
         }
 
-        /*
-        for mark in marks {
-            let input = format!("${{{}}}", mark);
-            assert_parse!(&input => Ok(vec![command!(name: vec![param_sub!(@ mark)])]));
-        }
-        */
-
         assert_parse!("$*foo" => Ok(vec![command!(
             name: vec![
                 param_sub!(*),

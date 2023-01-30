@@ -22,20 +22,8 @@ mod rubyish {
 }
 
 peg::parser! {
-    pub(crate) grammar reddish_parser(rubyish: bool) for str {
+    pub(crate) grammar rbsh(rubyish: bool) for str {
         use super::rubyish::to;
-
-        rule traced<T>(e: rule<T>) -> T =
-            &(input:$(ANY()*) {
-                #[cfg(feature = "trace")]
-                println!("[PEG_INPUT_START]\n{}\n[PEG_TRACE_START]", input);
-            })
-            e:e()? {?
-                #[cfg(feature = "trace")]
-                println!("[PEG_TRACE_STOP]");
-                e.ok_or("")
-            }
-        pub(crate) rule trace() -> Vec<Node> = traced(<statement()>)
 
         pub(crate) rule statement() -> Vec<Node>
             = __* list:pipeline()*
@@ -90,7 +78,7 @@ peg::parser! {
               / command()
 
         rule compound_command() -> Node
-            = if_block()
+            = if_command()
               / rubyish_unless_block()
               / while_block()
               / until_block()
@@ -101,21 +89,21 @@ peg::parser! {
               / subshell_block()
 
         rule group_block() -> Node
-            = "{" __* body:pipeline_command()+ __* "}" _* redirect:(redirect()+)?
+            = "{" __* body:pipeline()+ __* "}" _* redirect:(redirect()+)?
               { Node::Group{ body, redirect }}
 
         rule subshell_block() -> Node
-            = "(" __* body:pipeline_command()+ __* ")" _* redirect:(redirect()+)?
+            = "(" __* body:pipeline()+ __* ")" _* redirect:(redirect()+)?
               { Node::Subshell{ body, redirect }}
 
         // ----------------------------------------------------------
-        // if
+        // if command
         // ----------------------------------------------------------
-        rule if_block() -> Node
-            = rubyish_if_block() /
-              "if" __ test:pipeline_command()
+        rule if_command() -> Node
+            = rubyish_if_command() /
+              "if" __ test:pipeline()
               "then" __ body:statement()
-              elif_body:(elif_block()+)?
+              elif_body:(elif_command()+)?
               else_body:("else" __ body:statement() { body })?
               "fi" _* redirect:(redirect()+)?
               {
@@ -123,17 +111,17 @@ peg::parser! {
                   Node::If { body, elif_body, else_body, redirect}
               }
 
-        rule elif_block() -> Condition
-            = "elif" __ test:pipeline_command()
+        rule elif_command() -> Condition
+            = "elif" __ test:pipeline()
               "then" __ body:statement()
               { Condition { test: Box::new(test), body } }
 
-        rule rubyish_if_block() -> Node
+        rule rubyish_if_command() -> Node
             = block:(
-                rubyish_if_short_block() /
-                "if" __ test:pipeline_command()
+                rubyish_if_short_command() /
+                "if" __ test:pipeline()
                 "then" __ body:statement()
-                elif_body:(rubyish_elsif_block()+)?
+                elif_body:(rubyish_elsif_command()+)?
                 else_body:("else" __ body:statement() { body })?
                 "end" _* redirect:(redirect()+)?
                 {
@@ -149,9 +137,9 @@ peg::parser! {
                 }
               }
 
-        rule rubyish_if_short_block() -> Node
+        rule rubyish_if_short_command() -> Node
             = "if" __ test_and_body:statement()
-               elif_body:(rubyish_elsif_block()+)?
+               elif_body:(rubyish_elsif_command()+)?
                else_body:("else" __ body:statement() { body })?
               "end" _* redirect:(redirect()+)?
               {
@@ -160,13 +148,13 @@ peg::parser! {
                 Node::If{ body, elif_body, else_body, redirect }
               }
 
-        rule rubyish_elsif_block() -> Condition
-            = rubyish_elsif_short_block() /
-              "elsif" __ test:pipeline_command()
+        rule rubyish_elsif_command() -> Condition
+            = "elsif" __ test:pipeline()
               "then" __ body:statement()
-              { Condition { test: Box::new(test), body } }
+              { Condition { test: Box::new(test), body } }/
+              rubyish_elsif_short_command()
 
-        rule rubyish_elsif_short_block() -> Condition
+        rule rubyish_elsif_short_command() -> Condition
             = "elsif" __ test_and_body:statement()
               {
                 let (test, body) = test_and_body.split_first().unwrap();
@@ -519,7 +507,7 @@ peg::parser! {
         rule backquote() -> WordKind
           = "`" inner:(escape(<$(['`'])>) / $([^'`']))* "`"
             {?
-              if let Ok(statement) = reddish_parser::statement(&String::from_iter(inner), rubyish) {
+              if let Ok(statement) = statement(&String::from_iter(inner), rubyish) {
                   Ok(WordKind::CommandSubstitute(statement))
               } else {
                   Err("unexpected EOF")

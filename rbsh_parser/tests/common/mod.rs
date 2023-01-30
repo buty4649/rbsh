@@ -63,6 +63,62 @@ macro_rules! command {
     };
 }
 
+macro_rules! if_command {
+    (body:$body:expr) => {
+        Node::If {
+            body: $body,
+            elif_body: None,
+            else_body: None,
+            redirect: None,
+        }
+    };
+
+    (body:$body:expr, elif:$elif:expr) => {
+        Node::If {
+            body: $body,
+            elif_body: Some($elif),
+            else_body: None,
+            redirect: None,
+        }
+    };
+
+    (body:$body:expr, else:$else:expr) => {
+        Node::If {
+            body: $body,
+            elif_body: None,
+            else_body: Some($else),
+            redirect: None,
+        }
+    };
+
+    (body:$body:expr, elif:$elif:expr, else:$else:expr) => {
+        Node::If {
+            body: $body,
+            elif_body: Some($elif),
+            else_body: Some($else),
+            redirect: None,
+        }
+    };
+
+    (body:$body:expr, redirect:$redirect:expr) => {
+        Node::If {
+            body: $body,
+            elif_body: None,
+            else_body: None,
+            redirect: Some($redirect),
+        }
+    };
+}
+
+macro_rules! cond {
+    (test:$test:expr, body:$body:expr) => {
+        Condition {
+            test: Box::new($test),
+            body: $body,
+        }
+    };
+}
+
 macro_rules! variable_assignment {
     ($e1:expr $(, $e2:expr)* $(,)*) => {
         Node::VariableAssignment {
