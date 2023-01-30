@@ -457,6 +457,60 @@ fn test_rubyish_if_command() {
             command!(name: vec![bare!(ham)]),
         ]
     )]));
+
+    assert_parse!("if if foo; bar; else baz; end; if hoge; fuga; else piyo; end; end" => Ok(vec![if_command!(
+        body: cond!(
+            test: if_command!(
+                body: cond!(
+                    test: command!(name: vec![bare!(foo)]),
+                    body: vec![command!(name: vec![bare!(bar)])]
+                ),
+                else: vec![command!(name: vec![bare!(baz)])]
+            ),
+            body: vec![
+                if_command!(
+                    body: cond!(
+                        test: command!(name: vec![bare!(hoge)]),
+                        body: vec![command!(name: vec![bare!(fuga)])]
+                    ),
+                    else: vec![command!(name: vec![bare!(piyo)])]
+                )
+            ]
+        )
+    )]));
+    assert_parse!(indoc!("
+            if
+                if foo
+                    bar
+                else
+                    baz
+                end
+                if hoge
+                    fuga
+                else
+                    piyo
+                end
+            end
+        ") => Ok(vec![if_command!(
+        body: cond!(
+            test: if_command!(
+                body: cond!(
+                    test: command!(name: vec![bare!(foo)]),
+                    body: vec![command!(name: vec![bare!(bar)])]
+                ),
+                else: vec![command!(name: vec![bare!(baz)])]
+            ),
+            body: vec![
+                if_command!(
+                    body: cond!(
+                        test: command!(name: vec![bare!(hoge)]),
+                        body: vec![command!(name: vec![bare!(fuga)])]
+                    ),
+                    else: vec![command!(name: vec![bare!(piyo)])]
+                )
+            ]
+        )
+    )]));
 }
 
 #[test]
