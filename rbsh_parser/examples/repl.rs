@@ -11,12 +11,12 @@ fn main() {
         match readline {
             Ok(line) => {
                 let parse = parse(&line, true);
-                println!("{:?}", parse);
+                println!("{parse:?}");
             }
             Err(ReadlineError::Interrupted) => continue,
             Err(ReadlineError::Eof) => break,
             Err(err) => {
-                println!("Error: {:?}", err);
+                println!("Error: {err:?}");
                 break;
             }
         }
