@@ -110,6 +110,32 @@ macro_rules! if_command {
     };
 }
 
+macro_rules! unless_command {
+    (body:$body:expr) => {
+        Node::Unless {
+            body: $body,
+            else_body: None,
+            redirect: None,
+        }
+    };
+
+    (body:$body:expr, else:$else:expr) => {
+        Node::Unless {
+            body: $body,
+            else_body: Some($else),
+            redirect: None,
+        }
+    };
+
+    (body:$body:expr, redirect:$redirect:expr) => {
+        Node::Unless {
+            body: $body,
+            else_body: None,
+            redirect: Some($redirect),
+        }
+    };
+}
+
 macro_rules! cond {
     (test:$test:expr, body:$body:expr) => {
         Condition {

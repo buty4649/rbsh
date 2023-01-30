@@ -79,7 +79,7 @@ peg::parser! {
 
         rule compound_command() -> Node
             = if_command()
-              / rubyish_unless_block()
+              / rubyish_unless_command()
               / while_block()
               / until_block()
               / for_block()
@@ -164,10 +164,10 @@ peg::parser! {
         // ----------------------------------------------------------
         // unless
         // ----------------------------------------------------------
-        rule rubyish_unless_block() -> Node
+        rule rubyish_unless_command() -> Node
             = block:(
-                rubyish_unless_short_block() /
-                "unless" __ test:pipeline_command()
+                rubyish_unless_short_command() /
+                "unless" __ test:pipeline()
                 "then" __ body:statement()
                 else_body:("else" __ body:statement() { body })?
                 "end" _* redirect:(redirect()+)?
@@ -184,7 +184,7 @@ peg::parser! {
                 }
               }
 
-        rule rubyish_unless_short_block() -> Node
+        rule rubyish_unless_short_command() -> Node
             = "unless" __ test_and_body:statement()
               else_body:("else" __ body:statement() { body })?
               "end" _* redirect:(redirect()+)?
