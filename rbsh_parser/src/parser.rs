@@ -82,7 +82,7 @@ peg::parser! {
               / rubyish_unless_command()
               / while_command()
               / until_command()
-              / for_block()
+              / for_command()
               / select_block()
               / case_block()
               / group_block()
@@ -277,24 +277,26 @@ peg::parser! {
         // ----------------------------------------------------------
         // for
         // ----------------------------------------------------------
-        rule for_block() -> Node
-            = rubyish_for_block() /
-              "for" _ ident:identifier() __
-              subject:("in" subject:(_ word:word() { word })* ("\n" / ";") __* { subject })?
+        rule for_command() -> Node
+            = rubyish_for_command() /
+              "for" _ ident:identifier()
+              subject:(__ "in" subject:(_ word:word() { word })* { subject })?
+              ("\n" / ";") __*
               "do" __ body:statement()
               "done" _* redirect:(redirect()+)?
               {
                 Node::For{ ident, subject, body, redirect }
               }
 
-        rule rubyish_for_block() -> Node
+        rule rubyish_for_command() -> Node
             = block:(
-                "for" _ ident:identifier() __
-                subject:("in" subject:(_ word:word() { word })* ("\n" / ";") __* { subject })?
+                "for" _ ident:identifier()
+                subject:(__ "in" subject:(_ word:word() { word })*  { subject })
+                ("\n" / ";") __*
                 ("do" __)? body:statement()
                 "end" _* redirect:(redirect()+)?
                 {
-                    Node::For{ ident, subject, body, redirect }
+                    Node::For{ ident, subject: Some(subject), body, redirect }
                 }
               )*<{to(rubyish)}>
               {?

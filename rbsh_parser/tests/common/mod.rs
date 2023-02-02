@@ -168,6 +168,44 @@ macro_rules! until_command {
     };
 }
 
+macro_rules! for_command {
+    (ident:$ident:expr, body:$body:expr) => {
+        Node::For {
+            ident: $ident.into(),
+            subject: None,
+            body: $body,
+            redirect: None,
+        }
+    };
+
+    (ident:$ident:expr, subject:$subject:expr, body:$body:expr) => {
+        Node::For {
+            ident: $ident.into(),
+            subject: Some($subject),
+            body: $body,
+            redirect: None,
+        }
+    };
+
+    (ident:$ident:expr, subject:$subject:expr, body:$body:expr) => {
+        Node::For {
+            ident: $ident.into(),
+            subject: Some($subject),
+            body: $body,
+            redirect: None,
+        }
+    };
+
+    (ident:$ident:expr, body:$body:expr, redirect:$redirect:expr) => {
+        Node::For {
+            ident: $ident.into(),
+            subject: None,
+            body: $body,
+            redirect: Some($redirect),
+        }
+    };
+}
+
 macro_rules! cond {
     (test:$test:expr, body:$body:expr) => {
         Condition {
