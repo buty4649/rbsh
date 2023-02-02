@@ -289,6 +289,56 @@ macro_rules! case_pattern {
     };
 }
 
+macro_rules! group_command {
+    (body:$body:expr) => {
+        Node::Group {
+            body: $body,
+            redirect: None,
+        }
+    };
+
+    (body:$body:expr, redirect:$redirect:expr) => {
+        Node::Group {
+            body: $body,
+            redirect: Some($redirect),
+        }
+    };
+}
+
+macro_rules! subshell_command {
+    (body:$body:expr) => {
+        Node::Subshell {
+            body: $body,
+            redirect: None,
+        }
+    };
+
+    (body:$body:expr, redirect:$redirect:expr) => {
+        Node::Subshell {
+            body: $body,
+            redirect: Some($redirect),
+        }
+    };
+}
+
+macro_rules! function_command {
+    (ident:$ident:expr, body:$body:expr) => {
+        Node::Function {
+            ident: $ident.into(),
+            body: Box::new($body),
+            redirect: None,
+        }
+    };
+
+    (ident:$ident:expr, body:$body:expr, redirect:$redirect:expr) => {
+        Node::Function {
+            ident: $ident.into(),
+            body: Box::new($body),
+            redirect: Some($redirect),
+        }
+    };
+}
+
 macro_rules! variable_assignment {
     ($e1:expr $(, $e2:expr)* $(,)*) => {
         Node::VariableAssignment {
