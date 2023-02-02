@@ -83,7 +83,7 @@ peg::parser! {
               / while_command()
               / until_command()
               / for_command()
-              / select_block()
+              / select_command()
               / case_block()
               / group_block()
               / subshell_block()
@@ -310,24 +310,26 @@ peg::parser! {
         // ----------------------------------------------------------
         // select
         // ----------------------------------------------------------
-        rule select_block() -> Node
-            = rubyish_select_block() /
-              "select" _ ident:identifier() __
-              subject:("in" subject:(_ word:word() { word })* ("\n" / ";") __* { subject })?
+        rule select_command() -> Node
+            = rubyish_select_command() /
+              "select" _ ident:identifier()
+              subject:(__* "in" subject:(_ word:word() { word })* { subject })?
+              ("\n" / ";") __*
               "do" __ body:statement()
               "done" _* redirect:(redirect()+)?
               {
                 Node::Select{ ident, subject, body, redirect }
               }
 
-        rule rubyish_select_block() -> Node
+        rule rubyish_select_command() -> Node
             = block:(
-                "select" _ ident:identifier() __
-                subject:("in" subject:(_ word:word() { word })* ("\n" / ";") __* { subject })?
+                "select" _ ident:identifier()
+                subject:(__ "in" subject:(_ word:word() { word })* { subject })
+                ("\n" / ";") __*
                 ("do" __)? body:statement()
                 "end" _* redirect:(redirect()+)?
                 {
-                    Node::Select{ ident, subject, body, redirect }
+                    Node::Select{ ident, subject:Some(subject), body, redirect }
                 }
               )*<{to(rubyish)}>
               {?

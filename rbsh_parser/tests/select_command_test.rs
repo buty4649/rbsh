@@ -9,8 +9,8 @@ use rbsh_parser::ast::*;
 use rbsh_parser::parse;
 
 #[test]
-fn test_for_command() {
-    assert_parse!("for foo; do bar; baz; done" => Ok(vec![for_command!(
+fn test_select_command() {
+    assert_parse!("select foo; do bar; baz; done" => Ok(vec![select_command!(
         ident: "foo",
         body: vec![
             command!(name: vec![bare!(bar)]),
@@ -18,12 +18,12 @@ fn test_for_command() {
         ]
     )]));
     assert_parse!(indoc!("
-            for foo
+            select foo
             do
                 bar
                 baz
             done
-        ") => Ok(vec![for_command!(
+        ") => Ok(vec![select_command!(
         ident: "foo",
         body: vec![
             command!(name: vec![bare!(bar)]),
@@ -31,7 +31,7 @@ fn test_for_command() {
         ]
     )]));
 
-    assert_parse!("for foo in bar $baz; do hoge; fuga; done" => Ok(vec![for_command!(
+    assert_parse!("select foo in bar $baz; do hoge; fuga; done" => Ok(vec![select_command!(
         ident: "foo",
         subject: vec![
             vec![bare!(bar)],
@@ -43,12 +43,12 @@ fn test_for_command() {
         ]
     )]));
     assert_parse!(indoc!("
-            for foo in bar $baz
+            select foo in bar $baz
             do
                 hoge
                 fuga
             done
-        ") => Ok(vec![for_command!(
+        ") => Ok(vec![select_command!(
         ident: "foo",
         subject: vec![
             vec![bare!(bar)],
@@ -60,7 +60,7 @@ fn test_for_command() {
         ]
     )]));
 
-    assert_parse!("for foo in bar baz; do hoge; fuga; end" => Ok(vec![for_command!(
+    assert_parse!("select foo in bar baz; do hoge; fuga; end" => Ok(vec![select_command!(
         ident: "foo",
         subject: vec![
             vec![bare!(bar)],
@@ -72,12 +72,12 @@ fn test_for_command() {
         ]
     )]));
     assert_parse!(indoc!("
-            for foo in bar baz
+            select foo in bar baz
             do
                 hoge
                 fuga
             end
-        ") => Ok(vec![for_command!(
+        ") => Ok(vec![select_command!(
         ident: "foo",
         subject: vec![
             vec![bare!(bar)],
@@ -89,14 +89,14 @@ fn test_for_command() {
         ]
     )]));
 
-    assert_parse_error!("for $foo; do bar; baz; done");
-    assert_parse_error!("for foo in bar baz; hoge; fuga; done");
-    assert_parse_error!("for foo; bar; baz; done");
+    assert_parse_error!("select $foo; do bar; baz; done");
+    assert_parse_error!("select foo in bar baz; hoge; fuga; done");
+    assert_parse_error!("select foo; bar; baz; done");
 }
 
 #[test]
-fn test_for_command_with_redirect() {
-    assert_parse!("for foo; do bar; baz; done > hoge" => Ok(vec![for_command!(
+fn test_select_command_with_redirect() {
+    assert_parse!("select foo; do bar; baz; done > hoge" => Ok(vec![select_command!(
         ident: "foo",
         body: vec![
             command!(name: vec![bare!(bar)]),
