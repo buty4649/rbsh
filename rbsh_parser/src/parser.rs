@@ -86,13 +86,13 @@ peg::parser! {
               / select_command()
               / case_command()
               / group_command()
-              / subshell_block()
+              / subshell_command()
 
         rule group_command() -> Node
             = "{" __* body:pipeline()+ __* "}" _* redirect:(redirect()+)?
               { Node::Group{ body, redirect }}
 
-        rule subshell_block() -> Node
+        rule subshell_command() -> Node
             = "(" __* body:pipeline()+ __* ")" _* redirect:(redirect()+)?
               { Node::Subshell{ body, redirect }}
 
