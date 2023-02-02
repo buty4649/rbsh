@@ -253,6 +253,42 @@ macro_rules! cond {
     };
 }
 
+macro_rules! case_command {
+    (word:$word:expr) => {
+        Node::Case {
+            word: $word,
+            pattern: None,
+            redirect: None,
+        }
+    };
+
+    (word:$word:expr, pattern:$pattern:expr) => {
+        Node::Case {
+            word: $word,
+            pattern: Some($pattern),
+            redirect: None,
+        }
+    };
+
+    (word:$word:expr, pattern:$pattern:expr, redirect:$redirect:expr) => {
+        Node::Case {
+            word: $word,
+            pattern: Some($pattern),
+            redirect: Some($redirect),
+        }
+    };
+}
+
+macro_rules! case_pattern {
+    (pattern:$pattern:expr, body:$body:expr, next_action:$next_action:path) => {
+        CasePattern {
+            pattern: $pattern,
+            body: $body,
+            next_action: $next_action,
+        }
+    };
+}
+
 macro_rules! variable_assignment {
     ($e1:expr $(, $e2:expr)* $(,)*) => {
         Node::VariableAssignment {

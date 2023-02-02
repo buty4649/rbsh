@@ -84,7 +84,7 @@ peg::parser! {
               / until_command()
               / for_command()
               / select_command()
-              / case_block()
+              / case_command()
               / group_block()
               / subshell_block()
 
@@ -343,14 +343,14 @@ peg::parser! {
         // ----------------------------------------------------------
         // case
         // ----------------------------------------------------------
-        rule case_block() -> Node
-            =  rubyish_case_block() /
+        rule case_command() -> Node
+            =  rubyish_case_command() /
               "case" _ word:word() __ "in" __
-              pattern:(case_pattern_block()+)?
+              pattern:(case_pattern_command()+)?
               "esac" _* redirect:(redirect()+)?
               { Node::Case { word, pattern, redirect } }
 
-        rule case_pattern_block() -> CasePattern
+        rule case_pattern_command() -> CasePattern
             = "("? _* pattern:(word()**(_* "|" _*)) _* ")" __*
                 body:statement() __* next_action:$(";;&" / ";;" / ";&"/ &"esac") __*
               {
@@ -364,12 +364,12 @@ peg::parser! {
                 CasePattern { pattern, body, next_action }
               }
 
-        rule rubyish_case_block() -> Node
+        rule rubyish_case_command() -> Node
             = block:(
                 "case" _ word:word() __
-                pattern:(rubyish_case_pattern_block()+)?
+                pattern:(rubyish_case_pattern_command()+)
                 "end" _* redirect:(redirect()+)?
-                { Node::Case { word, pattern, redirect } }
+                { Node::Case { word, pattern:Some(pattern), redirect } }
               )*<{to(rubyish)}>
               {?
                 let mut block = block;
@@ -379,7 +379,7 @@ peg::parser! {
                 }
               }
 
-        rule rubyish_case_pattern_block() -> CasePattern
+        rule rubyish_case_pattern_command() -> CasePattern
             = "when" _ pattern:(word()**(_* "|" _*)) (__ "then" / "\n") __* body:statement() __*
               { CasePattern {pattern, body, next_action: CasePatternNextAction::End }}
 
