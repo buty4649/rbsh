@@ -73,7 +73,7 @@ peg::parser! {
 
         rule simple_command() -> Node
             = compound_command()
-              / function_block()
+              / function_command()
               / variable_assignment_block()
               / command()
 
@@ -386,7 +386,7 @@ peg::parser! {
         // ----------------------------------------------------------
         // function
         // ----------------------------------------------------------
-        rule function_block() -> Node
+        rule function_command() -> Node
             = ident:function_identifier() "()" __* body:compound_command() _* redirect:(redirect()+)?
               { Node::Function { ident, body: Box::new(body), redirect }}
               / "function" _ ident:function_identifier() ("()" / "\n")? __* body:compound_command() _* redirect:(redirect()+)?
