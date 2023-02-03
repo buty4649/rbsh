@@ -339,6 +339,24 @@ macro_rules! function_command {
     };
 }
 
+macro_rules! and {
+    ($left:expr, $right:expr) => {
+        Node::And {
+            left: Box::new($left),
+            right: Box::new($right),
+        }
+    };
+}
+
+macro_rules! or {
+    ($left:expr, $right:expr) => {
+        Node::Or {
+            left: Box::new($left),
+            right: Box::new($right),
+        }
+    };
+}
+
 macro_rules! variable_assignment {
     ($e1:expr $(, $e2:expr)* $(,)*) => {
         Node::VariableAssignment {
