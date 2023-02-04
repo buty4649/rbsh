@@ -50,7 +50,6 @@ pub enum Node {
     Function {
         ident: String,
         body: Box<Node>,
-        redirect: Option<Vec<RedirectKind>>,
     },
     Group {
         body: Vec<Node>,
@@ -77,8 +76,7 @@ pub enum Node {
         body: Option<Box<Node>>,
     },
     Background {
-        left: Box<Node>,
-        right: Option<Box<Node>>,
+        body: Box<Node>,
     },
 }
 

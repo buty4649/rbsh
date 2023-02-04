@@ -26,50 +26,66 @@ peg::parser! {
         use super::rubyish::to;
 
         pub(crate) rule statement() -> Vec<Node>
-            = __* list:pipeline()*
+            = __* list:command_list()*
               { list }
 
-        rule pipeline() -> Node
-            = "!" _ [';' | '\n'] { Node::InvertReturn{ body:None } } /
-              invert:("!" _)? command:pipeline_command() terminator:pipeline_terminator()? __*
-              {
-                let pipeline_command = if invert.is_some() {
-                  Node::InvertReturn { body: Some(Box::new(command)) }
-                } else {
-                  command
-                };
-
-                match terminator {
-                  Some('&') => Node::Background { left: Box::new(pipeline_command), right: None },
-                  _ => pipeline_command,
-                }
+        rule command_list() -> Node
+          = command:list() terminator:(list_terminator())? __*
+            {
+              if matches!(terminator, Some('&')) {
+                Node::Background { body: Box::new(command) }
+              } else {
+                command
               }
+            }
+
+        rule list_terminator() -> char
+          = !(";;&" / ";;" / ";&") t:[';' | '&' | '\n'] { t }
+
+        rule list() -> Node
+          = command:pipeline_command()
+            next:(
+              connector:$("&&" / "||") __* command:list()
+              { (connector, command)}
+            )?
+            {
+              if let Some((connector, next)) = next {
+                let left = Box::new(command);
+                let right = Box::new(next);
+                match connector {
+                  "&&" => Node::And{ left, right },
+                  "||" => Node::Or{ left, right },
+                  _ => unreachable!(),
+                }
+              } else {
+                command
+              }
+            }
 
         rule pipeline_command() -> Node
-          =  command:simple_command() _*
-              next:(
-                connector:$("&&" / "||" / "|&" / "|" / "&" ) __* command:pipeline_command()
-                { (connector, command) }
-              )?
-              {
-                if let Some((connector, next)) = next {
-                  let left = Box::new(command);
-                  let right = Box::new(next);
-                  match connector {
-                    "&&" => Node::And { left, right },
-                    "||" => Node::Or { left, right },
-                    "|&" => Node::Pipe { left, right, both: true },
-                    "|" => Node::Pipe { left, right, both: false },
-                    "&" => Node::Background { left, right: Some(right) },
-                    _ => unreachable!(),
-                  }
-                } else {
-                  command
-                }
+          = invert:("!" _* ) pipeline:pipeline()?
+            { Node::InvertReturn { body: pipeline.map(Box::new) }}
+            / pipeline()
+
+        rule pipeline() -> Node
+          = command:simple_command() _*
+            next:(
+              pipe:$("|&" / "|" ) __* command:pipeline()
+              { (matches!(pipe, "|&"), command) }
+            )?
+            {
+              if let Some((both, next)) = next {
+                let left = Box::new(command);
+                let right = Box::new(next);
+                Node::Pipe{ left, right, both }
+              } else {
+                command
               }
+            }
 
         rule pipeline_terminator() -> char
-            = !(";;&" / ";;" / ";&") c: [';' | '&' | '\n'] { c }
+            = !(";;&" / ";;" / ";&") c:[';' | '&' | '\n'] { c }
+
 
         rule simple_command() -> Node
             = compound_command()
@@ -89,11 +105,11 @@ peg::parser! {
               / subshell_command()
 
         rule group_command() -> Node
-            = "{" __* body:pipeline()+ __* "}" _* redirect:(redirect()+)?
+            = "{" __* body:command_list()+ __* "}" _* redirect:(redirect()+)?
               { Node::Group{ body, redirect }}
 
         rule subshell_command() -> Node
-            = "(" __* body:pipeline()+ __* ")" _* redirect:(redirect()+)?
+            = "(" __* body:command_list()+ __* ")" _* redirect:(redirect()+)?
               { Node::Subshell{ body, redirect }}
 
         // ----------------------------------------------------------
@@ -101,7 +117,7 @@ peg::parser! {
         // ----------------------------------------------------------
         rule if_command() -> Node
             = rubyish_if_command() /
-              "if" __ test:pipeline()
+              "if" __ test:command_list()
               "then" __ body:statement()
               elif_body:(elif_command()+)?
               else_body:("else" __ body:statement() { body })?
@@ -112,14 +128,14 @@ peg::parser! {
               }
 
         rule elif_command() -> Condition
-            = "elif" __ test:pipeline()
+            = "elif" __ test:command_list()
               "then" __ body:statement()
               { Condition { test: Box::new(test), body } }
 
         rule rubyish_if_command() -> Node
             = block:(
                 rubyish_if_short_command() /
-                "if" __ test:pipeline()
+                "if" __ test:command_list()
                 "then" __ body:statement()
                 elif_body:(rubyish_elsif_command()+)?
                 else_body:("else" __ body:statement() { body })?
@@ -149,7 +165,7 @@ peg::parser! {
               }
 
         rule rubyish_elsif_command() -> Condition
-            = "elsif" __ test:pipeline()
+            = "elsif" __ test:command_list()
               "then" __ body:statement()
               { Condition { test: Box::new(test), body } }/
               rubyish_elsif_short_command()
@@ -167,7 +183,7 @@ peg::parser! {
         rule rubyish_unless_command() -> Node
             = block:(
                 rubyish_unless_short_command() /
-                "unless" __ test:pipeline()
+                "unless" __ test:command_list()
                 "then" __ body:statement()
                 else_body:("else" __ body:statement() { body })?
                 "end" _* redirect:(redirect()+)?
@@ -199,7 +215,7 @@ peg::parser! {
         // ----------------------------------------------------------
         rule while_command() -> Node
             = rubyish_while_command() /
-              "while" __ test:pipeline()
+              "while" __ test:command_list()
               "do" __ body:statement()
               "done" _* redirect:(redirect()+)?
               {
@@ -209,7 +225,7 @@ peg::parser! {
 
         rule rubyish_while_command() -> Node
             = block:(rubyish_while_short_block() /
-                "while" __ test:pipeline()
+                "while" __ test:command_list()
                 "do" __ body:statement()
                 "end" _* redirect:(redirect()+)?
                 {
@@ -239,7 +255,7 @@ peg::parser! {
         // ----------------------------------------------------------
         rule until_command() -> Node
             = rubyish_until_command() /
-              "until" __ test:pipeline()
+              "until" __ test:command_list()
               "do" __ body:statement()
               "done" _* redirect:(redirect()+)?
               {
@@ -249,7 +265,7 @@ peg::parser! {
 
         rule rubyish_until_command() -> Node
             = block:(rubyish_until_short_block() /
-                "until" __ test:pipeline()
+                "until" __ test:command_list()
                 "do" __ body:statement()
                 "end" _* redirect:(redirect()+)?
                 {
@@ -387,10 +403,10 @@ peg::parser! {
         // function
         // ----------------------------------------------------------
         rule function_command() -> Node
-            = ident:function_identifier() "()" __* body:compound_command() _* redirect:(redirect()+)?
-              { Node::Function { ident, body: Box::new(body), redirect }}
-              / "function" _ ident:function_identifier() ("()" / "\n")? __* body:compound_command() _* redirect:(redirect()+)?
-                { Node::Function { ident, body: Box::new(body), redirect}}
+            = ident:function_identifier() "()" __* body:compound_command()
+              { Node::Function { ident, body: Box::new(body) }}
+              / "function" _ ident:function_identifier() ("()" / "\n")? __* body:compound_command()
+                { Node::Function { ident, body: Box::new(body) }}
 
         rule function_identifier() -> String
             = !keyword() i:$((!(spaceNL() / "(" / ")" ) ANY())+)

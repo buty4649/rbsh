@@ -326,15 +326,6 @@ macro_rules! function_command {
         Node::Function {
             ident: $ident.into(),
             body: Box::new($body),
-            redirect: None,
-        }
-    };
-
-    (ident:$ident:expr, body:$body:expr, redirect:$redirect:expr) => {
-        Node::Function {
-            ident: $ident.into(),
-            body: Box::new($body),
-            redirect: Some($redirect),
         }
     };
 }
@@ -353,6 +344,38 @@ macro_rules! or {
         Node::Or {
             left: Box::new($left),
             right: Box::new($right),
+        }
+    };
+}
+
+macro_rules! pipe {
+    ($left:expr, $right:expr) => {
+        Node::Pipe {
+            left: Box::new($left),
+            right: Box::new($right),
+            both: false,
+        }
+    };
+}
+
+macro_rules! pipe_both {
+    ($left:expr, $right:expr) => {
+        Node::Pipe {
+            left: Box::new($left),
+            right: Box::new($right),
+            both: true,
+        }
+    };
+}
+
+macro_rules! invert_return {
+    () => {
+        Node::InvertReturn { body: None }
+    };
+
+    ($body:expr) => {
+        Node::InvertReturn {
+            body: Some(Box::new($body)),
         }
     };
 }

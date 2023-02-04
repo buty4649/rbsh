@@ -164,10 +164,10 @@ fn test_function_command_with_redirect() {
     assert_parse!("foo(){ bar; } > hoge" => Ok(vec![function_command!(
         ident: "foo",
         body: group_command!(
-            body: vec![command!(name: vec![bare!(bar)])]
-        ),
-        redirect: vec![
-            redirect_write_to!(1, vec![bare!(hoge)], false)
-        ]
+            body: vec![command!(name: vec![bare!(bar)])],
+            redirect: vec![
+                redirect_write_to!(1, vec![bare!(hoge)], false)
+            ]
+        )
     )]));
 }
